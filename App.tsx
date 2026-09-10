@@ -1,11 +1,14 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
+import Header from './src/components/Header';
+import Card from './src/components/Card';
 
 export default function App() {
   return (
     <View style={styles.container}>
-      <Text>Open up App.js to start working on your TV App!!</Text>
-      <StatusBar style="auto" />
+      <Header />
+      <Card />
+      <StatusBar style='auto' />
     </View>
   );
 }
@@ -13,8 +16,13 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#181717',
     alignItems: 'center',
-    justifyContent: 'center',
+    // justifyContent: 'flex-start',
+  },
+  text: {
+    color: '#ffffff',
+    fontSize: 24,
+    fontWeight: 'bold',
   },
 });
