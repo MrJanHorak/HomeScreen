@@ -23,7 +23,8 @@
         {
           "isTV": true
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }
