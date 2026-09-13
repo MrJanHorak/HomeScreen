@@ -1,15 +1,17 @@
-import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
 import { TVTheme } from '../../theme/tvTheme';
 
-interface Props {
+interface TVScreenWrapperProps {
   children: React.ReactNode;
   style?: ViewStyle;
 }
 
-export const TVScreenWrapper: React.FC<Props> = ({ children, style }) => {
+export default function TVScreenWrapper({
+  children,
+  style,
+}: TVScreenWrapperProps) {
   return <View style={[styles.container, style]}>{children}</View>;
-};
+}
 
 const styles = StyleSheet.create({
   container: {
