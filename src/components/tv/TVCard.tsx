@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Pressable,
   Text,
@@ -13,11 +13,10 @@ interface TVCardProps {
   onPress?: () => void;
 }
 
-export const TVCard: React.FC<TVCardProps> = ({ title, onPress }) => {
+export const TVCard = ({ title, onPress }: TVCardProps) => {
   const theme = useTheme();
   const [isFocused, setIsFocused] = useState(false);
 
-  // Dynamic style calculation based on state
   const containerStyle: ViewStyle = {
     backgroundColor: isFocused
       ? theme.colors.surfaceFocused
