@@ -3,7 +3,7 @@ import TVText from '../components/tv/TVText';
 function HomeScreen() {
   return (
     <TVText
-      text={'HOME SCREEN'}
+      text={'🎻🎻🎻🎻🎻🎻😁😂🙃😉😇'}
       typography={'headerLg'}
       color='textSecondary'
       marginTop='xs'
