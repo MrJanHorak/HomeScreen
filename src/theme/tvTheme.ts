@@ -21,6 +21,7 @@ export const spacing = {
   md: 24,
   lg: 32,
   xl: 48,
+  xxl: 64,
   // TV Safe Area Padding (Overscan Protection)
   safeHorizontal: 56,
   safeVertical: 40,
@@ -55,11 +56,11 @@ export const tvAnimation = {
   durationFast: 150,
 } as const;
 
-export const theme = {
+export const TVTheme = {
   colors,
   spacing,
   typography,
   tvAnimation,
 };
 
-export type Theme = typeof theme;
+export type TVThemeType = typeof TVTheme;

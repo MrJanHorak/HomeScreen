@@ -1,29 +1,52 @@
-import { StyleSheet, Text, View } from 'react-native';
-function Card() {
+import React, { useState } from 'react';
+import { Pressable, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
+import { useTheme } from '../theme/ThemeContext';
 
-  return (
-    <View style={styles.card}>
-      <Text style={styles.text}>Card</Text>
-    </View>
-  )
+interface TVCardProps {
+  title: string;
+  onPress?: () => void;
 }
 
-export default Card
+export const TVCard: React.FC<TVCardProps> = ({ title, onPress }) => {
+  const theme = useTheme();
+  const [isFocused, setIsFocused] = useState(false);
+
+  // Dynamic style calculation based on state
+  const containerStyle: ViewStyle = {
+    backgroundColor: isFocused ? theme.colors.surfaceFocused : theme.colors.surface,
+    borderColor: isFocused ? theme.colors.focusRing : 'transparent',
+    transform: [{ scale: isFocused ? theme.tvAnimation.focusScale : 1.0 }],
+  };
+
+  const textStyle: TextStyle = {
+    color: isFocused ? theme.colors.textFocused : theme.colors.textSecondary,
+  };
+
+  return (
+    <Pressable
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
+      onPress={onPress}
+      style={[styles.card, containerStyle]}
+    >
+      <Text style={[styles.text, theme.typography.body, textStyle]}>
+        {title}
+      </Text>
+    </Pressable>
+  );
+};
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#94c975',
+    padding: 24,
+    borderRadius: 12,
+    borderWidth: 3,
+    minWidth: 220,
+    minHeight: 140,
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    width: 180,
-    height: 180,
-    opacity: .8,
-    borderRadius: 20,
-    justifyContent: 'center'
   },
   text: {
-    color: '#ffffff',
-    fontSize: 48,
-    // fontWeight: 'bold',
+    textAlign: 'center',
   },
 });

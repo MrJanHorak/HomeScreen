@@ -1,28 +1,12 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
-import Header from './src/components/Header';
-import Card from './src/components/Card';
-
+import React from 'react';
+import { StatusBar } from 'react-native';
+import { ThemeProvider } from './src/theme/ThemeContext';
+import HomeScreen from './src/screens/HomeScreen';
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Header />
-      <Card />
-      <StatusBar style='auto' />
-    </View>
+    <ThemeProvider>
+      <StatusBar hidden />
+      <HomeScreen />
+    </ThemeProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#181717',
-    alignItems: 'center',
-    // justifyContent: 'flex-start',
-  },
-  text: {
-    color: '#ffffff',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-});
