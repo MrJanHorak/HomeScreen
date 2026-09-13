@@ -1,6 +1,6 @@
-import { Text } from "react-native";
+import TVText from "../components/tv/TVText";
 
 function HomeScreen() {
-  return <Text>HomeScreen</Text>;
+  return <TVText text={'HOME SCREEN'} typography={'headerLg'} color ='textSecondary' marginTop ='xs' marginHorizontal='sm'/>;
 }
 export default HomeScreen;
