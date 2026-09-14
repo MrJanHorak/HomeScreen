@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "MyTvApp",
-    "slug": "mytvapp",
+    "name": "HomeScreen",
+    "slug": "HomeScreen",
     "version": "1.0.0",
     "orientation": "landscape",
     "userInterfaceStyle": "dark",

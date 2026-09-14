@@ -3,21 +3,44 @@ import TVText from '../components/tv/TVText';
 import TVSection from '../components/tv/TVSection';
 import TVCard from '../components/tv/TVCard';
 
+import { mockHomeData } from '../data/mockData';
+
 function HomeScreen() {
   return (
     <View>
       <TVText
-        text={'Good evening Jan!'}
-        typography={'headerMd'}
-        color='textSecondary'
+        text={'Good evening Jan! HEADER BAR WITH SOME BASIC INFO AND TIME'}
+        typography={'body'}
+        color='textPrimary'
         // marginTop='xs'
         // marginHorizontal='sm'
         marginBottom='sm'
       />
       <TVSection direction='row'>
-        <TVCard style={{ flex: 1 }} title={'weather'} />
-        <TVCard style={{ flex: 1 }} title={'calendar'} />
-        <TVCard style={{ flex: 1 }} title={'FitnessStats'} />
+        <TVCard style={{ flex: 1, height: 170 }}>
+          <TVText text='WEATHER' typography='caption' color='textSecondary' />
+          <TVText
+            text={`${mockHomeData.weather.temperature}°`}
+            typography='headerLg'
+          />
+          <TVText text={mockHomeData.weather.condition} typography='body' />
+        </TVCard>
+        <TVCard style={{ flex: 1, height: 170 }}>
+          <TVText text='TODAY' typography='caption' color='textSecondary' />
+          <TVText text={mockHomeData.calendar[0].title} typography='body' />
+          <TVText text={mockHomeData.calendar[0].time} typography='caption' />
+        </TVCard>
+        <TVCard style={{ flex: 1, height: 170 }}>
+          <TVText text='ACTIVITY' typography='caption' color='textSecondary' />
+          <TVText text={`${mockHomeData.activity.steps} steps`} />
+          <TVText text={`${mockHomeData.activity.stepGoal} steps`} />
+          <TVText
+            text={
+              (parseFloat(mockHomeData.activity.progress) * 100).toString() +
+              '%'
+            }
+          />
+        </TVCard>
       </TVSection>
       <TVSection direction='row'>
         <TVCard style={{ flex: 1 }} title={'TV Show 1'} />
@@ -26,6 +49,14 @@ function HomeScreen() {
         <TVCard style={{ flex: 1 }} title={'Movie 2'} />
         <TVCard style={{ flex: 1 }} title={'TV Show 3'} />
       </TVSection>
+      <TVText
+        text={'NAVIGATION BAR GOES HERE .... EVENTUALLY'}
+        typography={'body'}
+        color='textSecondary'
+        // marginTop='xs'
+        // marginHorizontal='sm'
+        // marginBottom='sm'
+      />
     </View>
   );
 }
