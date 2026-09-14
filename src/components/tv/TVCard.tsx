@@ -11,16 +11,17 @@ import { useTheme } from '../../theme/ThemeContext';
 interface TVCardProps {
   title: string;
   onPress?: () => void;
+  style?: ViewStyle;
 }
 
-export const TVCard = ({ title, onPress }: TVCardProps) => {
+export default function TVCard({ title, onPress, style }: TVCardProps) {
   const theme = useTheme();
   const [isFocused, setIsFocused] = useState(false);
 
   const containerStyle: ViewStyle = {
     backgroundColor: isFocused
-      ? theme.colors.surfaceFocused
-      : theme.colors.surface,
+      ? theme.colors.surfaceFocusedOpacity
+      : theme.colors.surfaceOpacity,
     borderColor: isFocused ? theme.colors.focusRing : 'transparent',
     transform: [{ scale: isFocused ? theme.tvAnimation.focusScale : 1.0 }],
   };
@@ -34,14 +35,14 @@ export const TVCard = ({ title, onPress }: TVCardProps) => {
       onFocus={() => setIsFocused(true)}
       onBlur={() => setIsFocused(false)}
       onPress={onPress}
-      style={[styles.card, containerStyle]}
+      style={[styles.card, containerStyle, style]}
     >
       <Text style={[styles.text, theme.typography.body, textStyle]}>
         {title}
       </Text>
     </Pressable>
   );
-};
+}
 
 const styles = StyleSheet.create({
   card: {

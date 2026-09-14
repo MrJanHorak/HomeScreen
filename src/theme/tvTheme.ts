@@ -2,7 +2,9 @@ export const colors = {
   // Backgrounds
   background: '#0F172A',
   surface: '#1E293B',
+  surfaceOpacity: 'rgba(30, 41, 59, 0.6)',
   surfaceFocused: '#334155',
+  surfaceFocusedOpacity: 'rgba(51, 65, 85, 0.6)',
 
   // Focus & Accent Indicators
   focusRing: '#38BDF8',
