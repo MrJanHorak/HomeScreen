@@ -2,20 +2,14 @@ import { View } from 'react-native';
 import TVText from '../components/tv/TVText';
 import TVSection from '../components/tv/TVSection';
 import TVCard from '../components/tv/TVCard';
+import HeaderBar from '../components/HeaderBar';
 
 import { mockHomeData } from '../data/mockData';
 
 function HomeScreen() {
   return (
     <View>
-      <TVText
-        text={'Good evening Jan! HEADER BAR WITH SOME BASIC INFO AND TIME'}
-        typography={'body'}
-        color='textPrimary'
-        // marginTop='xs'
-        // marginHorizontal='sm'
-        marginBottom='sm'
-      />
+      <HeaderBar />
       <TVSection direction='row'>
         <TVCard style={{ flex: 1, height: 170 }}>
           <TVText text='WEATHER' typography='caption' color='textSecondary' />

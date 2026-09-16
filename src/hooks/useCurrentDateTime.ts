@@ -11,9 +11,9 @@ export function useCurrentDateTime(): CurrentDateTime {
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
 
   useEffect(() => {
-    const intervalTimer: ReturnType<typeof setInterval> = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 60000);
+     const updateTime = () => setCurrentTime(new Date());
+    const intervalTimer: ReturnType<typeof setInterval> = setInterval(updateTime
+    , 1000);
 
     return () => {
       clearInterval(intervalTimer);
@@ -30,7 +30,7 @@ export function useCurrentDateTime(): CurrentDateTime {
   const formattedTime: string = currentTime.toLocaleTimeString('en-US', {
     hour: 'numeric',
     minute: '2-digit',
-    hour12: true,
+    hour12: false,
   });
 
   return {
