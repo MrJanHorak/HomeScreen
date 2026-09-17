@@ -9,13 +9,18 @@ import {
 import { useTheme } from '../../theme/ThemeContext';
 
 interface TVCardProps {
-  title: string;
+  title?: string;
   onPress?: () => void;
-  children: ReactNode
+  children?: ReactNode;
   style?: ViewStyle;
 }
 
-export default function TVCard({ title, onPress, children, style }: TVCardProps) {
+export default function TVCard({
+  title,
+  onPress,
+  children,
+  style,
+}: TVCardProps) {
   const theme = useTheme();
   const [isFocused, setIsFocused] = useState(false);
 
@@ -40,7 +45,7 @@ export default function TVCard({ title, onPress, children, style }: TVCardProps)
     >
       {/* <Text style={[styles.text, theme.typography.body, textStyle]}>
         {title} */}
-        {children}
+      {children}
       {/* </Text> */}
     </Pressable>
   );
