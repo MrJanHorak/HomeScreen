@@ -3,6 +3,7 @@ import TVText from '../components/tv/TVText';
 import TVSection from '../components/tv/TVSection';
 import TVCard from '../components/tv/TVCard';
 import HeaderBar from '../components/HeaderBar';
+import WeatherWidget from '../components/weatherWidget/WeatherWidget';
 
 import { mockHomeData } from '../data/mockData';
 
@@ -12,12 +13,7 @@ function HomeScreen() {
       <HeaderBar />
       <TVSection direction='row'>
         <TVCard style={{ flex: 1, height: 170 }}>
-          <TVText text='WEATHER' typography='caption' color='textSecondary' />
-          <TVText
-            text={`${mockHomeData.weather.temperature}°`}
-            typography='headerLg'
-          />
-          <TVText text={mockHomeData.weather.condition} typography='body' />
+          <WeatherWidget />
         </TVCard>
         <TVCard style={{ flex: 1, height: 170 }}>
           <TVText text='TODAY' typography='caption' color='textSecondary' />
