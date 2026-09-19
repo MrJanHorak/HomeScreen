@@ -1,31 +1,52 @@
 import { useWeather } from '../../hooks/useWeather';
-import { ActivityIndicator, View } from 'react-native';
-import {
-  formatTemperature,
-  getWeatherIconName,
-} from '../../helpers/weatherHelpers';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { TVTheme } from '../../theme/tvTheme';
+import { ActivityIndicator, View, StyleSheet } from 'react-native';
 
-import TVText from '../tv/TVText';
+import CurrentWeatherHeader from './CurrentWeatherHeader';
+import ForecastItemComponent from './ForecastItemComponent';
 
 export default function WeatherWidget() {
   const { data, isLoading } = useWeather();
 
   if (isLoading) return <ActivityIndicator />;
 
-  const formattedTemp = formatTemperature(data!.temperature);
-  const conditionIcon = getWeatherIconName(data!.conditionIcon);
+  console.log(data);
 
   return (
-    <View>
-      <TVText text={formattedTemp} typography='headerLg' />
-      <TVText text={data!.condition} typography='body' />
-      <MaterialCommunityIcons
-        icon={conditionIcon.name}
-        size={48}
-        color={TVTheme.colors.textPrimary}
+    <View style={styles.container}>
+      <CurrentWeatherHeader
+        temperature={data!.temperature}
+        condition={data!.condition}
+        conditionIcon={data!.conditionIcon}
       />
+      <View style={styles.forecastRow}>
+        {data?.forecast.map((forecastItem) => (
+          <ForecastItemComponent
+            key={forecastItem.day}
+            forecast={forecastItem}
+          />
+        ))}
+      </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tempIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+    marginBottom: 4,
+  },
+  conditionText: {
+    textAlign: 'center',
+  },
+  forecastRow: {
+    gap: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+});
