@@ -60,6 +60,13 @@ export const mockWeather = {
       high: 76,
       low: 63,
     },
+    {
+      day: "Mon",
+      condition: "Severe Thunderstorms",
+      icon: "cloud-rain",
+      high: 76,
+      low: 63,
+    },
   ],
 };
 

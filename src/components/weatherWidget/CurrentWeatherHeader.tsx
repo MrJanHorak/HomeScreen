@@ -51,9 +51,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 20,
-    marginBottom: 4,
+    marginBottom: 0,
   },
   conditionText: {
     textAlign: 'center',
+    marginBottom: 4,
   },
 });
