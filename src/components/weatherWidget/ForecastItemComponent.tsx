@@ -4,17 +4,27 @@ import {
   getWeatherIconName,
 } from '../../helpers/weatherHelpers';
 
-import { MaterialCommunityIcons } from '@expo/vector-icons/';
+import { FontAwesome5 } from '@expo/vector-icons/';
 import TVText from '../tv/TVText';
+import { useTheme } from '../../theme/ThemeContext';
 
-export default function ForecastItemComponent({ forecast }) {
-  const iconName = getWeatherIconName(forecast.icon);
-  const highLowText = formatHighLow(forecast.high, forecast.low);
+import { ForecastItem } from '../../hooks/useWeather';
 
+export default function ForecastItemComponent({
+  day,
+  condition,
+  icon,
+  high,
+  low,
+}: ForecastItem) {
+  const theme = useTheme();
+  const iconName = getWeatherIconName(icon);
+  const highLowText = formatHighLow(high, low);
+  console.log(icon);
   return (
     <View style={styles.container}>
-      <TVText text={forecast.day} typography='caption' />
-      <MaterialCommunityIcons name={iconName.name} size={24} color='white' />
+      <TVText text={day} typography='caption' />
+      <FontAwesome5 name={icon} size={24} color={theme.colors.textPrimary} />
       {/* <TVText text={highLowText} typography='caption' /> */}
     </View>
   );

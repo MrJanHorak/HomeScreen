@@ -18,7 +18,7 @@ function HeaderBar() {
 
   return (
     <View style={styles.headerContainer}>
-      <TVText text={greeting.greeting} />
+      {/* <TVText text={greeting.greeting} /> */}
       <TVText text={currentTime.formattedDate} />
       <TVText text={currentTime.formattedTime} />
     </View>

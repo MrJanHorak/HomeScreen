@@ -22,7 +22,11 @@ export default function WeatherWidget() {
         {data?.forecast.map((forecastItem) => (
           <ForecastItemComponent
             key={forecastItem.day}
-            forecast={forecastItem}
+            day={forecastItem.day}
+            condition={forecastItem.condition}
+            icon={forecastItem.icon}
+            high={forecastItem.high}
+            low={forecastItem.low}
           />
         ))}
       </View>
@@ -33,17 +37,8 @@ export default function WeatherWidget() {
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  tempIconRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 20,
-    marginBottom: 4,
-  },
-  conditionText: {
-    textAlign: 'center',
-  },
+
   forecastRow: {
     gap: 20,
     flexDirection: 'row',

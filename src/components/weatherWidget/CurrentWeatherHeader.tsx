@@ -5,7 +5,6 @@ import {
 } from '../../helpers/weatherHelpers';
 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { TVTheme } from '../../theme/tvTheme';
 import { useTheme } from '../../theme/ThemeContext';
 
 import TVText from '../tv/TVText';
@@ -25,8 +24,6 @@ export default function CurrentWeatherHeader({
   const conditionIconParsed = getWeatherIconName(conditionIcon);
   const theme = useTheme();
 
-  console.log(formattedTemp);
-  console.log(conditionIconParsed);
   return (
     <View>
       <View style={styles.tempIconRow}>
@@ -36,17 +33,17 @@ export default function CurrentWeatherHeader({
           color={theme.colors.textPrimary}
         />
         <TVText text={formattedTemp} typography='headerLg' />
+        <TVText
+          text={condition}
+          typography='body'
+          style={styles.conditionText}
+        />
       </View>
-      <TVText text={condition} typography='body' style={styles.conditionText} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   tempIconRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -54,7 +51,7 @@ const styles = StyleSheet.create({
     marginBottom: 0,
   },
   conditionText: {
-    textAlign: 'center',
-    marginBottom: 4,
+    // textAlign: 'center',
+    // marginBottom: 4,
   },
 });
