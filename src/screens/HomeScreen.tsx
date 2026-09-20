@@ -16,9 +16,7 @@ function HomeScreen() {
           <WeatherWidget />
         </TVCard>
         <TVCard style={{ flex: 1, height: 170 }}>
-          <TVText text='TODAY' typography='caption' color='textSecondary' />
-          <TVText text={mockHomeData.calendar[0].title} typography='body' />
-          <TVText text={mockHomeData.calendar[0].time} typography='caption' />
+         
         </TVCard>
         <TVCard style={{ flex: 1, height: 170 }}>
           <TVText text='ACTIVITY' typography='caption' color='textSecondary' />
