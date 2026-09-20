@@ -43,10 +43,7 @@ export default function TVCard({
       onPress={onPress}
       style={[styles.card, containerStyle, style]}
     >
-      {/* <Text style={[styles.text, theme.typography.body, textStyle]}>
-        {title} */}
       {children}
-      {/* </Text> */}
     </Pressable>
   );
 }
@@ -56,10 +53,9 @@ const styles = StyleSheet.create({
     padding: 24,
     borderRadius: 12,
     borderWidth: 3,
-    minWidth: 220,
     minHeight: 140,
     justifyContent: 'center',
-    alignItems: 'center',
+    overflow: 'hidden',
   },
   text: {
     textAlign: 'center',

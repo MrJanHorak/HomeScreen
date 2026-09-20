@@ -29,10 +29,10 @@ export default function CurrentWeatherHeader({
       <View style={styles.tempIconRow}>
         <MaterialCommunityIcons
           name={conditionIconParsed.name}
-          size={48}
+          size={36}
           color={theme.colors.textPrimary}
         />
-        <TVText text={formattedTemp} typography='headerLg' />
+        <TVText text={formattedTemp} typography='headerMd' />
         <TVText
           text={condition}
           typography='body'
@@ -47,7 +47,7 @@ const styles = StyleSheet.create({
   tempIconRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 20,
+    gap: 18,
     marginBottom: 0,
   },
   conditionText: {

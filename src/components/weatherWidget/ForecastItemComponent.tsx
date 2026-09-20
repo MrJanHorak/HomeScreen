@@ -20,11 +20,11 @@ export default function ForecastItemComponent({
   const theme = useTheme();
   const iconName = getWeatherIconName(icon);
   const highLowText = formatHighLow(high, low);
-  console.log(icon);
+
   return (
     <View style={styles.container}>
       <TVText text={day} typography='caption' />
-      <FontAwesome5 name={icon} size={24} color={theme.colors.textPrimary} />
+      <FontAwesome5 name={icon} size={22} color={theme.colors.textPrimary} />
       {/* <TVText text={highLowText} typography='caption' /> */}
     </View>
   );
@@ -34,13 +34,13 @@ const styles = StyleSheet.create({
   container: {
     // flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    // justifyContent: 'space-between',
   },
   tempIconRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 20,
-    marginBottom: 4,
+    // alignItems: 'center',
+    // gap: 10,
+    // marginBottom: 4,
   },
   conditionText: {
     textAlign: 'center',

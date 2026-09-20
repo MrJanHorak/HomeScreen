@@ -4,6 +4,7 @@ import TVSection from '../components/tv/TVSection';
 import TVCard from '../components/tv/TVCard';
 import HeaderBar from '../components/HeaderBar';
 import WeatherWidget from '../components/weatherWidget/WeatherWidget';
+import ScheduleCard from '../components/ScheduleCard/ScheduleCard';
 
 import { mockHomeData } from '../data/mockData';
 
@@ -15,8 +16,8 @@ function HomeScreen() {
         <TVCard style={{ flex: 1, height: 170 }}>
           <WeatherWidget />
         </TVCard>
-        <TVCard style={{ flex: 1, height: 170 }}>
-         
+        <TVCard style={{ flex: 2, height: 170 }}>
+          <ScheduleCard />
         </TVCard>
         <TVCard style={{ flex: 1, height: 170 }}>
           <TVText text='ACTIVITY' typography='caption' color='textSecondary' />
@@ -41,9 +42,6 @@ function HomeScreen() {
         text={'NAVIGATION BAR GOES HERE .... EVENTUALLY'}
         typography={'body'}
         color='textSecondary'
-        // marginTop='xs'
-        // marginHorizontal='sm'
-        // marginBottom='sm'
       />
     </View>
   );

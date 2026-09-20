@@ -13,6 +13,8 @@ interface TVTextProps extends TextProps {
   marginBottom?: SpacingVariant;
   marginTop?: SpacingVariant;
   marginHorizontal?: SpacingVariant;
+  numberOfLines?: number;
+  singleLine?: boolean;
 }
 
 export default function TVText({
@@ -36,7 +38,12 @@ export default function TVText({
 
   return (
     <Text
-      style={[TVTheme.typography[typography], dynamicStyle, style]}
+      style={[
+        TVTheme.typography[typography],
+        dynamicStyle,
+        { flexShrink: 1 },
+        style,
+      ]}
       {...rest}
     >
       {text}

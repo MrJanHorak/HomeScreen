@@ -29,6 +29,7 @@ export default function TVSection({
     flexDirection: direction,
     gap: TVTheme.spacing[gap],
     width: '100%',
+    alignItems: 'stretch',
   };
 
   const containerStyle: ViewStyle = {

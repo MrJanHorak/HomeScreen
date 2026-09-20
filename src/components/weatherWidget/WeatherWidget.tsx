@@ -9,8 +9,6 @@ export default function WeatherWidget() {
 
   if (isLoading) return <ActivityIndicator />;
 
-  console.log(data);
-
   return (
     <View style={styles.container}>
       <CurrentWeatherHeader
