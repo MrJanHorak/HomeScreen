@@ -5,6 +5,7 @@ import TVCard from '../components/tv/TVCard';
 import HeaderBar from '../components/HeaderBar';
 import WeatherWidget from '../components/weatherWidget/WeatherWidget';
 import ScheduleCard from '../components/ScheduleCard/ScheduleCard';
+import ActivityCard from '../components/activityCard/ActivityCard';
 
 import { mockHomeData } from '../data/mockData';
 
@@ -20,15 +21,7 @@ function HomeScreen() {
           <ScheduleCard />
         </TVCard>
         <TVCard style={{ flex: 1, height: 170 }}>
-          <TVText text='ACTIVITY' typography='caption' color='textSecondary' />
-          <TVText text={`${mockHomeData.activity.steps} steps`} />
-          <TVText text={`${mockHomeData.activity.stepGoal} steps`} />
-          <TVText
-            text={
-              (parseFloat(mockHomeData.activity.progress) * 100).toString() +
-              '%'
-            }
-          />
+          <ActivityCard />
         </TVCard>
       </TVSection>
       <TVSection direction='row'>
