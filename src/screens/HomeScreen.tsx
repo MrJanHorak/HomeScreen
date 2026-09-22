@@ -7,35 +7,35 @@ import WeatherWidget from '../components/weatherWidget/WeatherWidget';
 import ScheduleCard from '../components/ScheduleCard/ScheduleCard';
 import ActivityCard from '../components/activityCard/ActivityCard';
 
-import { mockHomeData } from '../data/mockData';
-
 function HomeScreen() {
   return (
-    <View>
+    <View style={{ flex: 1, justifyContent: 'space-between' }}>
       <HeaderBar />
-      <TVSection direction='row'>
-        <TVCard style={{ flex: 1, height: 170 }}>
+      <TVSection direction='row' style={{ height: '40%', marginBottom: 16 }}>
+        <TVCard style={{ flex: 1, height: '100%' }}>
           <WeatherWidget />
         </TVCard>
-        <TVCard style={{ flex: 2, height: 170 }}>
+        <TVCard style={{ flex: 2, height: '100%' }}>
           <ScheduleCard />
         </TVCard>
-        <TVCard style={{ flex: 1, height: 170 }}>
+        <TVCard style={{ flex: 1, height: '100%' }}>
           <ActivityCard />
         </TVCard>
       </TVSection>
-      <TVSection direction='row'>
-        <TVCard style={{ flex: 1 }} title={'TV Show 1'} />
-        <TVCard style={{ flex: 1 }} title={'TV Show 2'} />
-        <TVCard style={{ flex: 1 }} title={'Movie 1'} />
-        <TVCard style={{ flex: 1 }} title={'Movie 2'} />
-        <TVCard style={{ flex: 1 }} title={'TV Show 3'} />
+      <TVSection direction='row' style={{ height: '25%' }}>
+        <TVCard style={{ flex: 1, height: '100%' }} title={'TV Show 1'} />
+        <TVCard style={{ flex: 1, height: '100%' }} title={'TV Show 2'} />
+        <TVCard style={{ flex: 1, height: '100%' }} title={'Movie 1'} />
+        <TVCard style={{ flex: 1, height: '100%' }} title={'Movie 2'} />
+        <TVCard style={{ flex: 1, height: '100%' }} title={'TV Show 3'} />
       </TVSection>
-      <TVText
-        text={'NAVIGATION BAR GOES HERE .... EVENTUALLY'}
-        typography={'body'}
-        color='textSecondary'
-      />
+      <View style={{ position: 'absolute', bottom: 0, left: 0 }}>
+        <TVText
+          text={'NAVIGATION BAR GOES HERE .... EVENTUALLY'}
+          typography={'body'}
+          color='textSecondary'
+        />
+      </View>
     </View>
   );
 }
