@@ -3,6 +3,8 @@ import { View, ActivityIndicator, StyleSheet } from 'react-native';
 
 // components
 import TVText from '../tv/TVText';
+import TVProgressRing from './TVProgressRing';
+import ActivityStats from './ActivityStats';
 
 // hooks
 import { useHealthData } from '../../hooks/useHealthData';
@@ -12,7 +14,6 @@ import { calculateStepPercentages } from '../../helpers/healthDataHelper';
 
 // theme
 import { useTheme } from '../../theme/ThemeContext';
-import TVProgressRing from './TVProgressRing';
 
 export default function ActivityCard() {
   const theme = useTheme();
@@ -28,6 +29,9 @@ export default function ActivityCard() {
 
   const steps = data?.steps ?? 0;
   const goal = data?.stepGoal ?? 10000;
+  const distance = data?.distance ?? 0;
+  const calories = data?.calories ?? 0;
+  const activeMinutes = data?.activeMinutes ?? 0;
 
   const stepPercentages = calculateStepPercentages(steps, goal);
 
@@ -47,11 +51,17 @@ export default function ActivityCard() {
         text='ACTIVITY'
         typography='caption'
         color='textSecondary'
-        marginBottom='xs'
+        marginBottom='sm'
       />
 
       <View style={styles.chartWrapper}>
         <TVProgressRing progress={data.progress} size={80} />
+        <ActivityStats
+          steps={steps}
+          distance={distance}
+          calories={calories}
+          activeMinutes={activeMinutes}
+        />
       </View>
     </View>
   );
@@ -69,7 +79,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   chartWrapper: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 10,
   },
 });
