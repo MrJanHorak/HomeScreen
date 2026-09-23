@@ -143,7 +143,7 @@ export const mockUpcomingEvents = [
 // --------------------------------------------------
 
 export const mockActivity = {
-  steps: 1000,
+  steps: 7800,
   stepGoal: 10000,
 
   distance: 6.2,
@@ -153,7 +153,7 @@ export const mockActivity = {
 
   activeMinutes: 74,
 
-  progress: .01
+  progress: .78
 };
 
 // --------------------------------------------------

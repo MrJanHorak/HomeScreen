@@ -55,7 +55,7 @@ export default function ActivityCard() {
       />
 
       <View style={styles.chartWrapper}>
-        <TVProgressRing progress={data.progress} size={80} />
+        <TVProgressRing progress={data.progress} size={70} />
         <ActivityStats
           steps={steps}
           distance={distance}

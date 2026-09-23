@@ -10,7 +10,7 @@ interface TVProgressRingProps {
 
 export default function TVProgressRing({
   progress = 0,
-  size = 100,
+  size = 90,
   strokeWidth = 8,
 }: TVProgressRingProps) {
   const theme = useTheme();
@@ -114,7 +114,7 @@ export default function TVProgressRing({
 
                 transform: [
                   {
-                    rotate: `${rightRotation - 90}deg`,
+                    rotate: `${rightRotation - 135}deg`,
                   },
                 ],
               },
@@ -149,14 +149,14 @@ export default function TVProgressRing({
                 borderWidth: strokeWidth,
 
                 borderColor: 'transparent',
-                borderTopColor: theme.colors.focusRing,
+                borderBottomColor: theme.colors.focusRing,   
                 borderLeftColor: theme.colors.focusRing,
 
                 left: 0,
 
                 transform: [
                   {
-                    rotate: `${leftRotation - 90}deg`,
+                    rotate: `${leftRotation - 135}deg`,
                   },
                 ],
               },

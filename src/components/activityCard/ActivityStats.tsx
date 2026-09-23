@@ -29,7 +29,7 @@ export default function ActivityStats({
         <MaterialCommunityIcons name='walk' size={24} color={theme.colors.textPrimary} />
         {/* <Ionicons name="footsteps" size={24} color="black" /> */}
         <TVText
-          text={`${steps} steps`}
+          text={`${steps}`}
           typography='caption'
           color='textPrimary'
           marginBottom='xs'
