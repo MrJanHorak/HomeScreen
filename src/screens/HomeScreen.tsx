@@ -7,6 +7,7 @@ import WeatherWidget from '../components/weatherWidget/WeatherWidget';
 import ScheduleCard from '../components/ScheduleCard/ScheduleCard';
 import ActivityCard from '../components/activityCard/ActivityCard';
 import MealCard from '../components/MealCard/MealCard';
+import ToDo from '../components/ToDo/ToDo';
 
 function HomeScreen() {
   return (
@@ -25,8 +26,13 @@ function HomeScreen() {
       </TVSection>
       <TVSection direction='row' style={{ height: '30%' }}>
         <TVCard style={{ flex: 1, height: '100%' }} title={'TV Show 1'} />
-        <TVCard style={{ flex: 1, height: '100%' }}><MealCard /></TVCard>
-        <TVCard style={{ flex: 1, height: '100%' }} title={'TV Show 2'} />
+        <TVCard style={{ flex: 1, height: '100%' }}>
+          <MealCard />
+        </TVCard>
+        <TVCard style={{ flex: 1, height: '100%' }}>
+          <ToDo />
+        </TVCard>
+
         {/* <TVCard style={{ flex: 1, height: '100%' }} title={'Movie 1'} /> */}
         {/* <TVCard style={{ flex: 1, height: '100%' }} title={'Movie 2'} />
         <TVCard style={{ flex: 1, height: '100%' }} title={'TV Show 3'} /> */}
