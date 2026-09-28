@@ -1,0 +1,56 @@
+import * as crypto from "crypto";
+
+const ALGORITHM = "aes-256-gcm";
+const IV_LENGTH = 12;
+
+function getEncryptionKey(): Buffer {
+  const secret = process.env.TOKEN_ENCRYPTION_KEY || "dashboard-default-dev-secret-key-32";
+  return crypto.createHash("sha256").update(secret).digest();
+}
+
+/**
+ * Encrypt a plain-text token using AES-256-GCM
+ */
+export function encryptToken(text: string): string {
+  if (!text) return "";
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv(ALGORITHM, getEncryptionKey(), iv);
+
+  const encrypted = Buffer.concat([cipher.update(text, "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+
+  return `${iv.toString("hex")}:${tag.toString("hex")}:${encrypted.toString("hex")}`;
+}
+
+/**
+ * Decrypt a cipher-text token using AES-256-GCM
+ */
+export function decryptToken(cipherText: string): string {
+  if (!cipherText) return "";
+
+  // If text is not encrypted in the iv:tag:content format, return as-is (e.g. unencrypted dev tokens)
+  const parts = cipherText.split(":");
+  if (parts.length !== 3) {
+    return cipherText;
+  }
+
+  try {
+    const [ivHex, tagHex, encryptedHex] = parts;
+    const iv = Buffer.from(ivHex, "hex");
+    const tag = Buffer.from(tagHex, "hex");
+    const encrypted = Buffer.from(encryptedHex, "hex");
+
+    const decipher = crypto.createDecipheriv(ALGORITHM, getEncryptionKey(), iv);
+    decipher.setAuthTag(tag);
+
+    const decrypted = Buffer.concat([
+      decipher.update(encrypted),
+      decipher.final(),
+    ]);
+
+    return decrypted.toString("utf8");
+  } catch (error) {
+    console.error("Failed to decrypt token, returning original value:", error);
+    return cipherText;
+  }
+}

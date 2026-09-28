@@ -1,0 +1,130 @@
+import { getApps, initializeApp } from "firebase-admin/app";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getAuth } from "firebase-admin/auth";
+import { StoredUserTokens, DashboardSummaryResponse, DevicePairingCode } from "../types";
+import { decryptToken, encryptToken } from "./crypto";
+
+if (getApps().length === 0) {
+  initializeApp();
+}
+
+export const db = getFirestore();
+export const auth = getAuth();
+
+/**
+ * Retrieve user OAuth tokens and configuration from Firestore
+ */
+export async function getStoredUserTokens(userId: string): Promise<StoredUserTokens> {
+  const userDoc = await db.collection("users").doc(userId).get();
+
+  if (!userDoc.exists) {
+    throw new Error(`User record not found for userId: ${userId}`);
+  }
+
+  const data = userDoc.data() || {};
+  const google = data.google || {};
+
+  return {
+    google: {
+      accessToken: google.accessToken ? decryptToken(google.accessToken) : undefined,
+      refreshToken: google.refreshToken ? decryptToken(google.refreshToken) : undefined,
+      idToken: google.idToken,
+      expiryDate: google.expiryDate,
+      scope: google.scope,
+    },
+    location: data.location,
+    weatherCity: data.weatherCity || data.location?.city,
+    stepGoal: data.stepGoal || 10000,
+    distanceGoal: data.distanceGoal || 8,
+  };
+}
+
+/**
+ * Persist or update user OAuth tokens and preferences with encryption
+ */
+export async function saveUserTokens(
+  userId: string,
+  tokens: Partial<StoredUserTokens>
+): Promise<void> {
+  const updateData: Record<string, unknown> = {
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+
+  if (tokens.google) {
+    updateData.google = {
+      ...tokens.google,
+      ...(tokens.google.accessToken ? { accessToken: encryptToken(tokens.google.accessToken) } : {}),
+      ...(tokens.google.refreshToken ? { refreshToken: encryptToken(tokens.google.refreshToken) } : {}),
+    };
+  }
+
+  if (tokens.location !== undefined) {
+    updateData.location = tokens.location;
+  }
+  if (tokens.weatherCity !== undefined) {
+    updateData.weatherCity = tokens.weatherCity;
+  }
+  if (tokens.stepGoal !== undefined) {
+    updateData.stepGoal = tokens.stepGoal;
+  }
+  if (tokens.distanceGoal !== undefined) {
+    updateData.distanceGoal = tokens.distanceGoal;
+  }
+
+  await db.collection("users").doc(userId).set(updateData, { merge: true });
+}
+
+/**
+ * Cache computed dashboard summary for high-performance retrieval and offline resilience
+ */
+export async function saveDashboardCache(
+  userId: string,
+  summary: DashboardSummaryResponse
+): Promise<void> {
+  await db
+    .collection("users")
+    .doc(userId)
+    .collection("cache")
+    .doc("dashboard")
+    .set({
+      ...summary,
+      cachedAt: FieldValue.serverTimestamp(),
+    });
+}
+
+/**
+ * Fetch cached dashboard summary if available
+ */
+export async function getDashboardCache(
+  userId: string
+): Promise<DashboardSummaryResponse | null> {
+  const cacheDoc = await db
+    .collection("users")
+    .doc(userId)
+    .collection("cache")
+    .doc("dashboard")
+    .get();
+
+  if (!cacheDoc.exists) return null;
+  return cacheDoc.data() as DashboardSummaryResponse;
+}
+
+/**
+ * Device code pairing persistence for TV authentication
+ */
+export async function saveDeviceCode(codeData: DevicePairingCode): Promise<void> {
+  await db.collection("device_codes").doc(codeData.code).set(codeData);
+}
+
+export async function getDeviceCode(code: string): Promise<DevicePairingCode | null> {
+  const doc = await db.collection("device_codes").doc(code).get();
+  if (!doc.exists) return null;
+  return doc.data() as DevicePairingCode;
+}
+
+export async function updateDeviceCode(
+  code: string,
+  updates: Partial<DevicePairingCode>
+): Promise<void> {
+  await db.collection("device_codes").doc(code).update(updates);
+}

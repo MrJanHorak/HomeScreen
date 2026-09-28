@@ -9,10 +9,10 @@
 
 import {setGlobalOptions} from "firebase-functions";
 
-import { getDashboardSummaryHandler } from './getDashboardSummary';
-import { authDeviceHandler } from './authDevice';
-import { executeActionHandler } from './executeAction';
-import { syncUserDataHandler } from './syncUserData';
+import { getDashboardSummaryHandler } from "./getDashboardSummary";
+import { authDeviceHandler } from "./authDevice";
+import { executeActionHandler } from "./executeAction";
+import { syncUserDataHandler } from "./syncUserData";
 
 
 // import {onRequest} from "firebase-functions/https";

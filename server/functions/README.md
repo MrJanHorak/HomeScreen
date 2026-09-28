@@ -1,0 +1,140 @@
+# Smart TV Dashboard - Firebase Cloud Functions Backend
+
+This backend provides real-time and cached dashboard data for the Smart TV React Native client, integrating **Google Calendar**, **Google Tasks**, **Google Fit**, and **OpenWeatherMap**.
+
+---
+
+## 🏗 Architecture & Features
+
+```
+server/functions/src/
+├── index.ts                     # Main entrypoint exporting Cloud Functions (v2)
+├── authDevice.ts                # TV Device Code Pairing & Google OAuth Token storage
+├── getDashboardSummary.ts       # Unified dashboard endpoint (Calendar, Tasks, Fit, Weather)
+├── executeAction.ts             # TV remote quick actions (e.g. complete task, update preferences)
+├── syncUserData.ts              # Background user data sync and Firestore caching
+├── services/
+│   ├── googleAuth.ts            # OAuth2Client setup & token refresh handling
+│   ├── googleCalendar.ts        # Google Calendar API (events for today)
+│   ├── googleFit.ts             # Google Fitness API (daily steps, distance, calories)
+│   ├── googleTasks.ts           # Google Tasks API (active tasks & task completion)
+│   └── weatherService.ts        # OpenWeatherMap API (current weather + 5-day forecast)
+├── utils/
+│   ├── crypto.ts                # AES-256-GCM encryption/decryption for OAuth refresh tokens
+│   └── db.ts                    # Firestore database helpers (users, cache, device codes)
+└── types/
+    └── index.ts                 # Strongly-typed TypeScript interfaces
+```
+
+---
+
+## 🚀 Cloud Function Endpoints
+
+### 1. `getDashboardSummary` (`GET`)
+Aggregates Calendar events, Tasks, Fitness activity, and Local Weather in parallel using `Promise.allSettled`.
+- **Query Params / Headers**:
+  - `userId`: User's Firebase UID.
+  - Or `Authorization: Bearer <Firebase_ID_Token>`.
+- **Response**:
+  ```json
+  {
+    "schedule": [
+      { "id": "...", "title": "Team Standup", "time": "9:00 AM", "endTime": "9:30 AM", "category": "work", "color": "blue" }
+    ],
+    "tasks": [
+      { "id": "...", "title": "Review PR", "due": "Sep 28", "completed": false }
+    ],
+    "health": {
+      "steps": 7800,
+      "stepGoal": 10000,
+      "distance": 6.2,
+      "distanceGoal": 8,
+      "calories": 428,
+      "activeMinutes": 74,
+      "progress": 0.78
+    },
+    "weather": {
+      "temp": "72°",
+      "condition": "Clear",
+      "feelsLike": 70,
+      "humidity": 54,
+      "windSpeed": 4,
+      "windDirection": "NW",
+      "high": 78,
+      "low": 61,
+      "forecast": [ ... ]
+    },
+    "updatedAt": "2026-09-28T20:00:00.000Z"
+  }
+  ```
+
+### 2. `authDevice` (`GET` / `POST`)
+Implements TV device code authentication (RFC 8628 style pairing flow):
+- `POST /authDevice?action=request-code`: Generates a 6-character code (e.g. `K9W2M7`) displayed on the TV screen.
+- `GET /authDevice?action=poll&code=K9W2M7`: TV polls this until user finishes authorization.
+- `POST /authDevice` (body: `{ action: "authorize-code", code: "K9W2M7", idToken: "..." }`): User confirms code on mobile/browser. Returns Firebase Custom Token to the TV.
+- `POST /authDevice` (body: `{ action: "link-tokens", userId, googleTokens }`): Stores Google OAuth tokens securely.
+
+### 3. `executeAction` (`POST`)
+Handles actions triggered by the TV remote:
+- Complete a task:
+  ```json
+  {
+    "action": "completeTask",
+    "userId": "...",
+    "payload": { "taskId": "..." }
+  }
+  ```
+- Update user preferences:
+  ```json
+  {
+    "action": "updatePreferences",
+    "userId": "...",
+    "payload": { "stepGoal": 12000, "weatherCity": "San Francisco" }
+  }
+  ```
+
+### 4. `syncUserData` (`POST` / `GET`)
+Proactively syncs upstream Google APIs and updates `users/{userId}/cache/dashboard` in Firestore.
+
+---
+
+## ⚙️ Google Cloud & API Configuration
+
+1. In **[Google Cloud Console](https://console.cloud.google.com/)**:
+   - Enable the following APIs:
+     - **Google Calendar API**
+     - **Google Tasks API**
+     - **Fitness API**
+   - Create an **OAuth 2.0 Client ID** (Web application).
+   - Add scopes:
+     - `https://www.googleapis.com/auth/calendar.readonly`
+     - `https://www.googleapis.com/auth/tasks`
+     - `https://www.googleapis.com/auth/fitness.activity.read`
+     - `https://www.googleapis.com/auth/fitness.location.read`
+2. In **[OpenWeatherMap](https://openweathermap.org/api)**:
+   - Create an API key.
+3. Configure environment variables in `server/functions/.env` or Firebase Secrets:
+   ```bash
+   firebase functions:secrets:set GOOGLE_CLIENT_ID
+   firebase functions:secrets:set GOOGLE_CLIENT_SECRET
+   firebase functions:secrets:set OPENWEATHER_API_KEY
+   firebase functions:secrets:set TOKEN_ENCRYPTION_KEY
+   ```
+
+---
+
+## 🛠 Local Development & Deployment
+
+```bash
+# In server/functions:
+npm install
+npm run build
+npm run lint
+
+# Run Firebase Emulators locally:
+npm run serve
+
+# Deploy to Google Cloud / Firebase:
+npm run deploy
+```
