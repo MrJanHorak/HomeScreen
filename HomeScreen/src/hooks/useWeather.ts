@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useDashboard } from '../context/DashboardContext';
 import { mockWeather } from '../data/mockData';
 
 export type ForecastItem = {
@@ -28,34 +28,18 @@ export function useWeather(): {
   isLoading: boolean;
   error: string | null;
 } {
-  const [currentWeather, setCurrentWeather] = useState<WeatherData | null>(
-    null,
-  );
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string>('');
-
-  const getWeatherData = async () => {
-    try {
-      setIsLoading(true);
-      setCurrentWeather(mockWeather);
-      setIsLoading(false);
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('An unknown error occurred');
-      }
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    getWeatherData();
-  }, []);
-
-  return {
-    data: currentWeather,
-    isLoading: isLoading,
-    error: error,
-  };
+  try {
+    const { weather, isLoading, error } = useDashboard();
+    return {
+      data: (weather as unknown as WeatherData) || (mockWeather as unknown as WeatherData),
+      isLoading,
+      error,
+    };
+  } catch {
+    return {
+      data: mockWeather as unknown as WeatherData,
+      isLoading: false,
+      error: null,
+    };
+  }
 }

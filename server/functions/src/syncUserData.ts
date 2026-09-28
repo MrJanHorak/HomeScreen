@@ -53,6 +53,7 @@ export const syncUserDataHandler = onRequest(
   {
     cors: true,
     maxInstances: 5,
+    secrets: ["OPENWEATHER_API_KEY"],
   },
   async (req, res) => {
     if (req.method === "OPTIONS") {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useDashboard } from '../context/DashboardContext';
 import { mockCalendarEvents } from '../data/mockData';
 
 export type CalendarItem = {
@@ -15,32 +15,18 @@ export function useSchedule(): {
   isLoading: boolean;
   error: string | null;
 } {
-  const [schedule, setSchedule] = useState<CalendarItem[] | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string>('');
-
-  const getCalendarData = async () => {
-    try {
-      setIsLoading(true);
-      setSchedule(mockCalendarEvents);
-      setIsLoading(false);
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('An unknown error occurred');
-      }
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    getCalendarData();
-  }, []);
-
-  return {
-    data: schedule,
-    isLoading: isLoading,
-    error: error,
-  };
+  try {
+    const { schedule, isLoading, error } = useDashboard();
+    return {
+      data: (schedule as unknown as CalendarItem[]) || (mockCalendarEvents as unknown as CalendarItem[]),
+      isLoading,
+      error,
+    };
+  } catch {
+    return {
+      data: mockCalendarEvents as unknown as CalendarItem[],
+      isLoading: false,
+      error: null,
+    };
+  }
 }

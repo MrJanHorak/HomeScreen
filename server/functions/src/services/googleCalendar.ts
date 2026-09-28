@@ -28,6 +28,9 @@ function formatTimeString(isoString?: string | null): string {
   });
 }
 
+/**
+ * Fetch calendar events for today across all user calendars with real Google colors and categories
+ */
 export async function fetchCalendarEvents(tokens: GoogleTokens): Promise<CalendarEventSummary[]> {
   if (!tokens?.accessToken && !tokens?.refreshToken) return [];
 
@@ -44,9 +47,10 @@ export async function fetchCalendarEvents(tokens: GoogleTokens): Promise<Calenda
     const userCalendars = (calendarListRes.data.items || []).filter((c) => c.selected !== false);
 
     // Default to 'primary' if list is empty
-    const calendarsToFetch = userCalendars.length > 0
-      ? userCalendars
-      : [{ id: "primary", summary: "General", backgroundColor: "#3f51b5" }];
+    const calendarsToFetch =
+      userCalendars.length > 0
+        ? userCalendars
+        : [{ id: "primary", summary: "General", backgroundColor: "#3f51b5" }];
 
     // 2. Fetch today's events from each calendar in parallel
     const eventPromises = calendarsToFetch.map(async (cal) => {
@@ -65,13 +69,13 @@ export async function fetchCalendarEvents(tokens: GoogleTokens): Promise<Calenda
           const startIso = item.start?.dateTime || item.start?.date;
           const endIso = item.end?.dateTime || item.end?.date;
 
-          // Resolve color: event color > calendar color > fallback blue
+          // Resolve color: individual event color > calendar color > fallback blue
           const eventColor =
             (item.colorId && GOOGLE_EVENT_COLORS[item.colorId]) ||
             cal.backgroundColor ||
             "#039be5";
 
-          // The Category is the name of the user's calendar (e.g. "Work", "Fitness", "Personal")
+          // The Category is the calendar name (e.g. "Work", "Fitness", "Personal")
           const category = cal.summary || "General";
 
           return {

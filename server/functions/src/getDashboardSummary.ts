@@ -10,6 +10,7 @@ export const getDashboardSummaryHandler = onRequest(
   {
     cors: true,
     maxInstances: 10,
+    secrets: ["OPENWEATHER_API_KEY"],
   },
   async (req, res) => {
     if (req.method === "OPTIONS") {

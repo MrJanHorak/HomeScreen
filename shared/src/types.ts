@@ -1,11 +1,4 @@
 // shared/src/types.ts
-export interface DashboardSummaryResponse {
-  schedule: Array<{ id: string; title: string; time: string }>;
-  tasks: Array<{ id: string; title: string; due: string | null }>;
-  health: { steps: number; goal: number };
-  weather: { temp: string; condition: string };
-  updatedAt: string;
-}
 
 export interface WeatherForecast {
   day: string;
@@ -16,17 +9,18 @@ export interface WeatherForecast {
 }
 
 export interface Weather {
-  location: string;
-  temperature: number;
-  feelsLike: number;
+  temp: string;
   condition: string;
-  conditionIcon: string;
-  humidity: number;
-  windSpeed: number;
-  windDirection: string;
-  high: number;
-  low: number;
-  forecast: WeatherForecast[];
+  location?: string;
+  temperature?: number;
+  feelsLike?: number;
+  conditionIcon?: string;
+  humidity?: number;
+  windSpeed?: number;
+  windDirection?: string;
+  high?: number;
+  low?: number;
+  forecast?: WeatherForecast[];
 }
 
 export interface CalendarEvent {
@@ -36,6 +30,14 @@ export interface CalendarEvent {
   endTime: string;
   category: string;
   color: string;
+  date?: string;
+}
+
+export interface TaskItem {
+  id: string;
+  title: string;
+  due: string | null;
+  completed?: boolean;
 }
 
 export interface Activity {
@@ -48,10 +50,18 @@ export interface Activity {
   progress: number;
 }
 
+export interface DashboardSummaryResponse {
+  schedule: CalendarEvent[];
+  tasks: TaskItem[];
+  health: Activity;
+  weather: Weather;
+  updatedAt: string;
+}
+
 export interface MediaItem {
   id: string;
   title: string;
-  type: 'TV' | 'Movie';
+  type: "TV" | "Movie";
   image: string;
   progress?: number;
   duration?: string;
@@ -59,4 +69,10 @@ export interface MediaItem {
   season?: number;
   episode?: number;
   episodeTitle?: string;
+}
+
+export interface DevicePairingResponse {
+  code: string;
+  verificationUrl: string;
+  expiresIn: number;
 }

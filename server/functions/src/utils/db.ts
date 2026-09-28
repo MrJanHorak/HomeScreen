@@ -15,28 +15,43 @@ export const auth = getAuth();
  * Retrieve user OAuth tokens and configuration from Firestore
  */
 export async function getStoredUserTokens(userId: string): Promise<StoredUserTokens> {
-  const userDoc = await db.collection("users").doc(userId).get();
+  try {
+    const userDoc = await db.collection("users").doc(userId).get();
 
-  if (!userDoc.exists) {
-    throw new Error(`User record not found for userId: ${userId}`);
+    if (!userDoc.exists) {
+      return {
+        google: {},
+        weatherCity: "New York",
+        stepGoal: 10000,
+        distanceGoal: 8,
+      };
+    }
+
+    const data = userDoc.data() || {};
+    const google = data.google || {};
+
+    return {
+      google: {
+        accessToken: google.accessToken ? decryptToken(google.accessToken) : undefined,
+        refreshToken: google.refreshToken ? decryptToken(google.refreshToken) : undefined,
+        idToken: google.idToken,
+        expiryDate: google.expiryDate,
+        scope: google.scope,
+      },
+      location: data.location,
+      weatherCity: data.weatherCity || data.location?.city || "New York",
+      stepGoal: data.stepGoal || 10000,
+      distanceGoal: data.distanceGoal || 8,
+    };
+  } catch (error) {
+    console.warn("Firestore lookup failed or user doc does not exist, using defaults:", error);
+    return {
+      google: {},
+      weatherCity: "New York",
+      stepGoal: 10000,
+      distanceGoal: 8,
+    };
   }
-
-  const data = userDoc.data() || {};
-  const google = data.google || {};
-
-  return {
-    google: {
-      accessToken: google.accessToken ? decryptToken(google.accessToken) : undefined,
-      refreshToken: google.refreshToken ? decryptToken(google.refreshToken) : undefined,
-      idToken: google.idToken,
-      expiryDate: google.expiryDate,
-      scope: google.scope,
-    },
-    location: data.location,
-    weatherCity: data.weatherCity || data.location?.city,
-    stepGoal: data.stepGoal || 10000,
-    distanceGoal: data.distanceGoal || 8,
-  };
 }
 
 /**
@@ -81,15 +96,19 @@ export async function saveDashboardCache(
   userId: string,
   summary: DashboardSummaryResponse
 ): Promise<void> {
-  await db
-    .collection("users")
-    .doc(userId)
-    .collection("cache")
-    .doc("dashboard")
-    .set({
-      ...summary,
-      cachedAt: FieldValue.serverTimestamp(),
-    });
+  try {
+    await db
+      .collection("users")
+      .doc(userId)
+      .collection("cache")
+      .doc("dashboard")
+      .set({
+        ...summary,
+        cachedAt: FieldValue.serverTimestamp(),
+      });
+  } catch (err) {
+    console.warn("Failed to save dashboard cache to Firestore:", err);
+  }
 }
 
 /**
