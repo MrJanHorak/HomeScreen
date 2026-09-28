@@ -1,16 +1,44 @@
-# Node modules across all subfolders
+# ==========================================
+# Dependencies (Global across all subfolders)
+# ==========================================
 **/node_modules/
 
-# Build and Expo output
+# ==========================================
+# Build & Compiled Output
+# ==========================================
+# React Native / Expo
 **/.expo/
 **/android/
-**/build/
-**/dist/
+**/ios/
 
-# Environment variables & secrets
+# TypeScript & Backend Builds
+**/lib/
+**/dist/
+**/build/
+
+# ==========================================
+# Environment Variables & Secrets
+# ==========================================
 **.env*
 **/keys/
+*.secret.json
+service-account*.json
 
-# Logs & OS files
+# ==========================================
+# Firebase Local Artifacts & Caches
+# ==========================================
+.firebase/
+**/firebase-debug.log*
+**/firestore-debug.log*
+
+# ==========================================
+# Agent / Skill Caches
+# ==========================================
+.skills-cache/
+
+# ==========================================
+# Logs & System Files
+# ==========================================
 *.log
 .DS_Store
+Thumbs.db
