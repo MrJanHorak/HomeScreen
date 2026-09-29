@@ -6,6 +6,7 @@ import {
 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
+import useCompactTVLayout from '../../hooks/useCompactTVLayout';
 
 interface CurrentWeatherHeaderProps {
   temperature: number;
@@ -21,25 +22,26 @@ export default function CurrentWeatherHeader({
   const formattedTemp = formatTemperature(temperature);
   const conditionIconParsed = getWeatherIconName(conditionIcon);
   const theme = useTheme();
+  const compact = useCompactTVLayout();
 
   return (
-    <View style={styles.container}>
-      <View style={styles.tempIconRow}>
-        <View style={styles.iconCircle}>
+    <View style={[styles.container, compact && styles.compactContainer]}>
+      <View style={[styles.tempIconRow, compact && styles.compactTempRow]}>
+        <View style={[styles.iconCircle, compact && styles.compactIconCircle]}>
           <MaterialCommunityIcons
             name={conditionIconParsed.name}
-            size={42}
+            size={compact ? 28 : 42}
             color={theme.colors.focusRing}
           />
         </View>
-        <Text style={[styles.tempText, { color: theme.colors.textPrimary }]}>
+        <Text style={[styles.tempText, compact && styles.compactTemp, { color: theme.colors.textPrimary }]}>
           {formattedTemp}
         </Text>
         <View style={styles.conditionCol}>
-          <Text style={[styles.conditionText, { color: theme.colors.textPrimary }]}>
+          <Text numberOfLines={1} style={[styles.conditionText, compact && styles.compactCondition, { color: theme.colors.textPrimary }]}>
             {condition}
           </Text>
-          <Text style={[styles.subtitleText, { color: theme.colors.textSecondary }]}>
+          <Text style={[styles.subtitleText, compact && styles.compactSubtitle, { color: theme.colors.textSecondary }]}>
             Current Weather
           </Text>
         </View>
@@ -86,5 +88,11 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 2,
   },
+  compactContainer: { marginBottom: 6 },
+  compactTempRow: { gap: 6 },
+  compactIconCircle: { width: 38, height: 38, borderRadius: 19 },
+  compactTemp: { fontSize: 31 },
+  compactCondition: { fontSize: 14 },
+  compactSubtitle: { fontSize: 10, marginTop: 0 },
 });
 

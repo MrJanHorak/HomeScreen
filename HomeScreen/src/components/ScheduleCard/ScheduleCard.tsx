@@ -3,10 +3,12 @@ import { useSchedule } from '../../hooks/useSchedule';
 import ScheduleItem from './ScheduleItem';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
+import useCompactTVLayout from '../../hooks/useCompactTVLayout';
 
 export default function ScheduleCard() {
   const { data, isLoading } = useSchedule();
   const theme = useTheme();
+  const compact = useCompactTVLayout();
   const maxItems = 3;
 
   if (isLoading) {
@@ -20,27 +22,27 @@ export default function ScheduleCard() {
   return (
     <View style={styles.container}>
       {/* Header Row */}
-      <View style={styles.headerRow}>
+      <View style={[styles.headerRow, compact && styles.compactHeaderRow]}>
         <View style={styles.titleWithIcon}>
           <MaterialCommunityIcons
             name="calendar-clock"
-            size={22}
+            size={compact ? 17 : 22}
             color={theme.colors.focusRing}
           />
-          <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>
+          <Text numberOfLines={1} style={[styles.headerTitle, compact && styles.compactTitle, { color: theme.colors.textPrimary }]}>
             TODAY'S SCHEDULE
           </Text>
         </View>
 
         {remainingCount > 0 ? (
           <View style={styles.moreBadge}>
-            <Text style={[styles.moreBadgeText, { color: theme.colors.accent }]}>
+            <Text style={[styles.moreBadgeText, compact && styles.compactBadgeText, { color: theme.colors.accent }]}>
               +{remainingCount} more
             </Text>
           </View>
         ) : (
           <View style={styles.moreBadge}>
-            <Text style={[styles.moreBadgeText, { color: theme.colors.textSecondary }]}>
+            <Text style={[styles.moreBadgeText, compact && styles.compactBadgeText, { color: theme.colors.textSecondary }]}>
               {events.length} events
             </Text>
           </View>
@@ -100,5 +102,8 @@ const styles = StyleSheet.create({
   scheduleList: {
     width: '100%',
   },
+  compactHeaderRow: { marginBottom: 6 },
+  compactTitle: { fontSize: 14, letterSpacing: 0.5 },
+  compactBadgeText: { fontSize: 11 },
 });
 

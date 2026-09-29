@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Pressable, Text, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
+import useCompactTVLayout from '../../hooks/useCompactTVLayout';
 
 interface NavItem {
   id: string;
@@ -27,11 +28,14 @@ export default function TVGlassNavBar({
   onSelect,
 }: TVGlassNavBarProps) {
   const theme = useTheme();
+  const compact = useCompactTVLayout();
   const [focusedId, setFocusedId] = useState<string | null>(null);
 
   return (
     <View style={styles.dockContainer}>
-      <View style={[styles.glassDock, { backgroundColor: theme.colors.glassSurface, borderColor: theme.colors.glassBorder }]}>
+      <View style={[styles.glassDock, compact && styles.compactDock,
+        { backgroundColor: Platform.OS === 'web' ? theme.colors.glassSurface : theme.colors.modalSurface,
+          borderColor: theme.colors.glassBorder }]}>
         {NAV_ITEMS.map((item) => {
           const isActive = item.id === activeId;
           const isFocused = item.id === focusedId;
@@ -44,6 +48,7 @@ export default function TVGlassNavBar({
               onPress={() => onSelect?.(item.id)}
               style={[
                 styles.navItem,
+                compact && styles.compactNavItem,
                 isActive && styles.activeNavItem,
                 isFocused && [
                   styles.focusedNavItem,
@@ -57,7 +62,7 @@ export default function TVGlassNavBar({
             >
               <MaterialCommunityIcons
                 name={item.icon}
-                size={20}
+                size={compact ? 18 : 20}
                 color={
                   isFocused
                     ? theme.colors.textFocused
@@ -69,6 +74,7 @@ export default function TVGlassNavBar({
               <Text
                 style={[
                   styles.navLabel,
+                  compact && styles.compactNavLabel,
                   {
                     color: isFocused
                       ? theme.colors.textFocused
@@ -147,4 +153,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     letterSpacing: 0.3,
   },
+  compactDock: { paddingVertical: 3, paddingHorizontal: 8, gap: 4 },
+  compactNavItem: { paddingVertical: 5, paddingHorizontal: 10, gap: 6 },
+  compactNavLabel: { fontSize: 12 },
 });

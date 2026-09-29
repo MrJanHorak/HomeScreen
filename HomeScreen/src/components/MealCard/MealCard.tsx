@@ -1,9 +1,11 @@
 import { View, StyleSheet, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
+import useCompactTVLayout from '../../hooks/useCompactTVLayout';
 
 export default function MealCard() {
   const theme = useTheme();
+  const compact = useCompactTVLayout();
 
   const menuItems = [
     { name: 'Chicken Gnocchi Soup', icon: 'food-hot-dog', type: 'Main' },
@@ -14,32 +16,32 @@ export default function MealCard() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.headerRow}>
+      <View style={[styles.headerRow, compact && styles.compactHeaderRow]}>
         <View style={styles.titleWithIcon}>
           <MaterialCommunityIcons
             name="silverware-fork-knife"
-            size={22}
+            size={compact ? 17 : 22}
             color={theme.colors.accent}
           />
-          <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>
+          <Text numberOfLines={1} style={[styles.headerTitle, compact && styles.compactTitle, { color: theme.colors.textPrimary }]}>
             DINNER PREVIEW
           </Text>
         </View>
-        <View style={styles.cookBadge}>
-          <Text style={[styles.cookBadgeText, { color: theme.colors.focusRing }]}>
+        <View style={[styles.cookBadge, compact && styles.compactCookBadge]}>
+          <Text style={[styles.cookBadgeText, compact && styles.compactCookText, { color: theme.colors.focusRing }]}>
             👨‍🍳 Dad
           </Text>
         </View>
       </View>
 
       {/* Menu items */}
-      <View style={styles.menuList}>
+      <View style={[styles.menuList, compact && styles.compactMenuList]}>
         {menuItems.map((item, idx) => (
-          <View key={idx} style={styles.menuItem}>
+          <View key={idx} style={[styles.menuItem, compact && styles.compactMenuItem]}>
             <View style={styles.bulletDot} />
             <Text
               numberOfLines={1}
-              style={[styles.itemName, { color: theme.colors.textPrimary }]}
+              style={[styles.itemName, compact && styles.compactItemName, { color: theme.colors.textPrimary }]}
             >
               {item.name}
             </Text>
@@ -108,5 +110,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     flex: 1,
   },
+  compactHeaderRow: { marginBottom: 6 },
+  compactTitle: { fontSize: 14, letterSpacing: 0.3, flexShrink: 1 },
+  compactCookBadge: { paddingHorizontal: 5, paddingVertical: 1 },
+  compactCookText: { fontSize: 10 },
+  compactMenuList: { gap: 5 },
+  compactMenuItem: { paddingVertical: 4, paddingHorizontal: 7 },
+  compactItemName: { fontSize: 13 },
 });
 

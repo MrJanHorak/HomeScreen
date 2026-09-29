@@ -1,6 +1,7 @@
 import { View, StyleSheet, Text } from 'react-native';
 import { CalendarItem } from '../../hooks/useSchedule';
 import { useTheme } from '../../theme/ThemeContext';
+import useCompactTVLayout from '../../hooks/useCompactTVLayout';
 
 export default function ScheduleItem({
   title,
@@ -10,12 +11,13 @@ export default function ScheduleItem({
   color,
 }: CalendarItem) {
   const theme = useTheme();
+  const compact = useCompactTVLayout();
 
   return (
-    <View style={styles.rowContainer}>
+    <View style={[styles.rowContainer, compact && styles.compactRow]}>
       {/* Left: Time Pill */}
-      <View style={[styles.timeBadge, { borderColor: color ? `${color}55` : 'rgba(255,255,255,0.15)' }]}>
-        <Text style={[styles.timeText, { color: theme.colors.textPrimary }]}>
+      <View style={[styles.timeBadge, compact && styles.compactTimeBadge, { borderColor: color ? `${color}55` : 'rgba(255,255,255,0.15)' }]}>
+        <Text style={[styles.timeText, compact && styles.compactTimeText, { color: theme.colors.textPrimary }]}>
           {time}
         </Text>
       </View>
@@ -24,13 +26,13 @@ export default function ScheduleItem({
       <View style={styles.detailsColumn}>
         <Text
           numberOfLines={1}
-          style={[styles.titleText, { color: theme.colors.textPrimary }]}
+          style={[styles.titleText, compact && styles.compactTitle, { color: theme.colors.textPrimary }]}
         >
           {title}
         </Text>
         <Text
           numberOfLines={1}
-          style={[styles.rangeText, { color: theme.colors.textSecondary }]}
+          style={[styles.rangeText, compact && styles.compactRange, { color: theme.colors.textSecondary }]}
         >
           {endTime ? `${time} – ${endTime}` : time}
         </Text>
@@ -117,5 +119,10 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     marginRight: 4,
   },
+  compactRow: { paddingVertical: 4, paddingHorizontal: 7, marginBottom: 5, gap: 8, borderRadius: 9 },
+  compactTimeBadge: { paddingVertical: 3, paddingHorizontal: 6, minWidth: 65 },
+  compactTimeText: { fontSize: 12 },
+  compactTitle: { fontSize: 13 },
+  compactRange: { fontSize: 10, marginTop: 0 },
 });
 

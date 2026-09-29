@@ -8,6 +8,7 @@ import {
   Platform,
 } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
+import useCompactTVLayout from '../../hooks/useCompactTVLayout';
 
 interface TVCardProps {
   title?: string;
@@ -23,12 +24,13 @@ export default function TVCard({
   style,
 }: TVCardProps) {
   const theme = useTheme();
+  const compact = useCompactTVLayout();
   const [isFocused, setIsFocused] = useState(false);
 
   const containerStyle: ViewStyle = {
-    backgroundColor: isFocused
-      ? theme.colors.glassSurfaceFocused
-      : theme.colors.glassSurface,
+    backgroundColor: Platform.OS === 'web'
+      ? (isFocused ? theme.colors.glassSurfaceFocused : theme.colors.glassSurface)
+      : (isFocused ? theme.colors.surfaceFocused : theme.colors.modalSurface),
     borderColor: isFocused ? theme.colors.focusRing : theme.colors.glassBorder,
     transform: [{ scale: isFocused ? theme.tvAnimation.focusScale : 1.0 }],
     shadowColor: isFocused ? theme.colors.focusRing : '#000',
@@ -55,7 +57,7 @@ export default function TVCard({
       onFocus={() => setIsFocused(true)}
       onBlur={() => setIsFocused(false)}
       onPress={onPress}
-      style={[styles.card, containerStyle, style]}
+      style={[styles.card, compact && styles.compactCard, containerStyle, style]}
     >
       {title && !children ? (
         <Text style={[styles.title, { color: isFocused ? theme.colors.textFocused : theme.colors.textPrimary }]}>
@@ -82,5 +84,6 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '600',
   },
+  compactCard: { padding: 12, borderRadius: 16, minHeight: 0 },
 });
 

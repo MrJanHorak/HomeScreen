@@ -1,5 +1,7 @@
 import { auth } from './firebase';
 import type { DashboardSummaryResponse, DevicePairingResponse, Weather } from '../../../shared/src/types';
+import type { DashboardAppearance } from '../theme/appearance';
+import { Platform } from 'react-native';
 
 // Default to Firebase Local Emulator or configured remote URL
 const DEFAULT_API_URL =
@@ -49,6 +51,28 @@ export async function pollGooglePhotosSession(): Promise<{
 
 export async function getSavedGooglePhoto(): Promise<string | null> {
   return (await photosRequest<{ dataUrl: string | null }>('background')).dataUrl;
+}
+
+export async function getUserAppearance(): Promise<{
+  appearance: DashboardAppearance | null; updatedAtMs: number; seededFromWeb: boolean;
+}> {
+  const response = await fetch(`${DEFAULT_API_URL}/userAppearance`, {
+    headers: await authHeaders(),
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error || 'Could not load appearance settings');
+  return body;
+}
+
+export async function saveUserAppearance(appearance: DashboardAppearance): Promise<void> {
+  const response = await fetch(`${DEFAULT_API_URL}/userAppearance`, {
+    method: 'PUT', headers: await authHeaders(),
+    body: JSON.stringify({ appearance, source: Platform.OS === 'web' ? 'web' : 'tv' }),
+  });
+  if (!response.ok) {
+    const body = await response.json();
+    throw new Error(body.error || 'Could not save appearance settings');
+  }
 }
 
 /**

@@ -1,6 +1,7 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getSavedGooglePhoto } from '../services/api';
+import { Platform } from 'react-native';
+import { getSavedGooglePhoto, getUserAppearance, saveUserAppearance } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
   CardId, DashboardAppearance, DEFAULT_APPEARANCE, LAYOUTS,
@@ -34,25 +35,71 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [appearance, setAppearance] = useState<DashboardAppearance>(DEFAULT_APPEARANCE);
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   const [hydratedFor, setHydratedFor] = useState<string | null>(null);
+  const syncedJson = useRef<string | null>(null);
+  const pendingWrites = useRef(0);
+  const writeQueue = useRef<Promise<void>>(Promise.resolve());
+  const generation = useRef(0);
   const ready = uid !== null && hydratedFor === uid;
 
   useEffect(() => {
     let cancelled = false;
+    const currentGeneration = ++generation.current;
     setHydratedFor(null);
     setAppearance(DEFAULT_APPEARANCE);
     setPhotoDataUrl(null);
+    syncedJson.current = null;
     if (!uid) return () => { cancelled = true; };
-    void AsyncStorage.getItem(`@tv_appearance_v1:${uid}`)
-      .then((stored) => {
+    void (async () => {
+      let local = DEFAULT_APPEARANCE;
+      try {
+        const stored = await AsyncStorage.getItem(`@tv_appearance_v1:${uid}`);
+        if (stored) local = normalizeAppearance(JSON.parse(stored));
+      } catch (error) {
+        console.warn('Could not load local appearance settings:', error);
+      }
+      try {
+        const remote = await getUserAppearance();
         if (cancelled) return;
-        setAppearance(stored ? normalizeAppearance(JSON.parse(stored)) : DEFAULT_APPEARANCE);
-      })
-      .catch((error) => {
-        console.warn('Could not load appearance settings:', error);
-      })
-      .finally(() => {
+        if (remote.appearance) {
+          if (Platform.OS === 'web' && !remote.seededFromWeb &&
+            JSON.stringify(local) !== JSON.stringify(DEFAULT_APPEARANCE)) {
+            setAppearance(local);
+            pendingWrites.current += 1;
+            try {
+              await saveUserAppearance(local);
+              if (!cancelled && generation.current === currentGeneration) syncedJson.current = JSON.stringify(local);
+            } finally {
+              pendingWrites.current -= 1;
+            }
+          } else {
+            const normalized = normalizeAppearance(remote.appearance);
+            syncedJson.current = JSON.stringify(normalized);
+            setAppearance(normalized);
+          }
+        } else {
+          setAppearance(local);
+          if (Platform.OS === 'web' && JSON.stringify(local) !== JSON.stringify(DEFAULT_APPEARANCE)) {
+            pendingWrites.current += 1;
+            try {
+              await saveUserAppearance(local);
+              if (!cancelled && generation.current === currentGeneration) syncedJson.current = JSON.stringify(local);
+            } finally {
+              pendingWrites.current -= 1;
+            }
+          } else {
+            syncedJson.current = JSON.stringify(local);
+          }
+        }
+      } catch (error) {
+        console.warn('Could not sync appearance settings:', error);
+        if (!cancelled) {
+          syncedJson.current = JSON.stringify(local);
+          setAppearance(local);
+        }
+      } finally {
         if (!cancelled) setHydratedFor(uid);
-      });
+      }
+    })();
     void getSavedGooglePhoto()
       .then((dataUrl) => { if (!cancelled) setPhotoDataUrl(dataUrl); })
       .catch((error) => console.warn('Could not load Google Photos background:', error));
@@ -61,9 +108,38 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!uid || !ready) return;
-    void AsyncStorage.setItem(`@tv_appearance_v1:${uid}`, JSON.stringify(appearance))
+    const serialized = JSON.stringify(appearance);
+    void AsyncStorage.setItem(`@tv_appearance_v1:${uid}`, serialized)
       .catch((error) => console.warn('Could not save appearance settings:', error));
+    if (serialized === syncedJson.current ||
+      (syncedJson.current === null && serialized === JSON.stringify(DEFAULT_APPEARANCE))) return;
+    const currentGeneration = generation.current;
+    pendingWrites.current += 1;
+    writeQueue.current = writeQueue.current.catch(() => undefined).then(async () => {
+      if (generation.current !== currentGeneration) return;
+      await saveUserAppearance(appearance);
+      if (generation.current === currentGeneration) syncedJson.current = serialized;
+    }).catch((error) => console.warn('Could not save shared appearance settings:', error))
+      .finally(() => { pendingWrites.current -= 1; });
   }, [appearance, ready, uid]);
+
+  useEffect(() => {
+    if (!uid || !ready) return;
+    const currentGeneration = generation.current;
+    const timer = setInterval(() => {
+      if (pendingWrites.current) return;
+      void getUserAppearance().then((remote) => {
+        if (!remote.appearance || generation.current !== currentGeneration || pendingWrites.current) return;
+        const normalized = normalizeAppearance(remote.appearance);
+        const serialized = JSON.stringify(normalized);
+        if (serialized !== syncedJson.current) {
+          syncedJson.current = serialized;
+          setAppearance(normalized);
+        }
+      }).catch((error) => console.warn('Could not refresh shared appearance settings:', error));
+    }, 45_000);
+    return () => clearInterval(timer);
+  }, [ready, uid]);
 
   const value = useMemo<AppearanceContextValue>(() => ({
     appearance,

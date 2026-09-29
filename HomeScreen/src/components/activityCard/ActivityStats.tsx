@@ -1,6 +1,7 @@
 import { View, StyleSheet, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
+import useCompactTVLayout from '../../hooks/useCompactTVLayout';
 
 interface ActivityStatsProps {
   steps: number;
@@ -16,52 +17,53 @@ export default function ActivityStats({
   activeMinutes,
 }: ActivityStatsProps) {
   const theme = useTheme();
+  const compact = useCompactTVLayout();
 
   const formattedSteps = steps.toLocaleString();
   const formattedCalories = calories.toLocaleString();
 
   return (
-    <View style={styles.statsGrid}>
+    <View style={[styles.statsGrid, compact && styles.compactGrid]}>
       {/* Steps */}
       <View style={styles.statRow}>
-        <MaterialCommunityIcons name="walk" size={20} color="#38BDF8" style={styles.statIcon} />
-        <Text style={[styles.statValue, { color: theme.colors.textPrimary }]}>
+        <MaterialCommunityIcons name="walk" size={compact ? 15 : 20} color="#38BDF8" style={[styles.statIcon, compact && styles.compactIcon]} />
+        <Text style={[styles.statValue, compact && styles.compactValue, { color: theme.colors.textPrimary }]}>
           {formattedSteps}
         </Text>
-        <Text style={[styles.statUnit, { color: theme.colors.textSecondary }]}>
+        <Text style={[styles.statUnit, compact && styles.compactUnit, { color: theme.colors.textSecondary }]}>
           steps
         </Text>
       </View>
 
       {/* Distance */}
       <View style={styles.statRow}>
-        <MaterialCommunityIcons name="map-marker-distance" size={20} color="#34D399" style={styles.statIcon} />
-        <Text style={[styles.statValue, { color: theme.colors.textPrimary }]}>
+        <MaterialCommunityIcons name="map-marker-distance" size={compact ? 15 : 20} color="#34D399" style={[styles.statIcon, compact && styles.compactIcon]} />
+        <Text style={[styles.statValue, compact && styles.compactValue, { color: theme.colors.textPrimary }]}>
           {distance}
         </Text>
-        <Text style={[styles.statUnit, { color: theme.colors.textSecondary }]}>
+        <Text style={[styles.statUnit, compact && styles.compactUnit, { color: theme.colors.textSecondary }]}>
           km
         </Text>
       </View>
 
       {/* Active Time */}
       <View style={styles.statRow}>
-        <MaterialCommunityIcons name="timer-outline" size={20} color="#FBBF24" style={styles.statIcon} />
-        <Text style={[styles.statValue, { color: theme.colors.textPrimary }]}>
+        <MaterialCommunityIcons name="timer-outline" size={compact ? 15 : 20} color="#FBBF24" style={[styles.statIcon, compact && styles.compactIcon]} />
+        <Text style={[styles.statValue, compact && styles.compactValue, { color: theme.colors.textPrimary }]}>
           {activeMinutes}
         </Text>
-        <Text style={[styles.statUnit, { color: theme.colors.textSecondary }]}>
+        <Text style={[styles.statUnit, compact && styles.compactUnit, { color: theme.colors.textSecondary }]}>
           min
         </Text>
       </View>
 
       {/* Calories */}
       <View style={styles.statRow}>
-        <MaterialCommunityIcons name="lightning-bolt" size={20} color="#F87171" style={styles.statIcon} />
-        <Text style={[styles.statValue, { color: theme.colors.textPrimary }]}>
+        <MaterialCommunityIcons name="lightning-bolt" size={compact ? 15 : 20} color="#F87171" style={[styles.statIcon, compact && styles.compactIcon]} />
+        <Text style={[styles.statValue, compact && styles.compactValue, { color: theme.colors.textPrimary }]}>
           {formattedCalories}
         </Text>
-        <Text style={[styles.statUnit, { color: theme.colors.textSecondary }]}>
+        <Text style={[styles.statUnit, compact && styles.compactUnit, { color: theme.colors.textSecondary }]}>
           cal
         </Text>
       </View>
@@ -94,5 +96,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
   },
+  compactGrid: { gap: 2, marginLeft: 2 },
+  compactIcon: { width: 18, marginRight: 3 },
+  compactValue: { fontSize: 12 },
+  compactUnit: { fontSize: 10 },
 });
 

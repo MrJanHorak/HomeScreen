@@ -16,6 +16,7 @@ import { executeActionHandler } from "./executeAction";
 import { syncUserDataHandler } from "./syncUserData";
 import {beginGoogleLinkHandler, beginGooglePhotosHandler, googleOAuthCallbackHandler} from "./googlePairing";
 import {googlePhotosPickerHandler} from "./googlePhotosPicker";
+import {userAppearanceHandler} from "./userAppearance";
 
 
 // import {onRequest} from "firebase-functions/https";
@@ -49,4 +50,5 @@ export const syncUserData = syncUserDataHandler;
 export const beginGoogleLink = beginGoogleLinkHandler;
 export const beginGooglePhotos = beginGooglePhotosHandler;
 export const googlePhotosPicker = googlePhotosPickerHandler;
+export const userAppearance = userAppearanceHandler;
 export const googleOAuthCallback = googleOAuthCallbackHandler;

@@ -25,6 +25,7 @@ import { useDashboard } from '../context/DashboardContext';
 import { useAppearance } from '../theme/ThemeContext';
 import { getCardRows } from '../theme/appearance';
 import type { CardId, CardPreference } from '../theme/appearance';
+import useCompactTVLayout from '../hooks/useCompactTVLayout';
 
 type DetailTopic =
   | 'weather'
@@ -92,6 +93,7 @@ const CARDS: Record<CardId, React.ComponentType> = {
 function HomeScreen() {
   const { error } = useDashboard();
   const { appearance } = useAppearance();
+  const compact = useCompactTVLayout();
   const [activeModal, setActiveModal] = useState<DetailTopic>(null);
   const closeModal = useCallback(() => setActiveModal(null), []);
   const detail = activeModal ? DETAILS[activeModal] : null;
@@ -148,9 +150,10 @@ function HomeScreen() {
         </View>
       )}
 
-      <View style={styles.cardRows}>
+      <View style={[styles.cardRows, compact && styles.compactCardRows]}>
         {rows.map((row, index) => (
-          <View key={index} style={[styles.cardRow, { flex: index === 0 && rows.length > 1 ? 1.2 : 1 }]}>
+          <View key={index} style={[styles.cardRow, compact && styles.compactCardRow,
+            { flex: index === 0 && rows.length > 1 ? 1.2 : 1 }]}>
             {row.map(renderCard)}
           </View>
         ))}
@@ -204,6 +207,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 20,
   },
+  compactCardRows: { gap: 12, marginVertical: 8 },
+  compactCardRow: { gap: 12, minHeight: 0 },
 });
 
 

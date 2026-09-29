@@ -1,6 +1,7 @@
 import { View, StyleSheet } from 'react-native';
 import TVText from '../tv/TVText';
 import { useTheme } from '../../theme/ThemeContext';
+import useCompactTVLayout from '../../hooks/useCompactTVLayout';
 
 interface TVProgressRingProps {
   progress?: number;
@@ -14,6 +15,7 @@ export default function TVProgressRing({
   strokeWidth = 8,
 }: TVProgressRingProps) {
   const theme = useTheme();
+  const compact = useCompactTVLayout();
 
   const clampedProgress = Math.min(Math.max(progress, 0), 1);
   const percentage = Math.round(clampedProgress * 100);
@@ -181,6 +183,7 @@ export default function TVProgressRing({
           text={`${percentage}%`}
           typography="body"
           color="textPrimary"
+          style={compact ? { fontSize: 17, lineHeight: 22 } : undefined}
         />
       </View>
     </View>

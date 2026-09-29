@@ -6,11 +6,13 @@ import CurrentWeatherHeader from './CurrentWeatherHeader';
 import ForecastItemComponent from './ForecastItemComponent';
 import TVText from '../tv/TVText';
 import { useTheme } from '../../theme/ThemeContext';
+import useCompactTVLayout from '../../hooks/useCompactTVLayout';
 
 export default function WeatherWidget() {
   const { data, isLoading } = useWeather();
   const { activeLocation, cycleNextLocation, savedLocations } = useDashboard();
   const theme = useTheme();
+  const compact = useCompactTVLayout();
 
   const hasMultiple = savedLocations.length > 1;
 
@@ -22,10 +24,10 @@ export default function WeatherWidget() {
           e.stopPropagation?.();
           if (hasMultiple) cycleNextLocation();
         }}
-        style={styles.locationPill}
+        style={[styles.locationPill, compact && styles.compactLocationPill]}
       >
-        <MaterialCommunityIcons name="map-marker" size={14} color={theme.colors.focusRing} />
-        <Text numberOfLines={1} style={[styles.locationName, { color: theme.colors.textPrimary }]}>
+        <MaterialCommunityIcons name="map-marker" size={compact ? 11 : 14} color={theme.colors.focusRing} />
+        <Text numberOfLines={1} style={[styles.locationName, compact && styles.compactLocationName, { color: theme.colors.textPrimary }]}>
           {activeLocation?.name || 'Local'}
         </Text>
         {hasMultiple && (
@@ -46,7 +48,7 @@ export default function WeatherWidget() {
             condition={data.condition}
             conditionIcon={data.conditionIcon || 'cloud'}
           />
-          <View style={styles.forecastRow}>
+          <View style={[styles.forecastRow, compact && styles.compactForecastRow]}>
             {data.forecast?.map((forecastItem) => (
               <ForecastItemComponent
                 key={forecastItem.day}
@@ -106,6 +108,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  compactLocationPill: { paddingVertical: 2, paddingHorizontal: 7, marginBottom: 4 },
+  compactLocationName: { fontSize: 11 },
+  compactForecastRow: { gap: 4 },
 });
 
 

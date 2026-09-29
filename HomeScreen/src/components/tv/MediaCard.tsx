@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
+import useCompactTVLayout from '../../hooks/useCompactTVLayout';
 
 interface MediaCardProps {
   title?: string;
@@ -17,34 +18,35 @@ export default function MediaCard({
   duration = '24 min left',
 }: MediaCardProps) {
   const theme = useTheme();
+  const compact = useCompactTVLayout();
 
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.headerRow}>
+      <View style={[styles.headerRow, compact && styles.compactHeaderRow]}>
         <View style={styles.titleWithIcon}>
           <MaterialCommunityIcons
             name="movie-play-outline"
-            size={22}
+            size={compact ? 17 : 22}
             color={theme.colors.focusRing}
           />
-          <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>
+          <Text style={[styles.headerTitle, compact && styles.compactTitle, { color: theme.colors.textPrimary }]}>
             UP NEXT
           </Text>
         </View>
         <View style={styles.liveBadge}>
-          <Text style={[styles.liveBadgeText, { color: theme.colors.focusRing }]}>
+          <Text style={[styles.liveBadgeText, compact && styles.compactBadgeText, { color: theme.colors.focusRing }]}>
             Preview
           </Text>
         </View>
       </View>
 
       {/* Media Content */}
-      <View style={styles.mediaBox}>
-        <View style={styles.playIconCircle}>
+      <View style={[styles.mediaBox, compact && styles.compactMediaBox]}>
+        <View style={[styles.playIconCircle, compact && styles.compactPlayCircle]}>
           <MaterialCommunityIcons
             name="play"
-            size={24}
+            size={compact ? 18 : 24}
             color="#FFFFFF"
             style={{ marginLeft: 2 }}
           />
@@ -53,13 +55,13 @@ export default function MediaCard({
         <View style={styles.metaColumn}>
           <Text
             numberOfLines={1}
-            style={[styles.mediaTitle, { color: theme.colors.textPrimary }]}
+            style={[styles.mediaTitle, compact && styles.compactMediaTitle, { color: theme.colors.textPrimary }]}
           >
             {title}
           </Text>
           <Text
             numberOfLines={1}
-            style={[styles.mediaSubtitle, { color: theme.colors.textSecondary }]}
+            style={[styles.mediaSubtitle, compact && styles.compactMediaSubtitle, { color: theme.colors.textSecondary }]}
           >
             {subtitle}
           </Text>
@@ -76,7 +78,7 @@ export default function MediaCard({
             ]}
           />
         </View>
-        <Text style={[styles.durationText, { color: theme.colors.textSecondary }]}>
+        <Text style={[styles.durationText, compact && styles.compactDuration, { color: theme.colors.textSecondary }]}>
           {duration}
         </Text>
       </View>
@@ -173,4 +175,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontVariant: ['tabular-nums'],
   },
+  compactHeaderRow: { marginBottom: 6 },
+  compactTitle: { fontSize: 14 },
+  compactBadgeText: { fontSize: 10 },
+  compactMediaBox: { paddingVertical: 5, paddingHorizontal: 7, gap: 7, marginBottom: 6 },
+  compactPlayCircle: { width: 30, height: 30, borderRadius: 15 },
+  compactMediaTitle: { fontSize: 13 },
+  compactMediaSubtitle: { fontSize: 10 },
+  compactDuration: { fontSize: 10 },
 });

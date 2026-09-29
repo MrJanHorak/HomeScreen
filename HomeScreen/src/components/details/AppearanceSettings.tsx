@@ -147,7 +147,7 @@ export default function AppearanceSettings() {
     <View style={styles.section}>
       <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Make it yours</Text>
       <Text style={[styles.description, { color: theme.colors.textSecondary }]}>
-        Changes appear immediately and are saved for this account on this device.
+        Changes appear immediately and sync across your signed-in screens.
       </Text>
       {!ready && <Text style={{ color: theme.colors.textSecondary }}>Loading appearance…</Text>}
 

@@ -14,9 +14,11 @@ import { calculateStepPercentages } from '../../helpers/healthDataHelper';
 
 // theme
 import { useTheme } from '../../theme/ThemeContext';
+import useCompactTVLayout from '../../hooks/useCompactTVLayout';
 
 export default function ActivityCard() {
   const theme = useTheme();
+  const compact = useCompactTVLayout();
   const { data, isLoading } = useHealthData();
 
   if (isLoading) {
@@ -51,19 +53,19 @@ export default function ActivityCard() {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.headerRow}>
+      <View style={[styles.headerRow, compact && styles.compactHeaderRow]}>
         <MaterialCommunityIcons
           name="heart-pulse"
-          size={22}
+          size={compact ? 17 : 22}
           color="#38BDF8"
         />
-        <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>
+        <Text style={[styles.headerTitle, compact && styles.compactTitle, { color: theme.colors.textPrimary }]}>
           ACTIVITY
         </Text>
       </View>
 
-      <View style={styles.chartWrapper}>
-        <TVProgressRing progress={data.progress} size={82} strokeWidth={8} />
+      <View style={[styles.chartWrapper, compact && styles.compactChart]}>
+        <TVProgressRing progress={data.progress} size={compact ? 62 : 82} strokeWidth={compact ? 6 : 8} />
         <ActivityStats
           steps={steps}
           distance={distance}
@@ -104,5 +106,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 14,
   },
+  compactHeaderRow: { marginBottom: 6 },
+  compactTitle: { fontSize: 14 },
+  compactChart: { gap: 8 },
 });
 

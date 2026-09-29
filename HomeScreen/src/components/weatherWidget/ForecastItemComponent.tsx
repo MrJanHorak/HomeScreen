@@ -6,6 +6,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
 import type { WeatherForecast } from '../../../../shared/src/types';
+import useCompactTVLayout from '../../hooks/useCompactTVLayout';
 
 export default function ForecastItemComponent({
   day,
@@ -15,21 +16,22 @@ export default function ForecastItemComponent({
   low,
 }: WeatherForecast) {
   const theme = useTheme();
+  const compact = useCompactTVLayout();
   const iconConfig = getWeatherIconName(icon);
   const formattedHigh = formatTemperature(high);
 
   return (
-    <View style={styles.container}>
-      <Text style={[styles.dayText, { color: theme.colors.textSecondary }]}>
+    <View style={[styles.container, compact && styles.compactContainer]}>
+      <Text style={[styles.dayText, compact && styles.compactDay, { color: theme.colors.textSecondary }]}>
         {day.toUpperCase()}
       </Text>
       <MaterialCommunityIcons
         name={iconConfig.name}
-        size={24}
+        size={compact ? 17 : 24}
         color={theme.colors.textPrimary}
-        style={styles.icon}
+        style={[styles.icon, compact && styles.compactIcon]}
       />
-      <Text style={[styles.highText, { color: theme.colors.textPrimary }]}>
+      <Text style={[styles.highText, compact && styles.compactHigh, { color: theme.colors.textPrimary }]}>
         {formattedHigh}
       </Text>
     </View>
@@ -62,5 +64,9 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
     marginTop: 2,
   },
+  compactContainer: { paddingVertical: 4, paddingHorizontal: 5, minWidth: 41, borderRadius: 9 },
+  compactDay: { fontSize: 10, marginBottom: 0 },
+  compactIcon: { marginVertical: 1 },
+  compactHigh: { fontSize: 12, marginTop: 0 },
 });
 

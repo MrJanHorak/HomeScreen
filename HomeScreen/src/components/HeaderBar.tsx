@@ -4,35 +4,37 @@ import { useGreeting } from '../hooks/useGreeting';
 import { useCurrentDateTime } from '../hooks/useCurrentDateTime';
 import { useTheme } from '../theme/ThemeContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import useCompactTVLayout from '../hooks/useCompactTVLayout';
 
 export default function HeaderBar() {
   const currentTime = useCurrentDateTime();
   const greeting = useGreeting(currentTime.currentHour);
   const theme = useTheme();
+  const compact = useCompactTVLayout();
 
   return (
-    <View style={styles.headerContainer}>
+    <View style={[styles.headerContainer, compact && styles.compactHeader]}>
       {/* Left: Greeting & Date */}
       <View style={styles.greetingSection}>
         <View style={styles.greetingRow}>
-          <Text style={[styles.greetingText, { color: theme.colors.textPrimary }]}>
+          <Text numberOfLines={1} style={[styles.greetingText, compact && styles.compactGreeting, { color: theme.colors.textPrimary }]}>
             {greeting.greeting}
           </Text>
         </View>
-        <Text style={[styles.dateText, { color: theme.colors.textSecondary }]}>
+        <Text style={[styles.dateText, compact && styles.compactDate, { color: theme.colors.textSecondary }]}>
           {currentTime.formattedDate}
         </Text>
       </View>
 
       {/* Right: Glass Clock Badge */}
-      <View style={styles.clockGlassBadge}>
+      <View style={[styles.clockGlassBadge, compact && styles.compactClockBadge]}>
         <MaterialCommunityIcons
           name="clock-outline"
-          size={22}
+          size={compact ? 18 : 22}
           color={theme.colors.focusRing}
           style={styles.clockIcon}
         />
-        <Text style={[styles.clockText, { color: theme.colors.textPrimary }]}>
+        <Text style={[styles.clockText, compact && styles.compactClockText, { color: theme.colors.textPrimary }]}>
           {currentTime.formattedTime}
         </Text>
       </View>
@@ -94,5 +96,10 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
     fontVariant: ['tabular-nums'],
   },
+  compactHeader: { marginBottom: 8 },
+  compactGreeting: { fontSize: 25 },
+  compactDate: { fontSize: 14, marginTop: 0 },
+  compactClockBadge: { paddingVertical: 6, paddingHorizontal: 14, borderRadius: 18 },
+  compactClockText: { fontSize: 25 },
 });
 

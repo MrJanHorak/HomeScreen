@@ -3,30 +3,32 @@ import TVText from '../tv/TVText';
 import { useDashboard } from '../../context/DashboardContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
+import useCompactTVLayout from '../../hooks/useCompactTVLayout';
 
 export default function ToDo() {
   const { tasks, isLoading } = useDashboard();
   const theme = useTheme();
+  const compact = useCompactTVLayout();
 
   const pendingCount = tasks.filter((t) => !t.completed).length;
 
   return (
     <View style={styles.container}>
       {/* Header with Icon and Count Pill */}
-      <View style={styles.headerRow}>
+      <View style={[styles.headerRow, compact && styles.compactHeaderRow]}>
         <View style={styles.titleWithIcon}>
           <MaterialCommunityIcons
             name="format-list-checks"
-            size={22}
+            size={compact ? 17 : 22}
             color={theme.colors.focusRing}
           />
-          <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>
+          <Text style={[styles.headerTitle, compact && styles.compactTitle, { color: theme.colors.textPrimary }]}>
             TO DO
           </Text>
         </View>
         {tasks.length > 0 && (
           <View style={styles.countBadge}>
-            <Text style={[styles.countBadgeText, { color: theme.colors.textSecondary }]}>
+            <Text style={[styles.countBadgeText, compact && styles.compactBadgeText, { color: theme.colors.textSecondary }]}>
               {pendingCount} left
             </Text>
           </View>
@@ -34,17 +36,17 @@ export default function ToDo() {
       </View>
 
       {/* Task List */}
-      <View style={styles.taskList}>
+      <View style={[styles.taskList, compact && styles.compactTaskList]}>
         {isLoading && tasks.length === 0 ? (
           <TVText text="Loading tasks..." typography="caption" color="textSecondary" />
         ) : tasks.length === 0 ? (
           <TVText text="No pending tasks!" typography="caption" color="textSecondary" />
         ) : (
           tasks.slice(0, 4).map((task) => (
-            <View key={task.id} style={styles.taskItem}>
+            <View key={task.id} style={[styles.taskItem, compact && styles.compactTaskItem]}>
               <MaterialCommunityIcons
                 name={task.completed ? 'check-circle' : 'checkbox-blank-circle-outline'}
-                size={20}
+                size={compact ? 16 : 20}
                 color={task.completed ? '#10B981' : theme.colors.textSecondary}
                 style={styles.checkIcon}
               />
@@ -52,6 +54,7 @@ export default function ToDo() {
                 numberOfLines={1}
                 style={[
                   styles.taskTitle,
+                  compact && styles.compactTaskTitle,
                   {
                     color: task.completed
                       ? theme.colors.textSecondary
@@ -123,4 +126,10 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     flex: 1,
   },
+  compactHeaderRow: { marginBottom: 6 },
+  compactTitle: { fontSize: 14 },
+  compactBadgeText: { fontSize: 11 },
+  compactTaskList: { gap: 5 },
+  compactTaskItem: { paddingVertical: 4, paddingHorizontal: 7 },
+  compactTaskTitle: { fontSize: 13 },
 });

@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { TVTheme } from '../../theme/tvTheme';
 import { useTheme } from '../../theme/ThemeContext';
+import useCompactTVLayout from '../../hooks/useCompactTVLayout';
 
 interface TVScreenWrapperProps {
   children: React.ReactNode;
@@ -21,7 +22,8 @@ export default function TVScreenWrapper({
   style,
 }: TVScreenWrapperProps) {
   const theme = useTheme();
-  const content = <View style={[styles.container, style]}>{children}</View>;
+  const compact = useCompactTVLayout();
+  const content = <View style={[styles.container, compact && styles.compactContainer, style]}>{children}</View>;
 
   // This is the functional core of the UI layout
   const renderInnerContent = () => {
@@ -53,57 +55,6 @@ export default function TVScreenWrapper({
 
   return renderInnerContent();
 }
-
-// const styles = StyleSheet.create({
-//   // Centers our simulated TV screen in the web browser
-//   webViewportCenterer: {
-//     flex: 1,
-//     width: '100%',
-//     height: '100%',
-//     backgroundColor: '#000000', 
-//     justifyContent: 'center',
-//     alignItems: 'center',
-//   },
-//   // Simulates a hardware TV screen using a fixed standard aspect ratio
-//   webTvFrame: {
-//     width: '100%',
-//     height: '100%',
-//     maxWidth: '100%',
-//     maxHeight: '100%',
-//     ...Platform.select({
-//       web: {
-//         aspectRatio: '16 / 9', 
-//       },
-//     }),
-//   },
-//   background: {
-//     flex: 1,
-//     backgroundColor: TVTheme.colors.background,
-//     height: '100%',
-//     width: '100%',
-//   },
-//   backgroundImageStyle: {
-//     width: '100%',
-//     height: '100%',
-//   },
-//   overlay: {
-//     flex: 1,
-//     backgroundColor: 'rgba(15, 23, 42, 0.6)',
-//     height: '100%', 
-//     width: '100%',
-//   },
-//   container: {
-//     flex: 1,
-//     paddingHorizontal: TVTheme.spacing.safeHorizontal,
-//     paddingVertical: TVTheme.spacing.safeVertical,
-//     ...Platform.select({
-//       web: {
-//         boxSizing: 'border-box', 
-//       },
-//     }),
-//   },
-// });
-
 
 const styles = StyleSheet.create({
   // Centers our simulated TV screen in the web browser
@@ -157,5 +108,9 @@ const styles = StyleSheet.create({
         boxSizing: 'border-box', 
       },
     }),
+  },
+  compactContainer: {
+    paddingHorizontal: 30,
+    paddingVertical: 16,
   },
 });
