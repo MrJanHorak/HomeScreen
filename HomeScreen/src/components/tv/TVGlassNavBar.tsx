@@ -31,7 +31,7 @@ export default function TVGlassNavBar({
 
   return (
     <View style={styles.dockContainer}>
-      <View style={styles.glassDock}>
+      <View style={[styles.glassDock, { backgroundColor: theme.colors.glassSurface, borderColor: theme.colors.glassBorder }]}>
         {NAV_ITEMS.map((item) => {
           const isActive = item.id === activeId;
           const isFocused = item.id === focusedId;
@@ -49,7 +49,7 @@ export default function TVGlassNavBar({
                   styles.focusedNavItem,
                   {
                     borderColor: theme.colors.focusRing,
-                    backgroundColor: 'rgba(56, 189, 248, 0.25)',
+                    backgroundColor: theme.colors.glassSurfaceFocused,
                     transform: [{ scale: 1.08 }],
                   },
                 ],

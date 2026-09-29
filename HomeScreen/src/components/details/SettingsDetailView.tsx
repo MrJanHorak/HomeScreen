@@ -5,6 +5,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useDashboard } from '../../context/DashboardContext';
 import { PRESET_CITIES } from '../../services/weatherLocationService';
+import AppearanceSettings from './AppearanceSettings';
 
 export default function SettingsDetailView() {
   const theme = useTheme();
@@ -43,6 +44,7 @@ export default function SettingsDetailView() {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      <AppearanceSettings />
       {/* Weather Locations Section */}
       <View style={styles.card}>
         <View style={styles.cardHeaderRow}>

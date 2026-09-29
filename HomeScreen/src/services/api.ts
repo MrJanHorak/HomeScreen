@@ -14,6 +14,43 @@ async function authHeaders(): Promise<Record<string, string>> {
   };
 }
 
+async function photosRequest<T>(action: string, method: 'GET' | 'POST' = 'GET'): Promise<T> {
+  const response = await fetch(`${DEFAULT_API_URL}/googlePhotosPicker?action=${action}`, {
+    method,
+    headers: await authHeaders(),
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error || `Google Photos request failed (${response.status})`);
+  return body as T;
+}
+
+export async function beginGooglePhotosConnection(): Promise<string> {
+  const response = await fetch(`${DEFAULT_API_URL}/beginGooglePhotos`, {
+    method: 'POST', headers: await authHeaders(),
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error || 'Could not connect Google Photos');
+  return body.authorizationUrl;
+}
+
+export async function getGooglePhotosStatus(): Promise<boolean> {
+  return (await photosRequest<{ connected: boolean }>('status')).connected;
+}
+
+export async function createGooglePhotosSession(): Promise<{ pickerUri: string; pollIntervalMs: number }> {
+  return photosRequest('create', 'POST');
+}
+
+export async function pollGooglePhotosSession(): Promise<{
+  status: 'pending' | 'selected'; pollIntervalMs?: number; dataUrl?: string;
+}> {
+  return photosRequest('poll');
+}
+
+export async function getSavedGooglePhoto(): Promise<string | null> {
+  return (await photosRequest<{ dataUrl: string | null }>('background')).dataUrl;
+}
+
 /**
  * Fetch the unified dashboard summary (Calendar, Tasks, Fitness, Weather)
  */

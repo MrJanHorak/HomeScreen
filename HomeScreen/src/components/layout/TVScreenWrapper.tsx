@@ -7,6 +7,7 @@ import {
   Platform,
 } from 'react-native';
 import { TVTheme } from '../../theme/tvTheme';
+import { useTheme } from '../../theme/ThemeContext';
 
 interface TVScreenWrapperProps {
   children: React.ReactNode;
@@ -19,6 +20,7 @@ export default function TVScreenWrapper({
   backgroundImage,
   style,
 }: TVScreenWrapperProps) {
+  const theme = useTheme();
   const content = <View style={[styles.container, style]}>{children}</View>;
 
   // This is the functional core of the UI layout
@@ -27,15 +29,15 @@ export default function TVScreenWrapper({
       return (
         <ImageBackground
           source={backgroundImage}
-          style={styles.background}
+          style={[styles.background, { backgroundColor: theme.colors.background }]}
           imageStyle={styles.backgroundImageStyle} 
           resizeMode='cover'
         >
-          <View style={styles.overlay}>{content}</View>
+          <View style={[styles.overlay, { backgroundColor: theme.colors.backgroundOverlay }]}>{content}</View>
         </ImageBackground>
       );
     }
-    return <View style={styles.background}>{content}</View>;
+    return <View style={[styles.background, { backgroundColor: theme.colors.background }]}>{content}</View>;
   };
 
   // On TV/Mobile, render normally. On Web, wrap it in a strict 16:9 aspect box.

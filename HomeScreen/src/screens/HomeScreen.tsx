@@ -1,7 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import TVText from '../components/tv/TVText';
-import TVSection from '../components/tv/TVSection';
 import TVCard from '../components/tv/TVCard';
 import HeaderBar from '../components/HeaderBar';
 import WeatherWidget from '../components/weatherWidget/WeatherWidget';
@@ -23,6 +22,9 @@ import ToDoDetailView from '../components/details/ToDoDetailView';
 import SettingsDetailView from '../components/details/SettingsDetailView';
 
 import { useDashboard } from '../context/DashboardContext';
+import { useAppearance } from '../theme/ThemeContext';
+import { getCardRows } from '../theme/appearance';
+import type { CardId, CardPreference } from '../theme/appearance';
 
 type DetailTopic =
   | 'weather'
@@ -78,12 +80,36 @@ const DETAILS: Record<Topic, DetailDefinition> = {
   },
 };
 
+const CARDS: Record<CardId, React.ComponentType> = {
+  weather: WeatherWidget,
+  schedule: ScheduleCard,
+  activity: ActivityCard,
+  media: MediaCard,
+  meal: MealCard,
+  todo: ToDo,
+};
+
 function HomeScreen() {
   const { error } = useDashboard();
+  const { appearance } = useAppearance();
   const [activeModal, setActiveModal] = useState<DetailTopic>(null);
   const closeModal = useCallback(() => setActiveModal(null), []);
   const detail = activeModal ? DETAILS[activeModal] : null;
   const DetailView = detail?.View;
+  const rows = getCardRows(appearance.cards);
+
+  const renderCard = (card: CardPreference) => {
+    const Content = CARDS[card.id];
+    return (
+      <TVCard
+        key={card.id}
+        style={{ flex: card.size === 'wide' ? 2 : 1, height: '100%' }}
+        onPress={() => setActiveModal(card.id)}
+      >
+        <Content />
+      </TVCard>
+    );
+  };
 
   const handleNavSelect = (id: string) => {
     switch (id) {
@@ -122,49 +148,13 @@ function HomeScreen() {
         </View>
       )}
 
-      {/* Primary Section (Row 1) */}
-      <TVSection direction="row" style={styles.topSection}>
-        <TVCard
-          style={{ flex: 1.1, height: '100%' }}
-          onPress={() => setActiveModal('weather')}
-        >
-          <WeatherWidget />
-        </TVCard>
-        <TVCard
-          style={{ flex: 2, height: '100%' }}
-          onPress={() => setActiveModal('schedule')}
-        >
-          <ScheduleCard />
-        </TVCard>
-        <TVCard
-          style={{ flex: 1.1, height: '100%' }}
-          onPress={() => setActiveModal('activity')}
-        >
-          <ActivityCard />
-        </TVCard>
-      </TVSection>
-
-      {/* Secondary Section (Row 2) */}
-      <TVSection direction="row" style={styles.bottomSection}>
-        <TVCard
-          style={{ flex: 1, height: '100%' }}
-          onPress={() => setActiveModal('media')}
-        >
-          <MediaCard />
-        </TVCard>
-        <TVCard
-          style={{ flex: 1, height: '100%' }}
-          onPress={() => setActiveModal('meal')}
-        >
-          <MealCard />
-        </TVCard>
-        <TVCard
-          style={{ flex: 1, height: '100%' }}
-          onPress={() => setActiveModal('todo')}
-        >
-          <ToDo />
-        </TVCard>
-      </TVSection>
+      <View style={styles.cardRows}>
+        {rows.map((row, index) => (
+          <View key={index} style={[styles.cardRow, { flex: index === 0 && rows.length > 1 ? 1.2 : 1 }]}>
+            {row.map(renderCard)}
+          </View>
+        ))}
+      </View>
 
       {/* Bottom Floating Glass Navigation Dock */}
       <TVGlassNavBar
@@ -204,13 +194,15 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     alignSelf: 'flex-start',
   },
-  topSection: {
-    height: '42%',
-    marginBottom: 16,
+  cardRows: {
+    flex: 1,
+    gap: 20,
+    marginVertical: 18,
   },
-  bottomSection: {
-    height: '35%',
-    marginBottom: 12,
+  cardRow: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 20,
   },
 });
 

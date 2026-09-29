@@ -1,5 +1,5 @@
 import { StatusBar } from 'react-native';
-import { ThemeProvider } from './src/theme/ThemeContext';
+import { ThemeProvider, useAppearance } from './src/theme/ThemeContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { DashboardProvider } from './src/context/DashboardContext';
 import TVScreenWrapper from './src/components/layout/TVScreenWrapper';
@@ -10,7 +10,8 @@ import backgroundImage from './assets/media/wp8860764-nasa-4k-wallpapers.jpg';
 
 function Root() {
   const { user, initializing } = useAuth();
-  if (initializing) return null;
+  const { ready } = useAppearance();
+  if (initializing || (user && !ready)) return null;
 
   // DashboardProvider only mounts once signed in, so it never fetches anonymously
   return user ? (
@@ -22,15 +23,27 @@ function Root() {
   );
 }
 
+function ThemedScreen() {
+  const { appearance, photoDataUrl } = useAppearance();
+  const selectedBackground = appearance.background === 'google-photo' && photoDataUrl
+    ? { uri: photoDataUrl }
+    : appearance.background === 'photo' ? backgroundImage : undefined;
+  return (
+    <>
+      <StatusBar hidden />
+      <TVScreenWrapper backgroundImage={selectedBackground}>
+        <Root />
+      </TVScreenWrapper>
+    </>
+  );
+}
+
 export default function App() {
   return (
-    <ThemeProvider>
-      <AuthProvider>
-        <StatusBar hidden />
-        <TVScreenWrapper backgroundImage={backgroundImage}>
-          <Root />
-        </TVScreenWrapper>
-      </AuthProvider>
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider>
+        <ThemedScreen />
+      </ThemeProvider>
+    </AuthProvider>
   );
 }

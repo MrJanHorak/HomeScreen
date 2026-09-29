@@ -81,7 +81,7 @@ export default function TVDetailModal({
       onRequestClose={onClose}
     >
       <View style={styles.scrim}>
-        <View style={styles.glassContainer}>
+        <View style={[styles.glassContainer, { backgroundColor: theme.colors.modalSurface, borderColor: theme.colors.glassBorder }]}>
           {/* Header Bar */}
           <View style={styles.header}>
             <View style={styles.titleArea}>

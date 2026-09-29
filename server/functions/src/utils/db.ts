@@ -1,7 +1,7 @@
 import { getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
-import { StoredUserTokens, DashboardSummaryResponse, DevicePairingCode } from "../types";
+import { StoredUserTokens, DashboardSummaryResponse, DevicePairingCode, GoogleTokens } from "../types";
 import { decryptToken, encryptToken } from "./crypto";
 
 if (getApps().length === 0) {
@@ -10,6 +10,31 @@ if (getApps().length === 0) {
 
 export const db = getFirestore();
 export const auth = getAuth();
+
+/** Photos Picker consent is stored separately from Calendar, Tasks, and Fit consent. */
+export async function getStoredPhotosTokens(userId: string): Promise<GoogleTokens | null> {
+  const snapshot = await db.collection("users").doc(userId).get();
+  const stored = snapshot.data()?.googlePhotos;
+  if (!stored?.refreshToken) return null;
+  return {
+    accessToken: stored.accessToken ? decryptToken(stored.accessToken) : undefined,
+    refreshToken: decryptToken(stored.refreshToken),
+    expiryDate: stored.expiryDate,
+    scope: stored.scope,
+  };
+}
+
+export async function savePhotosTokens(userId: string, tokens: GoogleTokens): Promise<void> {
+  await db.collection("users").doc(userId).set({
+    googlePhotos: {
+      accessToken: tokens.accessToken ? encryptToken(tokens.accessToken) : null,
+      refreshToken: tokens.refreshToken ? encryptToken(tokens.refreshToken) : null,
+      expiryDate: tokens.expiryDate ?? null,
+      scope: tokens.scope ?? null,
+    },
+    updatedAt: FieldValue.serverTimestamp(),
+  }, {merge: true});
+}
 
 /**
  * Retrieve user OAuth tokens and configuration from Firestore
