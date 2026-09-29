@@ -15,7 +15,17 @@ export const colors = {
   textPrimary: '#F8FAFC',
   textSecondary: '#94A3B8',
   textFocused: '#FFFFFF',
+
+  // Glassmorphism tokens
+  glassSurface: 'rgba(15, 23, 42, 0.58)',
+  glassSurfaceFocused: 'rgba(30, 48, 80, 0.72)',
+  glassBorder: 'rgba(255, 255, 255, 0.14)',
+  glassBorderTop: 'rgba(255, 255, 255, 0.25)',
+  glassHighlight: 'rgba(255, 255, 255, 0.08)',
+  glassSubtle: 'rgba(255, 255, 255, 0.05)',
+  glassChip: 'rgba(255, 255, 255, 0.1)',
 } as const;
+
 
 export const spacing = {
   xs: 8,

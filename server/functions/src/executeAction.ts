@@ -43,16 +43,18 @@ export const executeActionHandler = onRequest(
         }
 
         case "updatePreferences": {
-          const { weatherCity, stepGoal, distanceGoal, location } = payload || {};
+          const { weatherCity, stepGoal, distanceGoal, location, savedLocations } = payload || {};
           await saveUserTokens(userId, {
             weatherCity,
             stepGoal,
             distanceGoal,
             location,
+            savedLocations,
           });
           res.status(200).json({ success: true, message: "Preferences updated successfully" });
           return;
         }
+
 
         default:
           res.status(400).json({ error: `Unsupported action: ${action}` });

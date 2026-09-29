@@ -1,9 +1,16 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
-import type { Weather, CalendarEvent, TaskItem, Activity, DashboardSummaryResponse } from '../../../shared/src/types';
+import type { Weather, CalendarEvent, TaskItem, Activity, DashboardSummaryResponse, SavedLocation } from '../../../shared/src/types';
 import { fetchDashboardSummary, executeTVAction } from '../services/api';
+import {
+  DEFAULT_LOCATIONS,
+  ExtendedWeather,
+  getWeatherForLocation,
+  loadStoredLocations,
+  persistLocations,
+} from '../services/weatherLocationService';
 
 interface DashboardContextValue {
-  weather: Weather | null;
+  weather: ExtendedWeather | null;
   schedule: CalendarEvent[];
   tasks: TaskItem[];
   health: Activity | null;
@@ -12,6 +19,16 @@ interface DashboardContextValue {
   error: string | null;
   refresh: () => Promise<void>;
   completeTask: (taskId: string) => Promise<void>;
+
+  // Multi-location Weather Support
+  savedLocations: SavedLocation[];
+  activeLocation: SavedLocation;
+  setActiveLocation: (loc: SavedLocation) => void;
+  cycleNextLocation: () => void;
+  addLocation: (name: string, query: string) => Promise<void>;
+  removeLocation: (id: string) => Promise<void>;
+  setDefaultLocation: (id: string) => Promise<void>;
+  getWeatherForLoc: (loc: SavedLocation) => ExtendedWeather;
 }
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);
@@ -19,7 +36,7 @@ const DashboardContext = createContext<DashboardContextValue | null>(null);
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // Auto-refresh every 5 minutes
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
-  const [weather, setWeather] = useState<Weather | null>(null);
+  const [rawLiveWeather, setRawLiveWeather] = useState<Weather | null>(null);
   const [schedule, setSchedule] = useState<CalendarEvent[]>([]);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [health, setHealth] = useState<Activity | null>(null);
@@ -27,20 +44,43 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [isLive, setIsLive] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Multi-location state
+  const [savedLocations, setSavedLocations] = useState<SavedLocation[]>(DEFAULT_LOCATIONS);
+  const [activeLocation, setActiveLocationState] = useState<SavedLocation>(DEFAULT_LOCATIONS[0]);
+
+  // Load persisted locations on mount
+  useEffect(() => {
+    loadStoredLocations().then(({ locations, activeId }) => {
+      setSavedLocations(locations);
+      const active = locations.find((l) => l.id === activeId) || locations[0];
+      setActiveLocationState(active);
+    });
+  }, []);
+
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
       const data: DashboardSummaryResponse = await fetchDashboardSummary();
 
-      setWeather(data.weather);
+      setRawLiveWeather(data.weather);
       setSchedule(data.schedule || []);
       setTasks(data.tasks || []);
       setHealth(data.health);
       setIsLive(true);
+
+      // If backend has user's saved locations, sync with local state
+      if (data.savedLocations && data.savedLocations.length > 0) {
+        setSavedLocations(data.savedLocations);
+        const defaultLoc = data.savedLocations.find((l) => l.isDefault) || data.savedLocations[0];
+        setActiveLocationState((prev) =>
+          data.savedLocations?.some((l) => l.id === prev.id) ? prev : defaultLoc
+        );
+        persistLocations(data.savedLocations, defaultLoc.id);
+      }
     } catch (err) {
       console.warn('Backend unavailable:', err);
-      setWeather(null);
+      setRawLiveWeather(null);
       setSchedule([]);
       setTasks([]);
       setHealth(null);
@@ -60,15 +100,98 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       await executeTVAction('completeTask', { taskId, tasklistId: task?.tasklistId });
     } catch (err) {
       console.error('Failed to complete task on backend:', err);
-      // Re-sync on failure
       loadData();
     }
   }, [loadData, tasks]);
 
+  // Multi-location actions
+  const setActiveLocation = useCallback((loc: SavedLocation) => {
+    setActiveLocationState(loc);
+    persistLocations(savedLocations, loc.id);
+  }, [savedLocations]);
+
+  const cycleNextLocation = useCallback(() => {
+    setSavedLocations((currentLocs) => {
+      const currentIndex = currentLocs.findIndex((l) => l.id === activeLocation.id);
+      const nextIndex = (currentIndex + 1) % currentLocs.length;
+      const nextLoc = currentLocs[nextIndex];
+      setActiveLocationState(nextLoc);
+      persistLocations(currentLocs, nextLoc.id);
+      return currentLocs;
+    });
+  }, [activeLocation.id]);
+
+  const addLocation = useCallback(async (name: string, query: string) => {
+    const newLoc: SavedLocation = {
+      id: `loc-${Date.now()}`,
+      name: name.trim() || query.trim(),
+      query: query.trim(),
+      isDefault: false,
+    };
+    const updated = [...savedLocations, newLoc];
+    setSavedLocations(updated);
+    setActiveLocationState(newLoc);
+    await persistLocations(updated, newLoc.id);
+
+    // Sync to Firestore DB
+    const targetDefault = updated.find((l) => l.isDefault) || updated[0];
+    executeTVAction('updatePreferences', {
+      savedLocations: updated,
+      weatherCity: targetDefault.query,
+    }).catch((err) => console.warn('Could not sync locations to backend:', err));
+  }, [savedLocations]);
+
+  const removeLocation = useCallback(async (id: string) => {
+    if (savedLocations.length <= 1) return; // Keep at least one location
+    const updated = savedLocations.filter((l) => l.id !== id);
+    const nextActive = activeLocation.id === id ? updated[0] : activeLocation;
+    setSavedLocations(updated);
+    setActiveLocationState(nextActive);
+    await persistLocations(updated, nextActive.id);
+
+    // Sync to Firestore DB
+    const targetDefault = updated.find((l) => l.isDefault) || updated[0];
+    executeTVAction('updatePreferences', {
+      savedLocations: updated,
+      weatherCity: targetDefault.query,
+    }).catch((err) => console.warn('Could not sync locations to backend:', err));
+  }, [savedLocations, activeLocation]);
+
+  const setDefaultLocation = useCallback(async (id: string) => {
+    const updated = savedLocations.map((l) => ({
+      ...l,
+      isDefault: l.id === id,
+    }));
+    setSavedLocations(updated);
+    const targetLoc = updated.find((l) => l.id === id);
+    if (targetLoc) {
+      setActiveLocationState(targetLoc);
+      await persistLocations(updated, targetLoc.id);
+      // Sync default preference and location list with backend
+      try {
+        await executeTVAction('updatePreferences', {
+          savedLocations: updated,
+          weatherCity: targetLoc.query,
+        });
+      } catch (e) {
+        console.warn('Could not sync default location to backend:', e);
+      }
+    }
+  }, [savedLocations]);
+
+
+  const getWeatherForLoc = useCallback(
+    (loc: SavedLocation): ExtendedWeather => {
+      return getWeatherForLocation(loc, rawLiveWeather);
+    },
+    [rawLiveWeather]
+  );
+
+  // Computed weather for the currently active location
+  const currentActiveWeather: ExtendedWeather = getWeatherForLocation(activeLocation, rawLiveWeather);
+
   useEffect(() => {
     loadData();
-
-    // Auto-refresh interval while TV app is running
     const interval = setInterval(loadData, REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [loadData]);
@@ -76,7 +199,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   return (
     <DashboardContext.Provider
       value={{
-        weather,
+        weather: currentActiveWeather,
         schedule,
         tasks,
         health,
@@ -85,6 +208,15 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         error,
         refresh: loadData,
         completeTask,
+
+        savedLocations,
+        activeLocation,
+        setActiveLocation,
+        cycleNextLocation,
+        addLocation,
+        removeLocation,
+        setDefaultLocation,
+        getWeatherForLoc,
       }}
     >
       {children}
@@ -99,3 +231,4 @@ export function useDashboard(): DashboardContextValue {
   }
   return context;
 }
+

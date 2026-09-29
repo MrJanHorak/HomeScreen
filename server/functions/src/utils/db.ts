@@ -39,6 +39,7 @@ export async function getStoredUserTokens(userId: string): Promise<StoredUserTok
     },
     location: data.location,
     weatherCity: data.weatherCity || data.location?.city || "New York",
+    savedLocations: data.savedLocations,
     stepGoal: data.stepGoal || 10000,
     distanceGoal: data.distanceGoal || 8,
   };
@@ -69,6 +70,9 @@ export async function saveUserTokens(
   if (tokens.weatherCity !== undefined) {
     updateData.weatherCity = tokens.weatherCity;
   }
+  if (tokens.savedLocations !== undefined) {
+    updateData.savedLocations = tokens.savedLocations;
+  }
   if (tokens.stepGoal !== undefined) {
     updateData.stepGoal = tokens.stepGoal;
   }
@@ -78,6 +82,7 @@ export async function saveUserTokens(
 
   await db.collection("users").doc(userId).set(updateData, { merge: true });
 }
+
 
 /**
  * Cache computed dashboard summary for high-performance retrieval and offline resilience

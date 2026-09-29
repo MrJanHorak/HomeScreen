@@ -1,5 +1,5 @@
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
-// import { PieChart } from 'react-native-gifted-charts';
+import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 // components
 import TVText from '../tv/TVText';
@@ -50,15 +50,20 @@ export default function ActivityCard() {
 
   return (
     <View style={styles.container}>
-      <TVText
-        text='ACTIVITY'
-        typography='caption'
-        color='textSecondary'
-        marginBottom='sm'
-      />
+      {/* Header */}
+      <View style={styles.headerRow}>
+        <MaterialCommunityIcons
+          name="heart-pulse"
+          size={22}
+          color="#38BDF8"
+        />
+        <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>
+          ACTIVITY
+        </Text>
+      </View>
 
       <View style={styles.chartWrapper}>
-        <TVProgressRing progress={data.progress} size={70} />
+        <TVProgressRing progress={data.progress} size={82} strokeWidth={8} />
         <ActivityStats
           steps={steps}
           distance={distance}
@@ -72,9 +77,21 @@ export default function ActivityCard() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    justifyContent: 'center',
+    height: '100%',
+    paddingHorizontal: 4,
+  },
+  headerRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
   center: {
     flex: 1,
@@ -85,6 +102,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 14,
   },
 });
+

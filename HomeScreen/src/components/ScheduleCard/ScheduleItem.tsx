@@ -1,65 +1,121 @@
-import { View, StyleSheet } from 'react-native';
-import TVText from '../tv/TVText';
+import { View, StyleSheet, Text } from 'react-native';
 import { CalendarItem } from '../../hooks/useSchedule';
+import { useTheme } from '../../theme/ThemeContext';
 
-//helpers
-import { splitTimeString } from '../../helpers/dateTimeHelpers';
-
-function ScheduleItem({ title, time, endTime, category, color }: CalendarItem) {
-  const [timeDigits, period] = splitTimeString(time);
+export default function ScheduleItem({
+  title,
+  time,
+  endTime,
+  category,
+  color,
+}: CalendarItem) {
+  const theme = useTheme();
 
   return (
     <View style={styles.rowContainer}>
-      {/* Left Column: Fixed Width Right-Aligned Time */}
-      <View style={styles.timeColumn}>
-        <TVText text={timeDigits} typography='body' style={styles.timeText} />
-        <TVText
-          text={period}
-          typography='caption'
-          color='textSecondary'
-          style={styles.periodText}
-        />
+      {/* Left: Time Pill */}
+      <View style={[styles.timeBadge, { borderColor: color ? `${color}55` : 'rgba(255,255,255,0.15)' }]}>
+        <Text style={[styles.timeText, { color: theme.colors.textPrimary }]}>
+          {time}
+        </Text>
       </View>
 
-      {/* Vertical Accent Divider */}
-      <View style={{ backgroundColor: color, width: 3 }} />
-
-      {/* Right Column: Event Info */}
+      {/* Center: Event Info */}
       <View style={styles.detailsColumn}>
-        <TVText text={title} typography='caption' numberOfLines={1} />
-        <TVText
-          text={`${time} - ${endTime}`}
-          typography='caption'
-          color='textSecondary'
-        />
+        <Text
+          numberOfLines={1}
+          style={[styles.titleText, { color: theme.colors.textPrimary }]}
+        >
+          {title}
+        </Text>
+        <Text
+          numberOfLines={1}
+          style={[styles.rangeText, { color: theme.colors.textSecondary }]}
+        >
+          {endTime ? `${time} – ${endTime}` : time}
+        </Text>
       </View>
+
+      {/* Right: Category Indicator Pill */}
+      {/* {category ? (
+        <View
+          style={[
+            styles.categoryPill,
+            {
+              backgroundColor: color ? `${color}22` : 'rgba(255, 255, 255, 0.08)',
+              borderColor: color ? `${color}66` : 'transparent',
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.categoryText,
+              { color: color || theme.colors.textSecondary },
+            ]}
+          >
+            {category}
+          </Text>
+        </View>
+      ) : ( */}
+        <View style={[styles.accentDot, { backgroundColor: color || theme.colors.focusRing }]} />
+      {/* )} */}
     </View>
   );
 }
-export default ScheduleItem;
 
 const styles = StyleSheet.create({
   rowContainer: {
     flexDirection: 'row',
-    paddingVertical: 5,
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    marginBottom: 8,
+    gap: 14,
   },
-  timeColumn: {
-    width: 110,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'baseline',
-    paddingRight: 16,
+  timeBadge: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: 1,
+    minWidth: 84,
+    alignItems: 'center',
   },
   timeText: {
+    fontSize: 15,
+    fontWeight: '700',
     fontVariant: ['tabular-nums'],
-    textAlign: 'right',
-  },
-  periodText: {
-    // marginLeft: 4,
-    // width: 28,
   },
   detailsColumn: {
-    // flex: 1,
-    // paddingLeft: 12,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  titleText: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  rangeText: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+  categoryPill: {
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  categoryText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  accentDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 4,
   },
 });
+

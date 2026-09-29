@@ -1,6 +1,12 @@
-// shared/src/types.ts
+export interface SavedLocation {
+  id: string;
+  name: string;
+  query: string;
+  isDefault?: boolean;
+}
 
 export interface WeatherForecast {
+
   day: string;
   condition: string;
   icon: string;
@@ -56,8 +62,10 @@ export interface DashboardSummaryResponse {
   tasks: TaskItem[];
   health: Activity;
   weather: Weather;
+  savedLocations?: SavedLocation[];
   updatedAt: string;
 }
+
 
 export interface MediaItem {
   id: string;

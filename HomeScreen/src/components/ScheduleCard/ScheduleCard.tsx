@@ -1,15 +1,16 @@
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { ActivityIndicator, View, StyleSheet, Text } from 'react-native';
 import { useSchedule } from '../../hooks/useSchedule';
-
-import TVText from '../tv/TVText';
 import ScheduleItem from './ScheduleItem';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useTheme } from '../../theme/ThemeContext';
 
 export default function ScheduleCard() {
   const { data, isLoading } = useSchedule();
+  const theme = useTheme();
   const maxItems = 3;
 
   if (isLoading) {
-    return <ActivityIndicator />;
+    return <ActivityIndicator color={theme.colors.focusRing} />;
   }
 
   const events = data ?? [];
@@ -18,56 +19,86 @@ export default function ScheduleCard() {
 
   return (
     <View style={styles.container}>
-      <View>
-        <TVText
-          style={styles.header}
-          text='TODAY'
-          typography='body'
-          color='textPrimary'
-        />
-        <View style={styles.schedule}>
-          {visibleEvents.map((calendarItem) => (
-            <ScheduleItem
-              key={calendarItem.id}
-              id={calendarItem.id}
-              title={calendarItem.title}
-              time={calendarItem.time}
-              endTime={calendarItem.endTime}
-              category={calendarItem.category}
-              color={calendarItem.color}
-            />
-          ))}
+      {/* Header Row */}
+      <View style={styles.headerRow}>
+        <View style={styles.titleWithIcon}>
+          <MaterialCommunityIcons
+            name="calendar-clock"
+            size={22}
+            color={theme.colors.focusRing}
+          />
+          <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>
+            TODAY'S SCHEDULE
+          </Text>
         </View>
+
+        {remainingCount > 0 ? (
+          <View style={styles.moreBadge}>
+            <Text style={[styles.moreBadgeText, { color: theme.colors.accent }]}>
+              +{remainingCount} more
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.moreBadge}>
+            <Text style={[styles.moreBadgeText, { color: theme.colors.textSecondary }]}>
+              {events.length} events
+            </Text>
+          </View>
+        )}
       </View>
 
-      {/* Footer Badge */}
-      {remainingCount > 0 && (
-        <TVText
-          style={styles.bottomMore}
-          text={`+${remainingCount} more`}
-          typography='caption'
-          color='accent'
-        />
-      )}
+      {/* Schedule Items */}
+      <View style={styles.scheduleList}>
+        {visibleEvents.map((calendarItem) => (
+          <ScheduleItem
+            key={calendarItem.id}
+            id={calendarItem.id}
+            title={calendarItem.title}
+            time={calendarItem.time}
+            endTime={calendarItem.endTime}
+            category={calendarItem.category}
+            color={calendarItem.color}
+          />
+        ))}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    // flex: 1,
-    // alignContent: 'center',
-    // justifyContent: 'center',
+    justifyContent: 'center',
+    height: '100%',
+    paddingHorizontal: 4,
   },
-  header: {
-    alignSelf: 'center',
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
   },
-  schedule: {
-    // gap: 4,
-    // marginLeft: 15,
-    marginBottom: -8,
+  titleWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  bottomMore: {
-    alignSelf: 'flex-end',
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  moreBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  moreBadgeText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  scheduleList: {
+    width: '100%',
   },
 });
+

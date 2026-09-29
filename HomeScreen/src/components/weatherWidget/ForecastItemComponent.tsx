@@ -1,13 +1,10 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, Text } from 'react-native';
 import {
-  formatHighLow,
+  formatTemperature,
   getWeatherIconName,
 } from '../../helpers/weatherHelpers';
-
-import { FontAwesome5 } from '@expo/vector-icons/';
-import TVText from '../tv/TVText';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
-
 import { ForecastItem } from '../../hooks/useWeather';
 
 export default function ForecastItemComponent({
@@ -18,34 +15,52 @@ export default function ForecastItemComponent({
   low,
 }: ForecastItem) {
   const theme = useTheme();
-  const iconName = getWeatherIconName(icon);
-  const highLowText = formatHighLow(high, low);
+  const iconConfig = getWeatherIconName(icon);
+  const formattedHigh = formatTemperature(high);
 
   return (
     <View style={styles.container}>
-      <TVText text={day} typography='caption' />
-      <FontAwesome5 name={icon} size={22} color={theme.colors.textPrimary} />
-      {/* <TVText text={highLowText} typography='caption' /> */}
+      <Text style={[styles.dayText, { color: theme.colors.textSecondary }]}>
+        {day.toUpperCase()}
+      </Text>
+      <MaterialCommunityIcons
+        name={iconConfig.name}
+        size={24}
+        color={theme.colors.textPrimary}
+        style={styles.icon}
+      />
+      <Text style={[styles.highText, { color: theme.colors.textPrimary }]}>
+        {formattedHigh}
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    // flexDirection: 'row',
     alignItems: 'center',
-    // justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    minWidth: 52,
   },
-  tempIconRow: {
-    flexDirection: 'row',
-    // alignItems: 'center',
-    // gap: 10,
-    // marginBottom: 4,
+  dayText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginBottom: 4,
   },
-  conditionText: {
-    textAlign: 'center',
+  icon: {
+    marginVertical: 4,
   },
-  forecastRow: {
-    flexDirection: 'row',
+  highText: {
+    fontSize: 15,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+    marginTop: 2,
   },
 });
+

@@ -13,13 +13,22 @@ export interface UserLocation {
   units?: "metric" | "imperial";
 }
 
+export interface SavedLocation {
+  id: string;
+  name: string;
+  query: string;
+  isDefault?: boolean;
+}
+
 export interface StoredUserTokens {
   google: GoogleTokens;
   location?: UserLocation;
   weatherCity?: string;
+  savedLocations?: SavedLocation[];
   stepGoal?: number;
   distanceGoal?: number;
 }
+
 
 export interface CalendarEventSummary {
   id: string;
@@ -76,8 +85,10 @@ export interface DashboardSummaryResponse {
   tasks: TaskSummary[];
   health: HealthSummary;
   weather: WeatherSummary;
+  savedLocations?: SavedLocation[];
   updatedAt: string;
 }
+
 
 export interface DevicePairingCode {
   code: string;

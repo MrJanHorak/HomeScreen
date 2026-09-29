@@ -66,8 +66,10 @@ export const getDashboardSummaryHandler = onRequest(
           weatherResult.status === "fulfilled"
             ? weatherResult.value
             : { temp: "--", condition: "Unknown" },
+        savedLocations: userTokens.savedLocations,
         updatedAt: new Date().toISOString(),
       };
+
 
       // 4. Save cache asynchronously in background for fast TV bootstrap
       saveDashboardCache(userId, responsePayload).catch((cacheErr) =>

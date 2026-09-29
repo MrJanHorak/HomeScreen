@@ -1,13 +1,7 @@
-import { View } from 'react-native';
-import TVText from '../tv/TVText';
-
+import { View, StyleSheet, Text } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-// import { Ionicons } from '../../hooks/useHealthData';
-
-
-//theme
 import { useTheme } from '../../theme/ThemeContext';
-// // types
+
 interface ActivityStatsProps {
   steps: number;
   calories: number;
@@ -21,51 +15,84 @@ export default function ActivityStats({
   distance,
   activeMinutes,
 }: ActivityStatsProps) {
+  const theme = useTheme();
 
-  const theme = useTheme()
+  const formattedSteps = steps.toLocaleString();
+  const formattedCalories = calories.toLocaleString();
+
   return (
-    <View style={{ flexDirection: 'column' }}>
-      <View style={{ flexDirection: 'row' , gap: 8}}>
-        <MaterialCommunityIcons name='walk' size={24} color={theme.colors.textPrimary} />
-        {/* <Ionicons name="footsteps" size={24} color="black" /> */}
-        <TVText
-          text={`${steps}`}
-          typography='caption'
-          color='textPrimary'
-          marginBottom='xs'
-        />
+    <View style={styles.statsGrid}>
+      {/* Steps */}
+      <View style={styles.statRow}>
+        <MaterialCommunityIcons name="walk" size={20} color="#38BDF8" style={styles.statIcon} />
+        <Text style={[styles.statValue, { color: theme.colors.textPrimary }]}>
+          {formattedSteps}
+        </Text>
+        <Text style={[styles.statUnit, { color: theme.colors.textSecondary }]}>
+          steps
+        </Text>
       </View>
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        <MaterialCommunityIcons
-          name='map-marker-distance'
-          size={24}
-          color={theme.colors.textPrimary}
-        />
-        <TVText
-          text={`${distance} km`}
-          typography='caption'
-          color='textPrimary'
-          marginBottom='xs'
-        />
+
+      {/* Distance */}
+      <View style={styles.statRow}>
+        <MaterialCommunityIcons name="map-marker-distance" size={20} color="#34D399" style={styles.statIcon} />
+        <Text style={[styles.statValue, { color: theme.colors.textPrimary }]}>
+          {distance}
+        </Text>
+        <Text style={[styles.statUnit, { color: theme.colors.textSecondary }]}>
+          km
+        </Text>
       </View>
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        <MaterialCommunityIcons name='timer-outline' size={24} color={theme.colors.textPrimary} />
-        <TVText
-          text={`${activeMinutes} min`}
-          typography='caption'
-          color='textPrimary'
-          marginBottom='xs'
-        />
+
+      {/* Active Time */}
+      <View style={styles.statRow}>
+        <MaterialCommunityIcons name="timer-outline" size={20} color="#FBBF24" style={styles.statIcon} />
+        <Text style={[styles.statValue, { color: theme.colors.textPrimary }]}>
+          {activeMinutes}
+        </Text>
+        <Text style={[styles.statUnit, { color: theme.colors.textSecondary }]}>
+          min
+        </Text>
       </View>
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        <MaterialCommunityIcons name='lightning-bolt' size={24} color={theme.colors.textPrimary} />
-        <TVText
-          text={`${calories} cal`}
-          typography='caption'
-          color='textPrimary'
-          marginBottom='xs'
-        />
+
+      {/* Calories */}
+      <View style={styles.statRow}>
+        <MaterialCommunityIcons name="lightning-bolt" size={20} color="#F87171" style={styles.statIcon} />
+        <Text style={[styles.statValue, { color: theme.colors.textPrimary }]}>
+          {formattedCalories}
+        </Text>
+        <Text style={[styles.statUnit, { color: theme.colors.textSecondary }]}>
+          cal
+        </Text>
       </View>
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  statsGrid: {
+    flexDirection: 'column',
+    gap: 7,
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  statRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statIcon: {
+    width: 24,
+    marginRight: 6,
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+    marginRight: 4,
+  },
+  statUnit: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+});
+
