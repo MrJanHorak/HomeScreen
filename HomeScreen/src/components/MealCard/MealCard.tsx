@@ -22,7 +22,7 @@ export default function MealCard() {
             color={theme.colors.accent}
           />
           <Text style={[styles.headerTitle, { color: theme.colors.textPrimary }]}>
-            DINNER
+            DINNER PREVIEW
           </Text>
         </View>
         <View style={styles.cookBadge}>

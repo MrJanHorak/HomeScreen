@@ -189,7 +189,7 @@ export default function SettingsDetailView() {
                       )}
                     </View>
                     <Text style={[styles.locQuery, { color: theme.colors.textSecondary }]}>
-                      {loc.query} • {locWeather.temperature}° {locWeather.condition}
+                      {loc.query} • {locWeather.temp} {locWeather.condition}
                     </Text>
                   </View>
                 </View>
@@ -253,7 +253,7 @@ export default function SettingsDetailView() {
             <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>Data Sync</Text>
           </View>
           <Text style={[styles.infoValue, { color: isLive ? '#10B981' : '#F59E0B' }]}>
-            {isLive ? 'Connected & Live' : 'Offline / Mock Data'}
+            {isLive ? 'Connected & Live' : 'Unavailable'}
           </Text>
         </View>
 
@@ -263,7 +263,7 @@ export default function SettingsDetailView() {
             <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>Signed-in User</Text>
           </View>
           <Text style={[styles.infoValue, { color: theme.colors.textPrimary }]}>
-            {user?.email || 'Jan Horak'}
+            {user?.email || 'Not signed in'}
           </Text>
         </View>
 
@@ -399,7 +399,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
     fontSize: 14,
-    outline: 'none',
+    // outline: 'none',
   } as any,
   saveBtn: {
     paddingVertical: 10,

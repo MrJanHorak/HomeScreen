@@ -12,11 +12,6 @@ export default function WeatherWidget() {
   const { activeLocation, cycleNextLocation, savedLocations } = useDashboard();
   const theme = useTheme();
 
-  if (isLoading) return <ActivityIndicator color={theme.colors.focusRing} />;
-  if (!data || data.temperature === undefined) {
-    return <TVText text="Weather unavailable" typography="body" color="textSecondary" />;
-  }
-
   const hasMultiple = savedLocations.length > 1;
 
   return (
@@ -40,23 +35,31 @@ export default function WeatherWidget() {
         )}
       </Pressable>
 
-      <CurrentWeatherHeader
-        temperature={data.temperature}
-        condition={data.condition}
-        conditionIcon={data.conditionIcon || 'cloud'}
-      />
-      <View style={styles.forecastRow}>
-        {data.forecast?.map((forecastItem) => (
-          <ForecastItemComponent
-            key={forecastItem.day}
-            day={forecastItem.day}
-            condition={forecastItem.condition}
-            icon={forecastItem.icon}
-            high={forecastItem.high}
-            low={forecastItem.low}
+      {isLoading || data?.condition === 'Loading weather' ? (
+        <ActivityIndicator color={theme.colors.focusRing} />
+      ) : !data || data.temperature === undefined ? (
+        <TVText text="Weather unavailable" typography="body" color="textSecondary" />
+      ) : (
+        <>
+          <CurrentWeatherHeader
+            temperature={data.temperature}
+            condition={data.condition}
+            conditionIcon={data.conditionIcon || 'cloud'}
           />
-        ))}
-      </View>
+          <View style={styles.forecastRow}>
+            {data.forecast?.map((forecastItem) => (
+              <ForecastItemComponent
+                key={forecastItem.day}
+                day={forecastItem.day}
+                condition={forecastItem.condition}
+                icon={forecastItem.icon}
+                high={forecastItem.high}
+                low={forecastItem.low}
+              />
+            ))}
+          </View>
+        </>
+      )}
     </View>
   );
 }

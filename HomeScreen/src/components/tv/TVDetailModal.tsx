@@ -51,7 +51,10 @@ export default function TVDetailModal({
 
     // Escape key on Web / Browser
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' || e.key === 'Backspace') {
+      const target = e.target as HTMLElement | null;
+      const isEditing = target?.isContentEditable ||
+        target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA';
+      if (e.key === 'Escape' || (e.key === 'Backspace' && !isEditing)) {
         onClose();
       }
     };

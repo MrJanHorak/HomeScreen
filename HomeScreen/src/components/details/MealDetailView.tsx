@@ -24,7 +24,7 @@ export default function MealDetailView() {
           <View style={styles.tonightHeader}>
             <View style={styles.titleBadge}>
               <MaterialCommunityIcons name="silverware-fork-knife" size={20} color="#F59E0B" />
-              <Text style={styles.titleBadgeText}>TONIGHT'S MENU</Text>
+              <Text style={styles.titleBadgeText}>SAMPLE MENU</Text>
             </View>
             <View style={styles.cookChip}>
               <Text style={styles.cookChipText}>👨‍🍳 Chef: Dad</Text>
@@ -58,7 +58,7 @@ export default function MealDetailView() {
       {/* Full Weekly Meal Plan */}
       <View style={styles.weeklySection}>
         <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>
-          Weekly Family Meal Plan
+          Sample Weekly Meal Plan
         </Text>
         <View style={styles.mealTable}>
           {WEEK_MEALS.map((item, idx) => (

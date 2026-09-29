@@ -10,6 +10,7 @@
 import {setGlobalOptions} from "firebase-functions";
 
 import { getDashboardSummaryHandler } from "./getDashboardSummary";
+import { getLocationWeatherHandler } from "./getLocationWeather";
 import { authDeviceHandler } from "./authDevice";
 import { executeActionHandler } from "./executeAction";
 import { syncUserDataHandler } from "./syncUserData";
@@ -40,6 +41,7 @@ setGlobalOptions({maxInstances: 10});
 // });
 
 export const getDashboardSummary = getDashboardSummaryHandler;
+export const getLocationWeather = getLocationWeatherHandler;
 export const authDevice = authDeviceHandler;
 export const executeAction = executeActionHandler;
 export const syncUserData = syncUserDataHandler;

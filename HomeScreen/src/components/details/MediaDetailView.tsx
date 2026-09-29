@@ -7,7 +7,6 @@ import { mockContinueWatching } from '../../data/mockData';
 export default function MediaDetailView() {
   const theme = useTheme();
   const [selectedShow, setSelectedShow] = useState(mockContinueWatching[0]);
-  const [playFocused, setPlayFocused] = useState(false);
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -48,29 +47,18 @@ export default function MediaDetailView() {
             </Text>
           </View>
 
-          {/* Resume Play Button */}
-          <Pressable
-            hasTVPreferredFocus={true}
-            onFocus={() => setPlayFocused(true)}
-            onBlur={() => setPlayFocused(false)}
-            style={[
-              styles.playButton,
-              playFocused && [
-                styles.playButtonFocused,
-                { borderColor: theme.colors.focusRing, backgroundColor: '#0284C7' },
-              ],
-            ]}
-          >
+          {/* The queue is a design preview until a media source is connected. */}
+          <View style={styles.playButton}>
             <MaterialCommunityIcons name="play" size={24} color="#FFFFFF" />
-            <Text style={styles.playButtonText}>Resume Playback</Text>
-          </Pressable>
+            <Text style={styles.playButtonText}>Sample queue</Text>
+          </View>
         </View>
       </View>
 
       {/* Continue Watching Carousel */}
       <View style={styles.carouselSection}>
         <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>
-          Continue Watching Queue ({mockContinueWatching.length})
+          Sample Watch Queue ({mockContinueWatching.length})
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.showsRow}>
           {mockContinueWatching.map((item) => {

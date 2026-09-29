@@ -1,5 +1,5 @@
 import { auth } from './firebase';
-import type { DashboardSummaryResponse, DevicePairingResponse } from '../../../shared/src/types';
+import type { DashboardSummaryResponse, DevicePairingResponse, Weather } from '../../../shared/src/types';
 
 // Default to Firebase Local Emulator or configured remote URL
 const DEFAULT_API_URL =
@@ -28,6 +28,16 @@ export async function fetchDashboardSummary(): Promise<DashboardSummaryResponse>
     throw new Error(`Failed to fetch dashboard: ${response.status} ${response.statusText}`);
   }
 
+  return response.json();
+}
+
+/** Fetch real weather for one saved location. */
+export async function fetchLocationWeather(city: string): Promise<Weather> {
+  const url = `${DEFAULT_API_URL}/getLocationWeather?city=${encodeURIComponent(city)}`;
+  const response = await fetch(url, { method: 'GET', headers: await authHeaders() });
+  if (!response.ok) {
+    throw new Error(`Weather lookup failed: ${response.status}`);
+  }
   return response.json();
 }
 

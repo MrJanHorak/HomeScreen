@@ -14,6 +14,13 @@ export interface WeatherForecast {
   low: number;
 }
 
+export interface HourlyForecastItem {
+  time: string;
+  temp: number;
+  icon: string;
+  pop: string;
+}
+
 export interface Weather {
   temp: string;
   condition: string;
@@ -24,9 +31,11 @@ export interface Weather {
   humidity?: number;
   windSpeed?: number;
   windDirection?: string;
+  pressure?: number;
   high?: number;
   low?: number;
   forecast?: WeatherForecast[];
+  hourly?: HourlyForecastItem[];
 }
 
 export interface CalendarEvent {

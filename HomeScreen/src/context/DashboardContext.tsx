@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import type { Weather, CalendarEvent, TaskItem, Activity, DashboardSummaryResponse, SavedLocation } from '../../../shared/src/types';
-import { fetchDashboardSummary, executeTVAction } from '../services/api';
+import { fetchDashboardSummary, fetchLocationWeather, executeTVAction } from '../services/api';
 import {
   DEFAULT_LOCATIONS,
   ExtendedWeather,
@@ -36,7 +36,7 @@ const DashboardContext = createContext<DashboardContextValue | null>(null);
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // Auto-refresh every 5 minutes
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
-  const [rawLiveWeather, setRawLiveWeather] = useState<Weather | null>(null);
+  const [weatherByLocation, setWeatherByLocation] = useState<Record<string, Weather>>({});
   const [schedule, setSchedule] = useState<CalendarEvent[]>([]);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [health, setHealth] = useState<Activity | null>(null);
@@ -63,24 +63,13 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       setError(null);
       const data: DashboardSummaryResponse = await fetchDashboardSummary();
 
-      setRawLiveWeather(data.weather);
       setSchedule(data.schedule || []);
       setTasks(data.tasks || []);
       setHealth(data.health);
       setIsLive(true);
 
-      // If backend has user's saved locations, sync with local state
-      if (data.savedLocations && data.savedLocations.length > 0) {
-        setSavedLocations(data.savedLocations);
-        const defaultLoc = data.savedLocations.find((l) => l.isDefault) || data.savedLocations[0];
-        setActiveLocationState((prev) =>
-          data.savedLocations?.some((l) => l.id === prev.id) ? prev : defaultLoc
-        );
-        persistLocations(data.savedLocations, defaultLoc.id);
-      }
     } catch (err) {
       console.warn('Backend unavailable:', err);
-      setRawLiveWeather(null);
       setSchedule([]);
       setTasks([]);
       setHealth(null);
@@ -107,19 +96,16 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   // Multi-location actions
   const setActiveLocation = useCallback((loc: SavedLocation) => {
     setActiveLocationState(loc);
-    persistLocations(savedLocations, loc.id);
+    void persistLocations(savedLocations, loc.id);
   }, [savedLocations]);
 
   const cycleNextLocation = useCallback(() => {
-    setSavedLocations((currentLocs) => {
-      const currentIndex = currentLocs.findIndex((l) => l.id === activeLocation.id);
-      const nextIndex = (currentIndex + 1) % currentLocs.length;
-      const nextLoc = currentLocs[nextIndex];
-      setActiveLocationState(nextLoc);
-      persistLocations(currentLocs, nextLoc.id);
-      return currentLocs;
-    });
-  }, [activeLocation.id]);
+    if (savedLocations.length < 2) return;
+    const currentIndex = savedLocations.findIndex((loc) => loc.id === activeLocation.id);
+    const nextLoc = savedLocations[(currentIndex + 1) % savedLocations.length];
+    setActiveLocationState(nextLoc);
+    void persistLocations(savedLocations, nextLoc.id);
+  }, [activeLocation.id, savedLocations]);
 
   const addLocation = useCallback(async (name: string, query: string) => {
     const newLoc: SavedLocation = {
@@ -143,7 +129,9 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   const removeLocation = useCallback(async (id: string) => {
     if (savedLocations.length <= 1) return; // Keep at least one location
-    const updated = savedLocations.filter((l) => l.id !== id);
+    const remaining = savedLocations.filter((l) => l.id !== id);
+    const defaultId = remaining.find((loc) => loc.isDefault)?.id || remaining[0].id;
+    const updated = remaining.map((loc) => ({ ...loc, isDefault: loc.id === defaultId }));
     const nextActive = activeLocation.id === id ? updated[0] : activeLocation;
     setSavedLocations(updated);
     setActiveLocationState(nextActive);
@@ -181,14 +169,35 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
 
   const getWeatherForLoc = useCallback(
-    (loc: SavedLocation): ExtendedWeather => {
-      return getWeatherForLocation(loc, rawLiveWeather);
-    },
-    [rawLiveWeather]
+    (loc: SavedLocation): ExtendedWeather =>
+      getWeatherForLocation(loc, weatherByLocation[loc.id]),
+    [weatherByLocation]
   );
 
-  // Computed weather for the currently active location
-  const currentActiveWeather: ExtendedWeather = getWeatherForLocation(activeLocation, rawLiveWeather);
+  const currentActiveWeather = getWeatherForLoc(activeLocation);
+
+  const loadLocationWeather = useCallback(async (loc: SavedLocation) => {
+    try {
+      const result = await fetchLocationWeather(loc.query);
+      setWeatherByLocation((previous) => ({ ...previous, [loc.id]: result }));
+    } catch (error) {
+      console.warn(`Weather unavailable for ${loc.query}:`, error);
+      setWeatherByLocation((previous) => ({
+        ...previous,
+        [loc.id]: { temp: '--', condition: 'Unavailable' },
+      }));
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadLocationWeather(activeLocation);
+    const interval = setInterval(() => void loadLocationWeather(activeLocation), REFRESH_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [activeLocation, loadLocationWeather]);
+
+  const refresh = useCallback(async () => {
+    await Promise.all([loadData(), loadLocationWeather(activeLocation)]);
+  }, [activeLocation, loadData, loadLocationWeather]);
 
   useEffect(() => {
     loadData();
@@ -206,7 +215,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         isLoading,
         isLive,
         error,
-        refresh: loadData,
+        refresh,
         completeTask,
 
         savedLocations,

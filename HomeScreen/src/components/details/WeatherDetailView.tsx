@@ -10,15 +10,7 @@ export default function WeatherDetailView() {
   const { savedLocations, activeLocation, setActiveLocation, getWeatherForLoc } = useDashboard();
 
   const weather = getWeatherForLoc(activeLocation);
-  const hourlyData = weather.hourly || [
-    { time: 'Now', temp: weather.temperature || 70, icon: weather.conditionIcon || 'sun', pop: '0%' },
-    { time: '2 PM', temp: (weather.temperature || 70) + 3, icon: 'sun', pop: '0%' },
-    { time: '4 PM', temp: (weather.temperature || 70) + 4, icon: 'sun', pop: '5%' },
-    { time: '6 PM', temp: (weather.temperature || 70) + 1, icon: 'cloud-sun', pop: '10%' },
-    { time: '8 PM', temp: (weather.temperature || 70) - 4, icon: 'cloud-sun', pop: '15%' },
-    { time: '10 PM', temp: (weather.temperature || 70) - 7, icon: 'moon', pop: '10%' },
-    { time: '12 AM', temp: (weather.temperature || 70) - 9, icon: 'moon', pop: '5%' },
-  ];
+  const hourlyData = weather.hourly || [];
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -60,7 +52,7 @@ export default function WeatherDetailView() {
                     { color: isSelected ? theme.colors.focusRing : theme.colors.textSecondary },
                   ]}
                 >
-                  {locWeather.temperature}°
+                  {locWeather.temp}
                 </Text>
               </Pressable>
             );
@@ -74,15 +66,17 @@ export default function WeatherDetailView() {
         <View style={styles.heroLeft}>
           <View style={styles.tempGroup}>
             <Text style={[styles.mainTemp, { color: theme.colors.textPrimary }]}>
-              {weather.temperature}°
+              {weather.temp}
             </Text>
             <View style={styles.conditionCol}>
               <Text style={[styles.conditionTitle, { color: theme.colors.textPrimary }]}>
                 {weather.condition}
               </Text>
-              <Text style={[styles.feelsLike, { color: theme.colors.textSecondary }]}>
-                Feels like {weather.feelsLike}° • H: {weather.high}° L: {weather.low}°
-              </Text>
+              {weather.feelsLike !== undefined && (
+                <Text style={[styles.feelsLike, { color: theme.colors.textSecondary }]}>
+                  Feels like {weather.feelsLike}° • H: {weather.high}° L: {weather.low}°
+                </Text>
+              )}
               <Text style={[styles.locationText, { color: theme.colors.focusRing }]}>
                 📍 {weather.location}
               </Text>
@@ -95,28 +89,26 @@ export default function WeatherDetailView() {
           <View style={styles.metricTile}>
             <MaterialCommunityIcons name="water-percent" size={24} color="#38BDF8" />
             <Text style={[styles.metricLabel, { color: theme.colors.textSecondary }]}>Humidity</Text>
-            <Text style={[styles.metricValue, { color: theme.colors.textPrimary }]}>{weather.humidity}%</Text>
+            <Text style={[styles.metricValue, { color: theme.colors.textPrimary }]}>
+              {weather.humidity !== undefined ? `${weather.humidity}%` : '--'}
+            </Text>
           </View>
 
           <View style={styles.metricTile}>
             <MaterialCommunityIcons name="weather-windy" size={24} color="#34D399" />
             <Text style={[styles.metricLabel, { color: theme.colors.textSecondary }]}>Wind</Text>
             <Text style={[styles.metricValue, { color: theme.colors.textPrimary }]}>
-              {weather.windSpeed} mph {weather.windDirection}
+              {weather.windSpeed !== undefined ? `${weather.windSpeed} mph ${weather.windDirection || ''}` : '--'}
             </Text>
           </View>
 
 
           <View style={styles.metricTile}>
-            <MaterialCommunityIcons name="white-balance-sunny" size={24} color="#FBBF24" />
-            <Text style={[styles.metricLabel, { color: theme.colors.textSecondary }]}>UV Index</Text>
-            <Text style={[styles.metricValue, { color: theme.colors.textPrimary }]}>3 (Moderate)</Text>
-          </View>
-
-          <View style={styles.metricTile}>
             <MaterialCommunityIcons name="gauge" size={24} color="#A78BFA" />
             <Text style={[styles.metricLabel, { color: theme.colors.textSecondary }]}>Air Pressure</Text>
-            <Text style={[styles.metricValue, { color: theme.colors.textPrimary }]}>1014 hPa</Text>
+            <Text style={[styles.metricValue, { color: theme.colors.textPrimary }]}>
+              {weather.pressure !== undefined ? `${weather.pressure} hPa` : '--'}
+            </Text>
           </View>
         </View>
       </View>
@@ -127,6 +119,11 @@ export default function WeatherDetailView() {
           Hourly Forecast
         </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.hourlyScroll}>
+          {hourlyData.length === 0 && (
+            <Text style={[styles.hourlyTime, { color: theme.colors.textSecondary }]}>
+              Hourly forecast unavailable.
+            </Text>
+          )}
           {hourlyData.map((hour, idx) => {
             const iconConfig = getWeatherIconName(hour.icon);
             return (
@@ -152,12 +149,17 @@ export default function WeatherDetailView() {
         </ScrollView>
       </View>
 
-      {/* 5-Day Extended Forecast */}
+      {/* Extended Forecast */}
       <View style={styles.section}>
         <Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>
-          Extended 5-Day Outlook
+          Extended Forecast
         </Text>
         <View style={styles.forecastList}>
+          {!weather.forecast?.length && (
+            <Text style={[styles.forecastCondition, { color: theme.colors.textSecondary }]}>
+              Extended forecast unavailable.
+            </Text>
+          )}
           {(weather.forecast || []).map((item, idx) => {
             const iconConfig = getWeatherIconName(item.icon);
             return (
@@ -179,9 +181,6 @@ export default function WeatherDetailView() {
                   <Text style={[styles.tempLow, { color: theme.colors.textSecondary }]}>
                     {item.low}°
                   </Text>
-                  <View style={styles.tempBarTrack}>
-                    <View style={styles.tempBarFill} />
-                  </View>
                   <Text style={[styles.tempHigh, { color: theme.colors.textPrimary }]}>
                     {item.high}°
                   </Text>
@@ -371,20 +370,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     width: 32,
     textAlign: 'right',
-  },
-  tempBarTrack: {
-    flex: 1,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    overflow: 'hidden',
-  },
-  tempBarFill: {
-    width: '65%',
-    marginLeft: '20%',
-    height: '100%',
-    borderRadius: 3,
-    backgroundColor: '#38BDF8',
   },
   tempHigh: {
     fontSize: 15,

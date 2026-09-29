@@ -66,18 +66,28 @@ export interface WeatherForecastItem {
   low: number;
 }
 
+export interface HourlyForecastItem {
+  time: string;
+  temp: number;
+  icon: string;
+  pop: string;
+}
+
 export interface WeatherSummary {
   temp: string;
   condition: string;
+  location?: string;
   temperature?: number;
   feelsLike?: number;
   conditionIcon?: string;
   humidity?: number;
   windSpeed?: number;
   windDirection?: string;
+  pressure?: number;
   high?: number;
   low?: number;
   forecast?: WeatherForecastItem[];
+  hourly?: HourlyForecastItem[];
 }
 
 export interface DashboardSummaryResponse {

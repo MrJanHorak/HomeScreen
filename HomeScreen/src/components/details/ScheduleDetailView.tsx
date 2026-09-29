@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Text, ScrollView, Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
-import { mockCalendarEvents, mockUpcomingEvents } from '../../data/mockData';
+import { useDashboard } from '../../context/DashboardContext';
 
 export default function ScheduleDetailView() {
   const theme = useTheme();
+  const { schedule, isLoading } = useDashboard();
   const [activeTab, setActiveTab] = useState<'today' | 'upcoming'>('today');
 
   return (
@@ -33,7 +34,7 @@ export default function ScheduleDetailView() {
               { color: activeTab === 'today' ? theme.colors.textPrimary : theme.colors.textSecondary },
             ]}
           >
-            Today's Schedule ({mockCalendarEvents.length})
+            Today's Schedule ({schedule.length})
           </Text>
         </Pressable>
 
@@ -58,7 +59,7 @@ export default function ScheduleDetailView() {
               { color: activeTab === 'upcoming' ? theme.colors.textPrimary : theme.colors.textSecondary },
             ]}
           >
-            Upcoming Days ({mockUpcomingEvents.length})
+            Upcoming Days
           </Text>
         </Pressable>
       </View>
@@ -67,7 +68,12 @@ export default function ScheduleDetailView() {
       <ScrollView style={styles.scrollList} showsVerticalScrollIndicator={false}>
         {activeTab === 'today' ? (
           <View style={styles.eventsWrapper}>
-            {mockCalendarEvents.map((evt) => (
+            {schedule.length === 0 && (
+              <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>
+                {isLoading ? 'Loading schedule…' : 'No events scheduled today.'}
+              </Text>
+            )}
+            {schedule.map((evt) => (
               <View key={evt.id} style={styles.eventCard}>
                 <View style={[styles.timeBox, { borderColor: `${evt.color || '#38BDF8'}66` }]}>
                   <Text style={[styles.timeText, { color: theme.colors.textPrimary }]}>
@@ -108,35 +114,9 @@ export default function ScheduleDetailView() {
           </View>
         ) : (
           <View style={styles.eventsWrapper}>
-            {mockUpcomingEvents.map((item) => (
-              <View key={item.id} style={styles.eventCard}>
-                <View style={[styles.timeBox, { borderColor: 'rgba(255, 255, 255, 0.15)' }]}>
-                  <Text style={[styles.timeText, { color: theme.colors.focusRing }]}>
-                    {item.date}
-                  </Text>
-                  <Text style={[styles.endTimeText, { color: theme.colors.textSecondary }]}>
-                    {item.time}
-                  </Text>
-                </View>
-
-                <View style={styles.eventInfo}>
-                  <Text style={[styles.eventTitle, { color: theme.colors.textPrimary }]}>
-                    {item.title}
-                  </Text>
-                  <View style={styles.metaRow}>
-                    <MaterialCommunityIcons name="calendar-clock" size={15} color={theme.colors.textSecondary} />
-                    <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>
-                      Scheduled for {item.date} at {item.time}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.confirmedPill}>
-                  <MaterialCommunityIcons name="check" size={14} color="#10B981" />
-                  <Text style={styles.confirmedText}>Confirmed</Text>
-                </View>
-              </View>
-            ))}
+            <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>
+              Upcoming events are not included in the current calendar feed yet.
+            </Text>
           </View>
         )}
       </ScrollView>

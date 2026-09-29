@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import TVText from '../components/tv/TVText';
 import TVSection from '../components/tv/TVSection';
@@ -11,7 +11,7 @@ import MealCard from '../components/MealCard/MealCard';
 import ToDo from '../components/ToDo/ToDo';
 import MediaCard from '../components/tv/MediaCard';
 import TVGlassNavBar from '../components/tv/TVGlassNavBar';
-import TVDetailModal from '../components/tv/TVDetailModal';
+import TVDetailModal, { TVDetailModalProps } from '../components/tv/TVDetailModal';
 
 // Detail Views
 import WeatherDetailView from '../components/details/WeatherDetailView';
@@ -34,9 +34,56 @@ type DetailTopic =
   | 'settings'
   | null;
 
+type Topic = Exclude<DetailTopic, null>;
+type DetailDefinition = Pick<TVDetailModalProps,
+  'title' | 'subtitle' | 'icon' | 'iconColor' | 'badgeText'> & {
+  View: React.ComponentType;
+};
+
+const DETAILS: Record<Topic, DetailDefinition> = {
+  weather: {
+    title: 'Weather Forecast', subtitle: 'Hourly conditions and the extended forecast',
+    icon: 'weather-partly-cloudy', iconColor: '#38BDF8', badgeText: 'Forecast',
+    View: WeatherDetailView,
+  },
+  schedule: {
+    title: 'Calendar & Timeline', subtitle: 'Your daily agenda',
+    icon: 'calendar-month', iconColor: '#38BDF8', badgeText: 'Agenda',
+    View: ScheduleDetailView,
+  },
+  activity: {
+    title: 'Fitness & Health Goals', subtitle: 'Daily activity and goals',
+    icon: 'heart-pulse', iconColor: '#34D399', badgeText: 'Goal Tracking',
+    View: ActivityDetailView,
+  },
+  media: {
+    title: 'Watch Queue & Streaming', subtitle: 'Your entertainment queue',
+    icon: 'movie-open-play', iconColor: '#F59E0B', badgeText: 'Continue Watching',
+    View: MediaDetailView,
+  },
+  meal: {
+    title: 'Family Meal Planner', subtitle: 'Dinner and weekly menu',
+    icon: 'silverware-fork-knife', iconColor: '#F59E0B', badgeText: 'Dinner Menu',
+    View: MealDetailView,
+  },
+  todo: {
+    title: 'Task Manager & To-Do', subtitle: 'Your Google Tasks',
+    icon: 'format-list-checks', iconColor: '#10B981', badgeText: 'Checklist',
+    View: ToDoDetailView,
+  },
+  settings: {
+    title: 'Settings & System Status', subtitle: 'Weather locations and device status',
+    icon: 'cog', iconColor: '#A78BFA', badgeText: 'System',
+    View: SettingsDetailView,
+  },
+};
+
 function HomeScreen() {
   const { error } = useDashboard();
   const [activeModal, setActiveModal] = useState<DetailTopic>(null);
+  const closeModal = useCallback(() => setActiveModal(null), []);
+  const detail = activeModal ? DETAILS[activeModal] : null;
+  const DetailView = detail?.View;
 
   const handleNavSelect = (id: string) => {
     switch (id) {
@@ -125,100 +172,19 @@ function HomeScreen() {
         onSelect={handleNavSelect}
       />
 
-      {/* ========================================================
-          DETAILED GLASS MODALS (TV-Optimized Focus Trap Sheets)
-          ======================================================== */}
-
-      {/* Weather Detail */}
-      <TVDetailModal
-        visible={activeModal === 'weather'}
-        onClose={() => setActiveModal(null)}
-        title="Weather Forecast & Radar"
-        subtitle="Hourly atmospheric changes and 5-day temperature projection"
-        icon="weather-partly-cloudy"
-        iconColor="#38BDF8"
-        badgeText="Hourly Forecast"
-      >
-        <WeatherDetailView />
-      </TVDetailModal>
-
-      {/* Schedule Detail */}
-      <TVDetailModal
-        visible={activeModal === 'schedule'}
-        onClose={() => setActiveModal(null)}
-        title="Calendar & Timeline"
-        subtitle="Full daily agenda, categories, and upcoming week appointments"
-        icon="calendar-month"
-        iconColor="#38BDF8"
-        badgeText="Agenda"
-      >
-        <ScheduleDetailView />
-      </TVDetailModal>
-
-      {/* Activity Detail */}
-      <TVDetailModal
-        visible={activeModal === 'activity'}
-        onClose={() => setActiveModal(null)}
-        title="Fitness & Health Goals"
-        subtitle="Daily steps, active minutes, calories burned, and weekly breakdown"
-        icon="heart-pulse"
-        iconColor="#34D399"
-        badgeText="Goal Tracking"
-      >
-        <ActivityDetailView />
-      </TVDetailModal>
-
-      {/* Media Detail */}
-      <TVDetailModal
-        visible={activeModal === 'media'}
-        onClose={() => setActiveModal(null)}
-        title="Watch Queue & Streaming"
-        subtitle="Resume your favorite shows, movies, and queued entertainment"
-        icon="movie-open-play"
-        iconColor="#F59E0B"
-        badgeText="Continue Watching"
-      >
-        <MediaDetailView />
-      </TVDetailModal>
-
-      {/* Meal Detail */}
-      <TVDetailModal
-        visible={activeModal === 'meal'}
-        onClose={() => setActiveModal(null)}
-        title="Family Meal Planner"
-        subtitle="Tonight's dinner courses, ingredients, and the weekly menu rotation"
-        icon="silverware-fork-knife"
-        iconColor="#F59E0B"
-        badgeText="Dinner Menu"
-      >
-        <MealDetailView />
-      </TVDetailModal>
-
-      {/* To Do Detail */}
-      <TVDetailModal
-        visible={activeModal === 'todo'}
-        onClose={() => setActiveModal(null)}
-        title="Task Manager & To-Do"
-        subtitle="Interactive task lists, priorities, and completed checklist items"
-        icon="format-list-checks"
-        iconColor="#10B981"
-        badgeText="Checklist"
-      >
-        <ToDoDetailView />
-      </TVDetailModal>
-
-      {/* Settings Detail */}
-      <TVDetailModal
-        visible={activeModal === 'settings'}
-        onClose={() => setActiveModal(null)}
-        title="Settings & System Status"
-        subtitle="Device info, backend sync status, and TV display calibration"
-        icon="cog"
-        iconColor="#A78BFA"
-        badgeText="System"
-      >
-        <SettingsDetailView />
-      </TVDetailModal>
+      {detail && DetailView && (
+        <TVDetailModal
+          visible
+          onClose={closeModal}
+          title={detail.title}
+          subtitle={detail.subtitle}
+          icon={detail.icon}
+          iconColor={detail.iconColor}
+          badgeText={detail.badgeText}
+        >
+          <DetailView />
+        </TVDetailModal>
+      )}
     </View>
   );
 }

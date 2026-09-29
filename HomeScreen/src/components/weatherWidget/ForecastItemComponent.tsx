@@ -5,7 +5,7 @@ import {
 } from '../../helpers/weatherHelpers';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
-import { ForecastItem } from '../../hooks/useWeather';
+import type { WeatherForecast } from '../../../../shared/src/types';
 
 export default function ForecastItemComponent({
   day,
@@ -13,7 +13,7 @@ export default function ForecastItemComponent({
   icon,
   high,
   low,
-}: ForecastItem) {
+}: WeatherForecast) {
   const theme = useTheme();
   const iconConfig = getWeatherIconName(icon);
   const formattedHigh = formatTemperature(high);

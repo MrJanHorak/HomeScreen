@@ -34,7 +34,7 @@ export default function MediaCard({
         </View>
         <View style={styles.liveBadge}>
           <Text style={[styles.liveBadgeText, { color: theme.colors.focusRing }]}>
-            Resume
+            Preview
           </Text>
         </View>
       </View>

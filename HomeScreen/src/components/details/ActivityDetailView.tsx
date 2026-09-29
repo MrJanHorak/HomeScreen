@@ -2,22 +2,18 @@ import React from 'react';
 import { View, StyleSheet, Text, ScrollView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
-import { mockActivity } from '../../data/mockData';
+import { useDashboard } from '../../context/DashboardContext';
 import TVProgressRing from '../activityCard/TVProgressRing';
-
-const WEEKLY_STEPS = [
-  { day: 'Mon', steps: 8400, percent: 0.84 },
-  { day: 'Tue', steps: 10200, percent: 1.0 },
-  { day: 'Wed', steps: 7800, percent: 0.78, active: true },
-  { day: 'Thu', steps: 9100, percent: 0.91 },
-  { day: 'Fri', steps: 6500, percent: 0.65 },
-  { day: 'Sat', steps: 11400, percent: 1.0 },
-  { day: 'Sun', steps: 8900, percent: 0.89 },
-];
 
 export default function ActivityDetailView() {
   const theme = useTheme();
-  const act = mockActivity;
+  const { health: act, isLoading } = useDashboard();
+
+  if (!act) {
+    return <Text style={{ color: theme.colors.textSecondary }}>
+      {isLoading ? 'Loading activity…' : 'Activity data is unavailable.'}
+    </Text>;
+  }
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -54,7 +50,7 @@ export default function ActivityDetailView() {
             <View style={styles.metricMeta}>
               <Text style={[styles.metricTitle, { color: theme.colors.textSecondary }]}>Active Minutes</Text>
               <Text style={[styles.metricBig, { color: theme.colors.textPrimary }]}>{act.activeMinutes} min</Text>
-              <Text style={[styles.metricSub, { color: '#10B981' }]}>✓ 14 min over 60m goal</Text>
+              <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>Today</Text>
             </View>
           </View>
 
@@ -69,42 +65,14 @@ export default function ActivityDetailView() {
         </View>
       </View>
 
-      {/* Weekly History Bar Chart */}
+      {/* Weekly history requires a separate data feed. */}
       <View style={styles.weeklyCard}>
         <Text style={[styles.weeklyTitle, { color: theme.colors.textPrimary }]}>
           Weekly Activity Breakdown
         </Text>
-        <View style={styles.barsContainer}>
-          {WEEKLY_STEPS.map((item, idx) => (
-            <View key={idx} style={styles.barColumn}>
-              <Text style={[styles.barValueText, { color: item.active ? theme.colors.focusRing : theme.colors.textSecondary }]}>
-                {(item.steps / 1000).toFixed(1)}k
-              </Text>
-              <View style={styles.barTrack}>
-                <View
-                  style={[
-                    styles.barFill,
-                    {
-                      height: `${Math.min(item.percent * 100, 100)}%`,
-                      backgroundColor: item.active ? theme.colors.focusRing : 'rgba(255, 255, 255, 0.25)',
-                    },
-                  ]}
-                />
-              </View>
-              <Text
-                style={[
-                  styles.barDayText,
-                  {
-                    color: item.active ? theme.colors.textPrimary : theme.colors.textSecondary,
-                    fontWeight: item.active ? '700' : '500',
-                  },
-                ]}
-              >
-                {item.day}
-              </Text>
-            </View>
-          ))}
-        </View>
+        <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>
+          Weekly history is not included in the current activity feed yet.
+        </Text>
       </View>
     </ScrollView>
   );

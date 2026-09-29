@@ -1,4 +1,4 @@
-import { UserLocation, WeatherForecastItem, WeatherSummary } from "../types";
+import { HourlyForecastItem, UserLocation, WeatherForecastItem, WeatherSummary } from "../types";
 
 function mapWeatherIcon(weatherMain: string, iconCode: string): string {
   const isNight = iconCode.endsWith("n");
@@ -79,42 +79,56 @@ export async function fetchLocalWeather(
 
     // Extract daily forecast (aggregating 3-hour slices)
     const forecast: WeatherForecastItem[] = [];
+    const hourly: HourlyForecastItem[] = [];
     if (forecastData?.list && Array.isArray(forecastData.list)) {
-      const dailyMap: Record<string, { high: number; low: number; conditions: string[]; icons: string[] }> = {};
+      const dailyMap: Record<string, { day: string; high: number; low: number; conditions: string[]; icons: string[] }> = {};
+      const utcOffsetSeconds = forecastData.city?.timezone ?? currentData.timezone ?? 0;
 
       for (const item of forecastData.list) {
-        const date = new Date(item.dt * 1000);
-        const dayStr = date.toLocaleDateString("en-US", { weekday: "short" });
+        const localDate = new Date((item.dt + utcOffsetSeconds) * 1000);
+        const dateKey = localDate.toISOString().slice(0, 10);
+        const dayStr = localDate.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
         const itemTemp = item.main?.temp;
         const itemCondition = item.weather?.[0]?.main || "Clear";
         const itemIcon = item.weather?.[0]?.icon || "01d";
 
-        if (!dailyMap[dayStr]) {
-          dailyMap[dayStr] = {
+        if (hourly.length < 7) {
+          hourly.push({
+            time: localDate.toLocaleTimeString("en-US", { hour: "numeric", timeZone: "UTC" }),
+            temp: Math.round(itemTemp ?? temp),
+            icon: mapWeatherIcon(itemCondition, itemIcon),
+            pop: `${Math.round((item.pop ?? 0) * 100)}%`,
+          });
+        }
+
+        if (!dailyMap[dateKey]) {
+          dailyMap[dateKey] = {
+            day: dayStr,
             high: itemTemp,
             low: itemTemp,
             conditions: [itemCondition],
             icons: [itemIcon],
           };
         } else {
-          dailyMap[dayStr].high = Math.max(dailyMap[dayStr].high, itemTemp);
-          dailyMap[dayStr].low = Math.min(dailyMap[dayStr].low, itemTemp);
-          dailyMap[dayStr].conditions.push(itemCondition);
-          dailyMap[dayStr].icons.push(itemIcon);
+          dailyMap[dateKey].high = Math.max(dailyMap[dateKey].high, itemTemp);
+          dailyMap[dateKey].low = Math.min(dailyMap[dateKey].low, itemTemp);
+          dailyMap[dateKey].conditions.push(itemCondition);
+          dailyMap[dateKey].icons.push(itemIcon);
         }
       }
 
       // Take first 4 days excluding today
-      const todayStr = new Date().toLocaleDateString("en-US", { weekday: "short" });
-      for (const [day, values] of Object.entries(dailyMap)) {
-        if (day === todayStr) continue;
+      const todayKey = new Date((Date.now() / 1000 + utcOffsetSeconds) * 1000)
+        .toISOString().slice(0, 10);
+      for (const [dateKey, values] of Object.entries(dailyMap)) {
+        if (dateKey === todayKey) continue;
         if (forecast.length >= 4) break;
 
         const primaryCondition = values.conditions[Math.floor(values.conditions.length / 2)] || "Clear";
         const primaryIcon = values.icons[Math.floor(values.icons.length / 2)] || "01d";
 
         forecast.push({
-          day,
+          day: values.day,
           condition: primaryCondition,
           icon: mapWeatherIcon(primaryCondition, primaryIcon),
           high: Math.round(values.high),
@@ -124,6 +138,7 @@ export async function fetchLocalWeather(
     }
 
     return {
+      location: currentData.name,
       temp: `${temp}°`,
       condition: weatherMain,
       temperature: temp,
@@ -132,9 +147,11 @@ export async function fetchLocalWeather(
       humidity,
       windSpeed,
       windDirection,
+      pressure: currentData.main?.pressure,
       high,
       low,
       forecast,
+      hourly,
     };
   } catch (error) {
     console.error("Error fetching OpenWeather data:", error);

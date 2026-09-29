@@ -4,58 +4,23 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
 import { useDashboard } from '../../context/DashboardContext';
 
-interface FallbackTask {
-  id: string;
-  title: string;
-  completed: boolean;
-  dueDate?: string;
-  priority?: 'high' | 'medium' | 'low';
-}
-
-const DEFAULT_TASKS: FallbackTask[] = [
-  { id: 't-1', title: 'Prep Supper (Dad)', completed: false, dueDate: 'Today, 6:00 PM', priority: 'high' },
-  { id: 't-2', title: 'Walk the dog in the park', completed: false, dueDate: 'Today, 7:30 PM', priority: 'medium' },
-  { id: 't-3', title: 'Acquire spare part for trimmer at Hornbach', completed: false, dueDate: 'Tomorrow', priority: 'medium' },
-  { id: 't-4', title: 'Learn Online Banking features', completed: false, dueDate: 'This week', priority: 'low' },
-  { id: 't-5', title: 'Schedule Dentist Checkup', completed: true, dueDate: 'Yesterday', priority: 'low' },
-  { id: 't-6', title: 'Water backyard plants', completed: true, dueDate: 'Yesterday', priority: 'low' },
-];
-
 export default function ToDoDetailView() {
   const theme = useTheme();
-  const { tasks: liveTasks, completeTask } = useDashboard();
+  const { tasks, isLoading, completeTask } = useDashboard();
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
-  const [localTasks, setLocalTasks] = useState<FallbackTask[]>(DEFAULT_TASKS);
-
-  // Use live tasks if available, otherwise fallback
-  const tasksToDisplay = liveTasks && liveTasks.length > 0
-    ? liveTasks.map((t) => ({
-        id: t.id,
-        title: t.title,
-        completed: Boolean(t.completed),
-        dueDate: 'Today',
-        priority: 'medium' as const,
-      }))
-    : localTasks;
 
   const toggleTask = (id: string) => {
-    if (liveTasks && liveTasks.length > 0) {
-      completeTask(id);
-    } else {
-      setLocalTasks((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
-      );
-    }
+    void completeTask(id);
   };
 
-  const filteredTasks = tasksToDisplay.filter((t) => {
+  const filteredTasks = tasks.filter((t) => {
     if (filter === 'pending') return !t.completed;
     if (filter === 'completed') return t.completed;
     return true;
   });
 
-  const pendingCount = tasksToDisplay.filter((t) => !t.completed).length;
-  const completedCount = tasksToDisplay.filter((t) => t.completed).length;
+  const pendingCount = tasks.filter((t) => !t.completed).length;
+  const completedCount = tasks.filter((t) => t.completed).length;
 
   return (
     <View style={styles.container}>
@@ -73,7 +38,7 @@ export default function ToDoDetailView() {
             ]}
           >
             <Text style={[styles.filterText, { color: filter === 'all' ? theme.colors.textPrimary : theme.colors.textSecondary }]}>
-              All ({tasksToDisplay.length})
+              All ({tasks.length})
             </Text>
           </Pressable>
 
@@ -118,10 +83,18 @@ export default function ToDoDetailView() {
       {/* Task List */}
       <ScrollView style={styles.scrollList} showsVerticalScrollIndicator={false}>
         <View style={styles.taskWrapper}>
+          {filteredTasks.length === 0 && (
+            <Text style={[styles.dueText, { color: theme.colors.textSecondary }]}>
+              {isLoading ? 'Loading tasks…' : filter === 'completed'
+                ? 'Completed tasks are not included in this feed yet.'
+                : 'No pending tasks.'}
+            </Text>
+          )}
           {filteredTasks.map((task) => (
             <Pressable
               key={task.id}
               onPress={() => toggleTask(task.id)}
+              disabled={Boolean(task.completed)}
               style={({ pressed }) => [
                 styles.taskCard,
                 task.completed && styles.taskCardCompleted,
@@ -147,21 +120,16 @@ export default function ToDoDetailView() {
                 >
                   {task.title}
                 </Text>
-                {task.dueDate && (
+                {task.due && (
                   <View style={styles.dueRow}>
                     <MaterialCommunityIcons name="clock-outline" size={14} color={theme.colors.textSecondary} />
                     <Text style={[styles.dueText, { color: theme.colors.textSecondary }]}>
-                      {task.dueDate}
+                      {task.due}
                     </Text>
                   </View>
                 )}
               </View>
 
-              {task.priority === 'high' && !task.completed && (
-                <View style={styles.priorityBadge}>
-                  <Text style={styles.priorityText}>HIGH</Text>
-                </View>
-              )}
             </Pressable>
           ))}
         </View>
