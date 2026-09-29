@@ -53,16 +53,17 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   const completeTask = useCallback(async (taskId: string) => {
     // Optimistic UI update
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    const task = tasks.find((item) => item.id === taskId);
+    setTasks((prev) => prev.filter((item) => item.id !== taskId));
 
     try {
-      await executeTVAction('completeTask', { taskId });
+      await executeTVAction('completeTask', { taskId, tasklistId: task?.tasklistId });
     } catch (err) {
       console.error('Failed to complete task on backend:', err);
       // Re-sync on failure
       loadData();
     }
-  }, [loadData]);
+  }, [loadData, tasks]);
 
   useEffect(() => {
     loadData();

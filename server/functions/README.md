@@ -118,6 +118,7 @@ Requires `Authorization: Bearer <Firebase_ID_Token>` and updates the verified us
    firebase functions:secrets:set OPENWEATHER_API_KEY
    firebase functions:secrets:set TOKEN_ENCRYPTION_KEY
    ```
+4. For the 2nd gen `googleOAuthCallback` function, grant its runtime service account **Service Account Token Creator** on the service account that signs Firebase custom tokens. This project uses the default Compute Engine service account for both (`488478409476-compute@developer.gserviceaccount.com`). Grant the role on that service account resource, rather than across the whole project. Without `iam.serviceAccounts.signBlob`, Google consent succeeds but TV pairing redirects back with `result=error` when `auth.createCustomToken()` runs.
 
 ---
 

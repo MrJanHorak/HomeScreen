@@ -33,6 +33,7 @@ export interface CalendarEventSummary {
 
 export interface TaskSummary {
   id: string;
+  tasklistId?: string;
   title: string;
   due: string | null;
   completed?: boolean;

@@ -1,9 +1,10 @@
-import { initializeApp } from 'firebase/app';
+import { FirebaseError, initializeApp } from 'firebase/app';
 import {
   getAuth,
+  getRedirectResult,
   GoogleAuthProvider,
   onAuthStateChanged,
-  signInWithPopup,
+  signInWithRedirect,
   signOut,
 } from 'firebase/auth';
 import './style.css';
@@ -15,6 +16,11 @@ const config = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, '');
+// Keep the auth helper on the same origin as the pairing page for redirect sign-in.
+if (window.location.hostname === `${config.projectId}.web.app` &&
+    config.authDomain === `${config.projectId}.firebaseapp.com`) {
+  window.location.replace(`https://${config.authDomain}${window.location.pathname}${window.location.search}${window.location.hash}`);
+}
 const appElement = document.querySelector<HTMLDivElement>('#app');
 if (!appElement) throw new Error('Missing app root');
 
@@ -73,6 +79,27 @@ function showStatus(message: string, kind: 'info' | 'error' | 'success' = 'info'
   status.dataset.kind = kind;
 }
 
+function signInErrorMessage(error: unknown): string {
+  if (!(error instanceof FirebaseError)) return 'Google sign-in failed. Please try again.';
+  switch (error.code) {
+    case 'auth/unauthorized-domain':
+      return `Add ${window.location.hostname} to Firebase Authentication authorized domains.`;
+    case 'auth/operation-not-allowed':
+      return 'Enable Google sign-in in Firebase Authentication sign-in methods.';
+    case 'auth/network-request-failed':
+      return 'Could not reach Firebase Authentication. Check your connection and try again.';
+    case 'auth/web-storage-unsupported':
+      return 'This browser blocks the storage needed for sign-in. Try Chrome or Safari.';
+    case 'auth/invalid-credential':
+      if (/invalid_client|client secret is invalid/i.test(error.message)) {
+        return 'Google sign-in is misconfigured. The site owner must update the Google OAuth client ID and secret in Firebase Authentication.';
+      }
+      return 'Google sign-in could not verify your account. Please try again or contact the site owner.';
+    default:
+      return `Google sign-in failed (${error.code}). Please try again.`;
+  }
+}
+
 if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId || !apiUrl) {
   showStatus('Site configuration is incomplete. Check pairing-web/.env.local and rebuild.', 'error');
   signInButton.disabled = true;
@@ -90,17 +117,34 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
     codeInput.disabled = busy;
   }
 
-  onAuthStateChanged(auth, updateControls, () => {
-    showStatus('Could not restore your sign-in. Please try again.', 'error');
+  onAuthStateChanged(auth, () => {
+    updateControls();
+    if (auth.currentUser && !params.has('result')) {
+      showStatus('Signed in. Enter the code shown on your TV.');
+    }
+  }, (error) => {
+    console.error('Firebase Auth state error:', error);
+    showStatus(signInErrorMessage(error), 'error');
+  });
+
+  void getRedirectResult(auth).then((credential) => {
+    if (credential && !params.has('result')) {
+      showStatus('Signed in. Enter the code shown on your TV.');
+    }
+  }).catch((error: unknown) => {
+    console.error('Firebase redirect sign-in failed:', error);
+    showStatus(signInErrorMessage(error), 'error');
   });
 
   signInButton.addEventListener('click', async () => {
     try {
-      showStatus('Opening Google sign-in…');
-      await signInWithPopup(auth, provider);
-      showStatus('Signed in. Enter the code shown on your TV.');
-    } catch {
-      showStatus('Sign-in did not complete. Please try again.', 'error');
+      signInButton.disabled = true;
+      showStatus('Redirecting to Google sign-in…');
+      await signInWithRedirect(auth, provider);
+    } catch (error) {
+      console.error('Firebase redirect sign-in failed:', error);
+      showStatus(signInErrorMessage(error), 'error');
+      signInButton.disabled = false;
     }
   });
 

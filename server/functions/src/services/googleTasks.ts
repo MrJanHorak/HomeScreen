@@ -3,7 +3,7 @@ import { GoogleTokens, TaskSummary } from "../types";
 import { getOAuth2Client } from "./googleAuth";
 
 /**
- * Fetch active (incomplete) tasks from the user's default Google Tasks list
+ * Fetch active (incomplete) tasks from all of the user's Google Tasks lists.
  */
 export async function fetchActiveTasks(tokens: GoogleTokens): Promise<TaskSummary[]> {
   if (!tokens?.accessToken && !tokens?.refreshToken) {
@@ -14,23 +14,50 @@ export async function fetchActiveTasks(tokens: GoogleTokens): Promise<TaskSummar
   const tasksService = google.tasks({ version: "v1", auth });
 
   try {
-    const response = await tasksService.tasks.list({
-      tasklist: "@default",
-      showCompleted: false,
-      showHidden: false,
-      maxResults: 20,
-    });
+    const tasklists = [];
+    let listPageToken: string | undefined;
+    do {
+      const response = await tasksService.tasklists.list({
+        maxResults: 100,
+        pageToken: listPageToken,
+      });
+      tasklists.push(...(response.data.items || []));
+      listPageToken = response.data.nextPageToken || undefined;
+    } while (listPageToken);
 
-    const items = response.data.items || [];
+    const listsOfTasks = await Promise.all(tasklists.map(async (tasklist) => {
+      if (!tasklist.id) return [];
+      const items = [];
+      let pageToken: string | undefined;
+      do {
+        const response = await tasksService.tasks.list({
+          tasklist: tasklist.id,
+          showCompleted: false,
+          showHidden: false,
+          maxResults: 100,
+          pageToken,
+        });
+        items.push(...(response.data.items || []));
+        pageToken = response.data.nextPageToken || undefined;
+      } while (pageToken);
 
-    return items
-      .filter((task) => !!task.title)
-      .map((task) => ({
-        id: task.id || `task-${Math.random().toString(36).substring(2, 9)}`,
-        title: task.title || "Untitled Task",
-        due: task.due ? new Date(task.due).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : null,
-        completed: task.status === "completed",
-      }));
+      return items
+        .filter((task) => !!task.id && !!task.title)
+        .map((task) => ({
+          id: task.id!,
+          tasklistId: tasklist.id!,
+          title: task.title!,
+          // Google Tasks due dates are date-only values encoded at midnight UTC.
+          due: task.due ? new Date(task.due).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+            timeZone: "UTC",
+          }) : null,
+          completed: false,
+        }));
+    }));
+
+    return listsOfTasks.flat();
   } catch (error) {
     console.error("Error fetching Google Tasks:", error);
     throw error;

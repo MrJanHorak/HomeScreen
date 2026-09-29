@@ -6,7 +6,7 @@ import ScheduleItem from './ScheduleItem';
 
 export default function ScheduleCard() {
   const { data, isLoading } = useSchedule();
-  const maxItems = 2;
+  const maxItems = 3;
 
   if (isLoading) {
     return <ActivityIndicator />;

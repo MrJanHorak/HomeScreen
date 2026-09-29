@@ -38,7 +38,8 @@ export async function fetchHealthData(
       userId: "me",
       requestBody: {
         aggregateBy: [
-          { dataTypeName: "com.google.step_count.delta" },
+          // This is the merged step stream used for Google Fit's daily total.
+          { dataSourceId: "derived:com.google.step_count.delta:com.google.android.gms:estimated_steps" },
           { dataTypeName: "com.google.calories.expended" },
           { dataTypeName: "com.google.distance.delta" },
           { dataTypeName: "com.google.active_minutes" },
@@ -71,23 +72,23 @@ export async function fetchHealthData(
           } else if (source.includes("distance")) {
             distanceMeters += val.fpVal || 0;
           } else if (source.includes("active_minutes")) {
-            activeMinutes += val.intVal || 0;
+            // com.google.active_minutes stores duration in milliseconds.
+            activeMinutes += (val.intVal || 0) / 60000;
           }
         }
       }
     }
 
-    // Convert meters to miles (1 meter = 0.000621371 miles)
-    const distanceMiles = Number((distanceMeters * 0.000621371).toFixed(1));
+    const distanceKm = Number((distanceMeters / 1000).toFixed(1));
     const progress = stepGoal > 0 ? Number(Math.min(1, steps / stepGoal).toFixed(2)) : 0;
 
     return {
       steps,
       stepGoal,
-      distance: distanceMiles,
+      distance: distanceKm,
       distanceGoal,
       calories,
-      activeMinutes,
+      activeMinutes: Math.round(activeMinutes),
       progress,
     };
   } catch (error) {

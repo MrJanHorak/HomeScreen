@@ -35,6 +35,7 @@ export interface CalendarEvent {
 
 export interface TaskItem {
   id: string;
+  tasklistId?: string;
   title: string;
   due: string | null;
   completed?: boolean;
