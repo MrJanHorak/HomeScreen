@@ -1,5 +1,6 @@
 import { onRequest } from "firebase-functions/v2/https";
-import { getStoredUserTokens, saveDashboardCache, auth } from "./utils/db";
+import { getStoredUserTokens, saveDashboardCache } from "./utils/db";
+import { authenticatedUserId } from "./utils/requestAuth";
 import { fetchCalendarEvents } from "./services/googleCalendar";
 import { fetchActiveTasks } from "./services/googleTasks";
 import { fetchHealthData } from "./services/googleFit";
@@ -53,7 +54,7 @@ export const syncUserDataHandler = onRequest(
   {
     cors: true,
     maxInstances: 5,
-    secrets: ["OPENWEATHER_API_KEY"],
+    secrets: ["OPENWEATHER_API_KEY", "TOKEN_ENCRYPTION_KEY", "GOOGLE_CLIENT_SECRET"],
   },
   async (req, res) => {
     if (req.method === "OPTIONS") {
@@ -62,21 +63,13 @@ export const syncUserDataHandler = onRequest(
     }
 
     try {
-      let userId = req.body?.userId || (req.query.userId as string);
-
-      const authHeader = req.headers.authorization;
-      if (authHeader && authHeader.startsWith("Bearer ")) {
-        const idToken = authHeader.split("Bearer ")[1];
-        try {
-          const decoded = await auth.verifyIdToken(idToken);
-          userId = decoded.uid;
-        } catch {
-          // Fallback to query/body
-        }
+      if (req.method !== "POST") {
+        res.status(405).json({error: "Method not allowed"});
+        return;
       }
-
+      const userId = await authenticatedUserId(req);
       if (!userId) {
-        res.status(400).json({ error: "Missing userId parameter or valid Authorization header" });
+        res.status(401).json({error: "Valid Firebase ID token required"});
         return;
       }
 
@@ -88,9 +81,7 @@ export const syncUserDataHandler = onRequest(
       });
     } catch (error) {
       console.error("Error in syncUserDataHandler:", error);
-      res.status(500).json({
-        error: error instanceof Error ? error.message : "Internal server error",
-      });
+      res.status(500).json({error: "Internal server error"});
     }
   }
 );

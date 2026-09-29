@@ -73,6 +73,7 @@ export interface MediaItem {
 
 export interface DevicePairingResponse {
   code: string;
+  pollSecret: string;
   verificationUrl: string;
   expiresIn: number;
 }

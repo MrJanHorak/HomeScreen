@@ -1,11 +1,13 @@
 import { onRequest } from "firebase-functions/v2/https";
-import { getStoredUserTokens, saveUserTokens, auth } from "./utils/db";
+import { getStoredUserTokens, saveUserTokens } from "./utils/db";
+import { authenticatedUserId } from "./utils/requestAuth";
 import { markTaskCompleted } from "./services/googleTasks";
 
 export const executeActionHandler = onRequest(
   {
     cors: true,
     maxInstances: 10,
+    secrets: ["TOKEN_ENCRYPTION_KEY", "GOOGLE_CLIENT_SECRET"],
   },
   async (req, res) => {
     if (req.method === "OPTIONS") {
@@ -14,22 +16,13 @@ export const executeActionHandler = onRequest(
     }
 
     try {
-      let userId = req.body?.userId;
-
-      // Extract userId from Firebase Auth Bearer token if provided
-      const authHeader = req.headers.authorization;
-      if (authHeader && authHeader.startsWith("Bearer ")) {
-        const idToken = authHeader.split("Bearer ")[1];
-        try {
-          const decoded = await auth.verifyIdToken(idToken);
-          userId = decoded.uid;
-        } catch {
-          // Fallback to body userId if token verification is not matching
-        }
+      if (req.method !== "POST") {
+        res.status(405).json({error: "Method not allowed"});
+        return;
       }
-
+      const userId = await authenticatedUserId(req);
       if (!userId) {
-        res.status(401).json({ error: "Unauthorized: Missing userId or auth token" });
+        res.status(401).json({error: "Valid Firebase ID token required"});
         return;
       }
 
@@ -67,9 +60,7 @@ export const executeActionHandler = onRequest(
       }
     } catch (error) {
       console.error("Error executing action:", error);
-      res.status(500).json({
-        error: error instanceof Error ? error.message : "Internal server error",
-      });
+      res.status(500).json({error: "Internal server error"});
     }
   }
 );

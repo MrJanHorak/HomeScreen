@@ -4,7 +4,8 @@ const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;
 
 function getEncryptionKey(): Buffer {
-  const secret = process.env.TOKEN_ENCRYPTION_KEY || "dashboard-default-dev-secret-key-32";
+  const secret = process.env.TOKEN_ENCRYPTION_KEY;
+  if (!secret) throw new Error("TOKEN_ENCRYPTION_KEY is not configured");
   return crypto.createHash("sha256").update(secret).digest();
 }
 
@@ -28,10 +29,9 @@ export function encryptToken(text: string): string {
 export function decryptToken(cipherText: string): string {
   if (!cipherText) return "";
 
-  // If text is not encrypted in the iv:tag:content format, return as-is (e.g. unencrypted dev tokens)
   const parts = cipherText.split(":");
   if (parts.length !== 3) {
-    return cipherText;
+    throw new Error("OAuth token is not encrypted");
   }
 
   try {
@@ -49,8 +49,7 @@ export function decryptToken(cipherText: string): string {
     ]);
 
     return decrypted.toString("utf8");
-  } catch (error) {
-    console.error("Failed to decrypt token, returning original value:", error);
-    return cipherText;
+  } catch {
+    throw new Error("Could not decrypt OAuth token");
   }
 }

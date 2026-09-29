@@ -3,21 +3,25 @@ import { ActivityIndicator, View, StyleSheet } from 'react-native';
 
 import CurrentWeatherHeader from './CurrentWeatherHeader';
 import ForecastItemComponent from './ForecastItemComponent';
+import TVText from '../tv/TVText';
 
 export default function WeatherWidget() {
   const { data, isLoading } = useWeather();
 
   if (isLoading) return <ActivityIndicator />;
+  if (!data || data.temperature === undefined) {
+    return <TVText text="Weather unavailable" typography="body" color="textSecondary" />;
+  }
 
   return (
     <View style={styles.container}>
       <CurrentWeatherHeader
-        temperature={data!.temperature}
-        condition={data!.condition}
-        conditionIcon={data!.conditionIcon}
+        temperature={data.temperature}
+        condition={data.condition}
+        conditionIcon={data.conditionIcon || 'cloud'}
       />
       <View style={styles.forecastRow}>
-        {data?.forecast.map((forecastItem) => (
+        {data.forecast?.map((forecastItem) => (
           <ForecastItemComponent
             key={forecastItem.day}
             day={forecastItem.day}

@@ -13,6 +13,7 @@ import { getDashboardSummaryHandler } from "./getDashboardSummary";
 import { authDeviceHandler } from "./authDevice";
 import { executeActionHandler } from "./executeAction";
 import { syncUserDataHandler } from "./syncUserData";
+import {beginGoogleLinkHandler, googleOAuthCallbackHandler} from "./googlePairing";
 
 
 // import {onRequest} from "firebase-functions/https";
@@ -42,3 +43,5 @@ export const getDashboardSummary = getDashboardSummaryHandler;
 export const authDevice = authDeviceHandler;
 export const executeAction = executeActionHandler;
 export const syncUserData = syncUserDataHandler;
+export const beginGoogleLink = beginGoogleLinkHandler;
+export const googleOAuthCallback = googleOAuthCallbackHandler;

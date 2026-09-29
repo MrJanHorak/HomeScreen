@@ -1,5 +1,4 @@
 import { useDashboard } from '../context/DashboardContext';
-import { mockActivity } from '../data/mockData';
 
 export type HealthActivity = {
   steps: number;
@@ -16,18 +15,6 @@ export function useHealthData(): {
   isLoading: boolean;
   error: string | null;
 } {
-  try {
-    const { health, isLoading, error } = useDashboard();
-    return {
-      data: (health as unknown as HealthActivity) || (mockActivity as unknown as HealthActivity),
-      isLoading,
-      error,
-    };
-  } catch {
-    return {
-      data: mockActivity as unknown as HealthActivity,
-      isLoading: false,
-      error: null,
-    };
-  }
+  const { health, isLoading, error } = useDashboard();
+  return { data: health as HealthActivity | null, isLoading, error };
 }

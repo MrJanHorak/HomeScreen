@@ -1,3 +1,4 @@
+import { auth } from './firebase';
 import type { DashboardSummaryResponse, DevicePairingResponse } from '../../../shared/src/types';
 
 // Default to Firebase Local Emulator or configured remote URL
@@ -5,20 +6,22 @@ const DEFAULT_API_URL =
   process.env.EXPO_PUBLIC_API_URL ||
   'http://localhost:5001/tv-homescreen-backend/us-central1';
 
-const DEFAULT_USER_ID = process.env.EXPO_PUBLIC_DEFAULT_USER_ID || 'user-001';
+async function authHeaders(): Promise<Record<string, string>> {
+  const token = await auth.currentUser?.getIdToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
 
 /**
  * Fetch the unified dashboard summary (Calendar, Tasks, Fitness, Weather)
  */
-export async function fetchDashboardSummary(
-  userId = DEFAULT_USER_ID
-): Promise<DashboardSummaryResponse> {
-  const url = `${DEFAULT_API_URL}/getDashboardSummary?userId=${encodeURIComponent(userId)}`;
+export async function fetchDashboardSummary(): Promise<DashboardSummaryResponse> {
+  const url = `${DEFAULT_API_URL}/getDashboardSummary`;
   const response = await fetch(url, {
     method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: await authHeaders(),
   });
 
   if (!response.ok) {
@@ -33,20 +36,13 @@ export async function fetchDashboardSummary(
  */
 export async function executeTVAction(
   action: 'completeTask' | 'updatePreferences',
-  payload: Record<string, unknown>,
-  userId = DEFAULT_USER_ID
+  payload: Record<string, unknown>
 ): Promise<{ success: boolean; message?: string }> {
   const url = `${DEFAULT_API_URL}/executeAction`;
   const response = await fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      action,
-      payload,
-      userId,
-    }),
+    headers: await authHeaders(),
+    body: JSON.stringify({ action, payload }),
   });
 
   if (!response.ok) {
@@ -77,13 +73,16 @@ export async function requestDevicePairing(): Promise<DevicePairingResponse> {
  * Poll device pairing status until authorized
  */
 export async function pollDevicePairing(
-  code: string
-): Promise<{ status: 'pending' | 'authorized' | 'expired'; userId?: string; customToken?: string }> {
-  const url = `${DEFAULT_API_URL}/authDevice?action=poll&code=${encodeURIComponent(code)}`;
+  pairing: DevicePairingResponse
+): Promise<{ status: 'pending' | 'authorized' | 'expired'; customToken?: string }> {
+  const url = `${DEFAULT_API_URL}/authDevice?action=poll`;
   const response = await fetch(url, {
-    method: 'GET',
+    method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code: pairing.code, pollSecret: pairing.pollSecret }),
   });
+
+  if (response.status === 410) return { status: 'expired' };
 
   if (!response.ok) {
     throw new Error('Failed to check device pairing status');

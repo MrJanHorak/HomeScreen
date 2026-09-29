@@ -32,9 +32,7 @@ server/functions/src/
 
 ### 1. `getDashboardSummary` (`GET`)
 Aggregates Calendar events, Tasks, Fitness activity, and Local Weather in parallel using `Promise.allSettled`.
-- **Query Params / Headers**:
-  - `userId`: User's Firebase UID.
-  - Or `Authorization: Bearer <Firebase_ID_Token>`.
+- **Header**: `Authorization: Bearer <Firebase_ID_Token>`. The verified token determines the UID.
 - **Response**:
   ```json
   {
@@ -68,20 +66,21 @@ Aggregates Calendar events, Tasks, Fitness activity, and Local Weather in parall
   }
   ```
 
-### 2. `authDevice` (`GET` / `POST`)
+### 2. `authDevice` (`POST`)
 Implements TV device code authentication (RFC 8628 style pairing flow):
-- `POST /authDevice?action=request-code`: Generates a 6-character code (e.g. `K9W2M7`) displayed on the TV screen.
-- `GET /authDevice?action=poll&code=K9W2M7`: TV polls this until user finishes authorization.
-- `POST /authDevice` (body: `{ action: "authorize-code", code: "K9W2M7", idToken: "..." }`): User confirms code on mobile/browser. Returns Firebase Custom Token to the TV.
-- `POST /authDevice` (body: `{ action: "link-tokens", userId, googleTokens }`): Stores Google OAuth tokens securely.
+- `POST /authDevice?action=request-code`: Generates a displayed 6-character code and a private `pollSecret`. Keep the secret on the TV only.
+- `POST /authDevice?action=poll` (body: `{ code, pollSecret }`): TV polls until authorization and receives a one-time custom token.
 
-### 3. `executeAction` (`POST`)
+### 3. `beginGoogleLink` (`POST`) and `googleOAuthCallback` (`GET`)
+The pairing site sends the displayed code to `beginGoogleLink` with a Firebase ID token. The server creates a one-time OAuth state and PKCE challenge, then returns a Google consent URL. Google returns to `googleOAuthCallback`; the server exchanges the code, checks that the Google account matches the Firebase user, stores encrypted tokens, and authorizes the TV. The browser receives only a result redirect.
+
+### 4. `executeAction` (`POST`)
 Handles actions triggered by the TV remote:
+- Requires `Authorization: Bearer <Firebase_ID_Token>`; the verified token determines the UID.
 - Complete a task:
   ```json
   {
     "action": "completeTask",
-    "userId": "...",
     "payload": { "taskId": "..." }
   }
   ```
@@ -89,13 +88,12 @@ Handles actions triggered by the TV remote:
   ```json
   {
     "action": "updatePreferences",
-    "userId": "...",
     "payload": { "stepGoal": 12000, "weatherCity": "San Francisco" }
   }
   ```
 
-### 4. `syncUserData` (`POST` / `GET`)
-Proactively syncs upstream Google APIs and updates `users/{userId}/cache/dashboard` in Firestore.
+### 5. `syncUserData` (`POST`)
+Requires `Authorization: Bearer <Firebase_ID_Token>` and updates the verified user's dashboard cache.
 
 ---
 
@@ -106,7 +104,7 @@ Proactively syncs upstream Google APIs and updates `users/{userId}/cache/dashboa
      - **Google Calendar API**
      - **Google Tasks API**
      - **Fitness API**
-   - Create an **OAuth 2.0 Client ID** (Web application).
+   - Create an **OAuth 2.0 Client ID** (Web application). Add the exact `GOOGLE_REDIRECT_URI` function URL as an authorized redirect URI.
    - Add scopes:
      - `https://www.googleapis.com/auth/calendar.readonly`
      - `https://www.googleapis.com/auth/tasks`
@@ -114,9 +112,8 @@ Proactively syncs upstream Google APIs and updates `users/{userId}/cache/dashboa
      - `https://www.googleapis.com/auth/fitness.location.read`
 2. In **[OpenWeatherMap](https://openweathermap.org/api)**:
    - Create an API key.
-3. Configure environment variables in `server/functions/.env` or Firebase Secrets:
+3. Put `GOOGLE_CLIENT_ID`, `GOOGLE_REDIRECT_URI`, and `PAIRING_URL` in `server/functions/.env`. Provision the private values as Firebase function secrets:
    ```bash
-   firebase functions:secrets:set GOOGLE_CLIENT_ID
    firebase functions:secrets:set GOOGLE_CLIENT_SECRET
    firebase functions:secrets:set OPENWEATHER_API_KEY
    firebase functions:secrets:set TOKEN_ENCRYPTION_KEY

@@ -8,11 +8,14 @@ import ScheduleCard from '../components/ScheduleCard/ScheduleCard';
 import ActivityCard from '../components/activityCard/ActivityCard';
 import MealCard from '../components/MealCard/MealCard';
 import ToDo from '../components/ToDo/ToDo';
+import { useDashboard } from '../context/DashboardContext';
 
 function HomeScreen() {
+  const { error } = useDashboard();
   return (
     <View style={{ flex: 1, justifyContent: 'space-between' }}>
       <HeaderBar />
+      {error && <TVText text={`Live data unavailable: ${error}`} typography="body" color="accent" />}
       <TVSection direction='row' style={{ height: '40%', marginBottom: 16 }}>
         <TVCard style={{ flex: 1, height: '100%' }}>
           <WeatherWidget />

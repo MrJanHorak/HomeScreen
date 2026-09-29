@@ -85,4 +85,5 @@ export interface DevicePairingCode {
   expiresAt: number;
   userId?: string;
   customToken?: string;
+  pollSecretHash: string;
 }

@@ -33,25 +33,11 @@ export async function fetchLocalWeather(
 ): Promise<WeatherSummary> {
   const apiKey = process.env.OPENWEATHER_API_KEY;
 
-  // Fallback defaults if no API key is configured
+  // Do not present sample conditions as live weather.
   if (!apiKey) {
     return {
-      temp: "72°",
-      condition: "Partly Cloudy",
-      temperature: 72,
-      feelsLike: 70,
-      conditionIcon: "cloud-sun",
-      humidity: 54,
-      windSpeed: 4,
-      windDirection: "NW",
-      high: 78,
-      low: 61,
-      forecast: [
-        { day: "Thu", condition: "Partly Cloudy", icon: "cloud-sun", high: 79, low: 62 },
-        { day: "Fri", condition: "Sunny", icon: "sun", high: 82, low: 64 },
-        { day: "Sat", condition: "Mostly Sunny", icon: "sun", high: 84, low: 66 },
-        { day: "Sun", condition: "Scattered Rain", icon: "cloud-rain", high: 76, low: 63 },
-      ],
+      temp: "--",
+      condition: "Unavailable",
     };
   }
 

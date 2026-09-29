@@ -17,6 +17,17 @@
       ]
     }
   ],
+  "hosting": {
+    "public": "pairing-web/dist",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "redirects": [
+      { "source": "/", "destination": "/pair", "type": 302 }
+    ],
+    "rewrites": [
+      { "source": "/pair", "destination": "/index.html" }
+    ],
+    "predeploy": ["npm --prefix pairing-web run build"]
+  },
   "emulators": {
     "functions": {
       "port": 5001

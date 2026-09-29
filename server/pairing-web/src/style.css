@@ -1,0 +1,34 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Outfit:wght@400;500;600;700&display=swap');
+
+:root{font-family:'DM Sans',sans-serif;color:#eff4f7;background:#10151c;font-synthesis:none;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+body{margin:0;min-width:320px}
+button,input{font:inherit}
+.layout{position:relative;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-direction:column;overflow:hidden;padding:52px 20px 24px;background:radial-gradient(circle at 78% 20%,#1a2b32 0,#10151c 43%,#0c1117 100%)}
+.ambient{position:absolute;border-radius:50%;pointer-events:none;filter:blur(3px)}
+.ambient-one{width:560px;height:560px;right:-210px;top:-250px;background:radial-gradient(circle,#1b5a57a6,transparent 67%)}
+.ambient-two{width:480px;height:480px;left:-250px;bottom:-280px;background:radial-gradient(circle,#325a5266,transparent 68%)}
+.card{position:relative;z-index:1;width:min(100%,548px);padding:42px 44px 35px;border:1px solid #304047;border-radius:26px;background:linear-gradient(145deg,#1d2930f7,#172128f7);box-shadow:0 28px 80px #0008,0 1px 0 #ffffff12 inset}
+.brand{display:flex;align-items:center;gap:11px;font-family:Outfit,sans-serif;font-weight:600;font-size:20px;letter-spacing:-.02em}
+.brand-mark{display:grid;place-items:center;width:34px;height:34px;border-radius:10px;background:#b1e3d0;color:#17352f;font-weight:700;font-size:22px}
+.eyebrow{display:flex;align-items:center;gap:12px;margin:38px 0 15px;color:#b6d7ca;font-size:11px;font-weight:700;letter-spacing:.17em}
+.eyebrow-line{width:30px;height:1px;background:#749b8e}
+h1{max-width:450px;margin:0;font-family:Outfit,sans-serif;font-size:clamp(33px,5vw,46px);font-weight:500;line-height:1.12;letter-spacing:-.045em}
+.intro{margin:18px 0 29px;color:#aab8be;font-size:15px;line-height:1.6}
+.steps{display:flex;align-items:center;gap:12px;margin-bottom:29px;color:#91a3a9;font-size:13px;font-weight:600}
+.step{display:flex;align-items:center;gap:8px;white-space:nowrap}.step.active{color:#bcead8}
+.step-number{display:grid;place-items:center;width:24px;height:24px;border:1px solid #607b75;border-radius:50%;font-size:11px}.active .step-number{background:#bcead8;border-color:#bcead8;color:#183b31}
+.step-rule{height:1px;width:42px;background:#50636a}
+.account-panel{display:flex;align-items:center;gap:12px;min-height:78px;padding:15px 18px;margin-bottom:25px;border:1px solid #3a4b52;border-radius:14px;background:#ffffff08}
+.account-copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:5px}.account-copy strong{font-size:14px;font-weight:600;overflow-wrap:anywhere}
+.field-label{display:block;color:#9ab4b6;font-size:10px;letter-spacing:.13em;font-weight:700}
+.button{border:0;cursor:pointer;font-size:13px;font-weight:700;transition:transform .15s,background .15s,opacity .15s}.button:hover:not(:disabled){transform:translateY(-2px)}.button:focus-visible,input:focus-visible{outline:2px solid #bcead8;outline-offset:3px}.button:disabled{cursor:not-allowed;opacity:.5}
+.button-secondary{padding:10px 13px;border-radius:9px;color:#132b27;background:#bcead8;white-space:nowrap}.button-secondary:hover:not(:disabled){background:#d3f5e7}
+.button-text{padding:5px;color:#bcead8;background:transparent;white-space:nowrap}
+#pair-code{display:block;width:100%;height:74px;margin-top:11px;padding:0 21px;border:1px solid #53646a;border-radius:13px;background:#101920;color:#f1f7f3;font-family:Outfit,sans-serif;font-size:32px;font-weight:600;letter-spacing:.29em;text-align:center;text-transform:uppercase}#pair-code::placeholder{color:#63747a;opacity:1}
+.field-hint{margin:9px 0 19px;color:#8fa0a7;font-size:12px}
+.button-primary{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:55px;padding:0 18px;border-radius:11px;background:#bcead8;color:#12372c;font-size:15px}.button-primary:hover:not(:disabled){background:#d3f5e7}.button-primary span{font-size:21px;font-weight:400}
+.status{min-height:22px;margin:15px 0 0;color:#aab8be;font-size:13px;line-height:1.45}.status[data-kind=error]{color:#ffc2b9}.status[data-kind=success]{color:#bcead8}
+.privacy-note{display:flex;gap:11px;margin-top:18px;padding-top:18px;border-top:1px solid #36474c;color:#84999e;font-size:11px;line-height:1.5}.privacy-icon{color:#bcead8;font-size:17px}
+footer{position:relative;z-index:1;margin-top:27px;color:#7f9398;font-size:11px;letter-spacing:.06em}footer span{padding:0 8px}
+@media(max-width:570px){.layout{justify-content:flex-start;padding:20px 12px}.card{padding:29px 23px;border-radius:20px}.eyebrow{margin-top:31px}.account-panel{align-items:flex-start;flex-direction:column}.button-secondary,.button-text{align-self:flex-start}#pair-code{font-size:26px;letter-spacing:.24em}}

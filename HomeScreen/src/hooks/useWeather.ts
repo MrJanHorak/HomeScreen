@@ -1,5 +1,4 @@
 import { useDashboard } from '../context/DashboardContext';
-import { mockWeather } from '../data/mockData';
 
 export type ForecastItem = {
   day: string;
@@ -28,18 +27,6 @@ export function useWeather(): {
   isLoading: boolean;
   error: string | null;
 } {
-  try {
-    const { weather, isLoading, error } = useDashboard();
-    return {
-      data: (weather as unknown as WeatherData) || (mockWeather as unknown as WeatherData),
-      isLoading,
-      error,
-    };
-  } catch {
-    return {
-      data: mockWeather as unknown as WeatherData,
-      isLoading: false,
-      error: null,
-    };
-  }
+  const { weather, isLoading, error } = useDashboard();
+  return { data: weather as WeatherData | null, isLoading, error };
 }

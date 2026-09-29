@@ -1,5 +1,6 @@
 import { onRequest } from "firebase-functions/v2/https";
-import { getStoredUserTokens, saveDashboardCache, auth } from "./utils/db";
+import { getStoredUserTokens, saveDashboardCache } from "./utils/db";
+import { authenticatedUserId } from "./utils/requestAuth";
 import { fetchCalendarEvents } from "./services/googleCalendar";
 import { fetchActiveTasks } from "./services/googleTasks";
 import { fetchHealthData } from "./services/googleFit";
@@ -10,7 +11,7 @@ export const getDashboardSummaryHandler = onRequest(
   {
     cors: true,
     maxInstances: 10,
-    secrets: ["OPENWEATHER_API_KEY"],
+    secrets: ["OPENWEATHER_API_KEY", "TOKEN_ENCRYPTION_KEY", "GOOGLE_CLIENT_SECRET"],
   },
   async (req, res) => {
     if (req.method === "OPTIONS") {
@@ -19,22 +20,13 @@ export const getDashboardSummaryHandler = onRequest(
     }
 
     try {
-      let userId = req.query.userId as string;
-
-      // Extract userId from Firebase Auth Bearer token if provided
-      const authHeader = req.headers.authorization;
-      if (authHeader && authHeader.startsWith("Bearer ")) {
-        const idToken = authHeader.split("Bearer ")[1];
-        try {
-          const decoded = await auth.verifyIdToken(idToken);
-          userId = decoded.uid;
-        } catch {
-          // If bearer verification fails, fallback to query param if present
-        }
+      if (req.method !== "GET") {
+        res.status(405).json({error: "Method not allowed"});
+        return;
       }
-
+      const userId = await authenticatedUserId(req);
       if (!userId) {
-        res.status(400).json({ error: "Missing required userId or valid Authorization header" });
+        res.status(401).json({error: "Valid Firebase ID token required"});
         return;
       }
 
@@ -85,9 +77,7 @@ export const getDashboardSummaryHandler = onRequest(
       res.status(200).json(responsePayload);
     } catch (error) {
       console.error("Error handling getDashboardSummary request:", error);
-      res.status(500).json({
-        error: error instanceof Error ? error.message : "Internal server error",
-      });
+      res.status(500).json({error: "Internal server error"});
     }
   }
 );

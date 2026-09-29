@@ -19,12 +19,15 @@ export default function ActivityCard() {
   const theme = useTheme();
   const { data, isLoading } = useHealthData();
 
-  if (isLoading || !data) {
+  if (isLoading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator color={theme.colors.focusRing} />
       </View>
     );
+  }
+  if (!data) {
+    return <TVText text="Activity unavailable" typography="body" color="textSecondary" />;
   }
 
   const steps = data?.steps ?? 0;
