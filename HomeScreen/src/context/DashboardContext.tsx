@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
-import type { Weather, CalendarEvent, TaskItem, Activity, DashboardSummaryResponse, SavedLocation } from '../../../shared/src/types';
+import type { Weather, CalendarEvent, TaskItem, Activity, DashboardSummaryResponse,
+  SavedLocation, MealPlanSummary } from '../../../shared/src/types';
 import { fetchDashboardSummary, fetchLocationWeather, executeTVAction } from '../services/api';
 import {
   DEFAULT_LOCATIONS,
@@ -12,6 +13,8 @@ import {
 interface DashboardContextValue {
   weather: ExtendedWeather | null;
   schedule: CalendarEvent[];
+  upcomingEvents: CalendarEvent[];
+  meals: MealPlanSummary;
   tasks: TaskItem[];
   health: Activity | null;
   isLoading: boolean;
@@ -38,6 +41,8 @@ const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // Auto-refresh every 5 minutes
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const [weatherByLocation, setWeatherByLocation] = useState<Record<string, Weather>>({});
   const [schedule, setSchedule] = useState<CalendarEvent[]>([]);
+  const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
+  const [meals, setMeals] = useState<MealPlanSummary>({status: 'not_connected', items: []});
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [health, setHealth] = useState<Activity | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -64,6 +69,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       const data: DashboardSummaryResponse = await fetchDashboardSummary();
 
       setSchedule(data.schedule || []);
+      setUpcomingEvents(data.upcomingEvents || []);
+      setMeals(data.meals || {status: 'not_connected', items: []});
       setTasks(data.tasks || []);
       setHealth(data.health);
       setIsLive(true);
@@ -71,6 +78,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.warn('Backend unavailable:', err);
       setSchedule([]);
+      setUpcomingEvents([]);
+      setMeals({status: 'unavailable', items: [], message: 'Meal plan is unavailable.'});
       setTasks([]);
       setHealth(null);
       setIsLive(false);
@@ -210,6 +219,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       value={{
         weather: currentActiveWeather,
         schedule,
+        upcomingEvents,
+        meals,
         tasks,
         health,
         isLoading,

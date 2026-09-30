@@ -3,11 +3,52 @@ import { View, StyleSheet, Text, ScrollView, Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
 import { useDashboard } from '../../context/DashboardContext';
+import type { CalendarEvent } from '../../../../shared/src/types';
+
+function formatEventDate(date: string): string {
+  return new Intl.DateTimeFormat('en-US', {
+    weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC',
+  }).format(new Date(`${date}T12:00:00Z`));
+}
 
 export default function ScheduleDetailView() {
   const theme = useTheme();
-  const { schedule, isLoading } = useDashboard();
+  const { schedule, upcomingEvents, isLoading } = useDashboard();
   const [activeTab, setActiveTab] = useState<'today' | 'upcoming'>('today');
+  const upcomingByDate = upcomingEvents.reduce<Record<string, CalendarEvent[]>>((groups, event) => {
+    if (event.date) (groups[event.date] ||= []).push(event);
+    return groups;
+  }, {});
+
+  const renderEvent = (evt: CalendarEvent) => (
+    <View key={evt.id} style={styles.eventCard}>
+      <View style={[styles.timeBox, { borderColor: `${evt.color || '#38BDF8'}66` }]}>
+        <Text style={[styles.timeText, { color: theme.colors.textPrimary }]}>{evt.time}</Text>
+        {evt.endTime !== evt.time && !!evt.endTime && (
+          <Text style={[styles.endTimeText, { color: theme.colors.textSecondary }]}>{evt.endTime}</Text>
+        )}
+      </View>
+
+      <View style={styles.eventInfo}>
+        <Text style={[styles.eventTitle, { color: theme.colors.textPrimary }]}>{evt.title}</Text>
+        <View style={styles.metaRow}>
+          <MaterialCommunityIcons name="clock-outline" size={15} color={theme.colors.textSecondary} />
+          <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>
+            {evt.endTime && evt.endTime !== evt.time ? `${evt.time} – ${evt.endTime}` : evt.time}
+          </Text>
+        </View>
+      </View>
+
+      <View style={[styles.categoryPill, {
+        backgroundColor: `${evt.color || '#38BDF8'}22`,
+        borderColor: `${evt.color || '#38BDF8'}66`,
+      }]}>
+        <Text style={[styles.categoryText, { color: evt.color || theme.colors.focusRing }]}>
+          {evt.category.toUpperCase()}
+        </Text>
+      </View>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
@@ -73,50 +114,23 @@ export default function ScheduleDetailView() {
                 {isLoading ? 'Loading schedule…' : 'No events scheduled today.'}
               </Text>
             )}
-            {schedule.map((evt) => (
-              <View key={evt.id} style={styles.eventCard}>
-                <View style={[styles.timeBox, { borderColor: `${evt.color || '#38BDF8'}66` }]}>
-                  <Text style={[styles.timeText, { color: theme.colors.textPrimary }]}>
-                    {evt.time}
-                  </Text>
-                  <Text style={[styles.endTimeText, { color: theme.colors.textSecondary }]}>
-                    {evt.endTime}
-                  </Text>
-                </View>
-
-                <View style={styles.eventInfo}>
-                  <Text style={[styles.eventTitle, { color: theme.colors.textPrimary }]}>
-                    {evt.title}
-                  </Text>
-                  <View style={styles.metaRow}>
-                    <MaterialCommunityIcons name="clock-outline" size={15} color={theme.colors.textSecondary} />
-                    <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>
-                      {evt.time} – {evt.endTime}
-                    </Text>
-                  </View>
-                </View>
-
-                <View
-                  style={[
-                    styles.categoryPill,
-                    {
-                      backgroundColor: `${evt.color || '#38BDF8'}22`,
-                      borderColor: `${evt.color || '#38BDF8'}66`,
-                    },
-                  ]}
-                >
-                  <Text style={[styles.categoryText, { color: evt.color || theme.colors.focusRing }]}>
-                    {evt.category.toUpperCase()}
-                  </Text>
-                </View>
-              </View>
-            ))}
+            {schedule.map(renderEvent)}
           </View>
         ) : (
           <View style={styles.eventsWrapper}>
-            <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>
-              Upcoming events are not included in the current calendar feed yet.
-            </Text>
+            {upcomingEvents.length === 0 && (
+              <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>
+                {isLoading ? 'Loading upcoming events…' : 'No events in the next 14 days.'}
+              </Text>
+            )}
+            {Object.entries(upcomingByDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, events]) => (
+              <View key={date} style={styles.dayGroup}>
+                <Text style={[styles.dayHeading, { color: theme.colors.textPrimary }]}>
+                  {formatEventDate(date)}
+                </Text>
+                {events.map(renderEvent)}
+              </View>
+            ))}
           </View>
         )}
       </ScrollView>
@@ -156,6 +170,15 @@ const styles = StyleSheet.create({
   },
   eventsWrapper: {
     gap: 10,
+  },
+  dayGroup: {
+    gap: 10,
+    marginBottom: 12,
+  },
+  dayHeading: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginTop: 4,
   },
   eventCard: {
     flexDirection: 'row',

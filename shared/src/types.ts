@@ -48,6 +48,23 @@ export interface CalendarEvent {
   date?: string;
 }
 
+export interface MealPlanItem {
+  date: string;
+  title: string;
+  side?: string;
+  cook?: string;
+  servings?: string;
+  recipeId?: string;
+  note?: string;
+  recipeUrl?: string;
+}
+
+export interface MealPlanSummary {
+  status: 'ok' | 'not_connected' | 'unavailable';
+  items: MealPlanItem[];
+  message?: string;
+}
+
 export interface TaskItem {
   id: string;
   tasklistId?: string;
@@ -83,6 +100,8 @@ export interface ActivityDay {
 
 export interface DashboardSummaryResponse {
   schedule: CalendarEvent[];
+  upcomingEvents: CalendarEvent[];
+  meals: MealPlanSummary;
   tasks: TaskItem[];
   health: Activity;
   weather: Weather;

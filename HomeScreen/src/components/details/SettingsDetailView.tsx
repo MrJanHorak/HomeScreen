@@ -6,14 +6,16 @@ import { useAuth } from '../../context/AuthContext';
 import { useDashboard } from '../../context/DashboardContext';
 import { PRESET_CITIES } from '../../services/weatherLocationService';
 import AppearanceSettings, { AppearanceSection } from './AppearanceSettings';
+import MealConnectionSettings from './MealConnectionSettings';
 
-type SettingsSection = AppearanceSection | 'weather' | 'device';
+type SettingsSection = AppearanceSection | 'weather' | 'meals' | 'device';
 const SECTIONS: { id: SettingsSection; label: string; icon: keyof typeof MaterialCommunityIcons.glyphMap }[] = [
   { id: 'colors', label: 'Colors', icon: 'palette-outline' },
   { id: 'background', label: 'Background', icon: 'image-outline' },
   { id: 'layout', label: 'Layout', icon: 'view-dashboard-outline' },
   { id: 'cards', label: 'Cards', icon: 'view-grid-outline' },
   { id: 'weather', label: 'Weather', icon: 'weather-partly-cloudy' },
+  { id: 'meals', label: 'Meals', icon: 'silverware-fork-knife' },
   { id: 'device', label: 'Device', icon: 'television' },
 ];
 
@@ -92,6 +94,7 @@ export default function SettingsDetailView() {
         showsVerticalScrollIndicator={false}>
       {(section === 'colors' || section === 'background' || section === 'layout' || section === 'cards') &&
         <AppearanceSettings section={section} />}
+      {section === 'meals' && <MealConnectionSettings />}
       {section === 'weather' && <>
       {/* Weather Locations Section */}
       <View style={styles.card}>

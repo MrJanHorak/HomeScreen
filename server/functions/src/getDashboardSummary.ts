@@ -50,7 +50,9 @@ export const getDashboardSummaryHandler = onRequest(
       // 3. Assemble response payload
       const responsePayload: DashboardSummaryResponse = {
         schedule:
-          calendarResult.status === "fulfilled" ? calendarResult.value : [],
+          calendarResult.status === "fulfilled" ? calendarResult.value.today : [],
+        upcomingEvents:
+          calendarResult.status === "fulfilled" ? calendarResult.value.upcoming : [],
         meals: mealsResult.status === "fulfilled" ? mealsResult.value :
           {status: "unavailable", items: [], message: "Meal plan is unavailable."},
         tasks: tasksResult.status === "fulfilled" ? tasksResult.value : [],

@@ -1,19 +1,14 @@
 import { useDashboard } from '../context/DashboardContext';
+import type { CalendarEvent } from '../../../shared/src/types';
 
-export type CalendarItem = {
-  id: string;
-  title: string;
-  time: string;
-  endTime: string;
-  category: string;
-  color: string;
-};
+export type CalendarItem = CalendarEvent;
 
 export function useSchedule(): {
   data: CalendarItem[] | null;
+  upcoming: CalendarItem[];
   isLoading: boolean;
   error: string | null;
 } {
-  const { schedule, isLoading, error } = useDashboard();
-  return { data: schedule as CalendarItem[], isLoading, error };
+  const { schedule, upcomingEvents, isLoading, error } = useDashboard();
+  return { data: schedule, upcoming: upcomingEvents, isLoading, error };
 }

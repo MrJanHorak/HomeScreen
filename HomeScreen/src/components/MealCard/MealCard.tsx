@@ -1,121 +1,79 @@
-import { View, StyleSheet, Text } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useTheme } from '../../theme/ThemeContext';
+import {View, StyleSheet, Text} from 'react-native';
+import {MaterialCommunityIcons} from '@expo/vector-icons';
+import {useTheme} from '../../theme/ThemeContext';
+import {useDashboard} from '../../context/DashboardContext';
 import useCompactTVLayout from '../../hooks/useCompactTVLayout';
+
+function localDate(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${
+    String(now.getDate()).padStart(2, '0')}`;
+}
 
 export default function MealCard() {
   const theme = useTheme();
   const compact = useCompactTVLayout();
-
-  const menuItems = [
-    { name: 'Chicken Gnocchi Soup', icon: 'food-hot-dog', type: 'Main' },
-    { name: 'Chocolate Pudding', icon: 'cupcake', type: 'Dessert' },
-    { name: 'Fresh Garden Salad', icon: 'leaf', type: 'Side' },
-  ];
+  const {meals} = useDashboard();
+  const today = localDate();
+  const upcoming = meals.items.filter((item) => item.date >= today);
+  const meal = upcoming[0];
+  const isToday = meal?.date === today;
+  const following = upcoming.slice(1, 3);
+  const message = meals.status === 'not_connected'
+    ? 'Connect a meal Sheet from the pairing page on your phone.'
+    : meals.status === 'unavailable'
+      ? meals.message || 'Meal plan is unavailable.'
+      : 'No upcoming dinners in your Sheet.';
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={[styles.headerRow, compact && styles.compactHeaderRow]}>
+      <View style={styles.headerRow}>
         <View style={styles.titleWithIcon}>
-          <MaterialCommunityIcons
-            name="silverware-fork-knife"
-            size={compact ? 17 : 22}
-            color={theme.colors.accent}
-          />
-          <Text numberOfLines={1} style={[styles.headerTitle, compact && styles.compactTitle, { color: theme.colors.textPrimary }]}>
-            DINNER PREVIEW
+          <MaterialCommunityIcons name="silverware-fork-knife"
+            size={compact ? 17 : 22} color={theme.colors.accent} />
+          <Text numberOfLines={1} style={[styles.headerTitle,
+            compact && styles.compactTitle, {color: theme.colors.textPrimary}]}>
+            {isToday ? "TONIGHT'S DINNER" : 'NEXT DINNER'}
           </Text>
         </View>
-        <View style={[styles.cookBadge, compact && styles.compactCookBadge]}>
-          <Text style={[styles.cookBadgeText, compact && styles.compactCookText, { color: theme.colors.focusRing }]}>
-            👨‍🍳 Dad
-          </Text>
-        </View>
+        {meal?.servings ? <Text style={[styles.servings, {color: theme.colors.focusRing}]}>
+          Serves {meal.servings}
+        </Text> : null}
       </View>
 
-      {/* Menu items */}
-      <View style={[styles.menuList, compact && styles.compactMenuList]}>
-        {menuItems.map((item, idx) => (
-          <View key={idx} style={[styles.menuItem, compact && styles.compactMenuItem]}>
-            <View style={styles.bulletDot} />
-            <Text
-              numberOfLines={1}
-              style={[styles.itemName, compact && styles.compactItemName, { color: theme.colors.textPrimary }]}
-            >
-              {item.name}
-            </Text>
-          </View>
-        ))}
-      </View>
+      {meal ? <>
+        {!isToday && <Text style={styles.dateLabel}>{meal.date}</Text>}
+        <Text numberOfLines={compact ? 2 : 3} style={[styles.mealTitle,
+          compact && styles.compactMealTitle, {color: theme.colors.textPrimary}]}>
+          {meal.title}
+        </Text>
+        {meal.side ? <Text numberOfLines={1} style={styles.detail}>With {meal.side}</Text> : null}
+        {meal.cook ? <Text numberOfLines={1} style={styles.detail}>Cook: {meal.cook}</Text> : null}
+        {meal.note ? <Text numberOfLines={1} style={styles.detail}>{meal.note}</Text> : null}
+        {following.length > 0 && <View style={styles.nextMeals}>
+          {following.map((item) => <Text key={`${item.date}-${item.title}`}
+            numberOfLines={1} style={styles.nextMeal}>
+            {item.date.slice(5)}  {item.title}
+          </Text>)}
+        </View>}
+      </> : <Text style={styles.emptyText}>{message}</Text>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    justifyContent: 'center',
-    height: '100%',
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  titleWithIcon: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  cookBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 12,
-    backgroundColor: 'rgba(56, 189, 248, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.25)',
-  },
-  cookBadgeText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  menuList: {
-    gap: 8,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    paddingVertical: 7,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-  },
-  bulletDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#F59E0B',
-    marginRight: 10,
-  },
-  itemName: {
-    fontSize: 17,
-    fontWeight: '500',
-    flex: 1,
-  },
-  compactHeaderRow: { marginBottom: 6 },
-  compactTitle: { fontSize: 14, letterSpacing: 0.3, flexShrink: 1 },
-  compactCookBadge: { paddingHorizontal: 5, paddingVertical: 1 },
-  compactCookText: { fontSize: 10 },
-  compactMenuList: { gap: 5 },
-  compactMenuItem: { paddingVertical: 4, paddingHorizontal: 7 },
-  compactItemName: { fontSize: 13 },
+  container: {paddingHorizontal: 4, justifyContent: 'flex-start', height: '100%'},
+  headerRow: {flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    gap: 8, marginBottom: 10},
+  titleWithIcon: {flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1},
+  headerTitle: {fontSize: 18, fontWeight: '700', letterSpacing: 1, flexShrink: 1},
+  compactTitle: {fontSize: 14, letterSpacing: 0.3},
+  servings: {fontSize: 12, fontWeight: '700'},
+  dateLabel: {color: '#A7B6C0', fontSize: 12, marginBottom: 3},
+  mealTitle: {fontSize: 21, fontWeight: '700', lineHeight: 27},
+  compactMealTitle: {fontSize: 16, lineHeight: 20},
+  detail: {color: '#B9C7CF', fontSize: 13, marginTop: 4},
+  nextMeals: {borderTopWidth: 1, borderTopColor: '#ffffff20', marginTop: 11, paddingTop: 6},
+  nextMeal: {color: '#A7B6C0', fontSize: 12, marginTop: 3},
+  emptyText: {color: '#A7B6C0', fontSize: 14, lineHeight: 20},
 });
-

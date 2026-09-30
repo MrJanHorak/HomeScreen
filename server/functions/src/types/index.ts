@@ -125,6 +125,7 @@ export interface WeatherSummary {
 
 export interface DashboardSummaryResponse {
   schedule: CalendarEventSummary[];
+  upcomingEvents: CalendarEventSummary[];
   meals: MealPlanSummary;
   tasks: TaskSummary[];
   health: HealthSummary;

@@ -37,31 +37,33 @@ export default function WeatherWidget() {
         )}
       </Pressable>
 
-      {isLoading || data?.condition === 'Loading weather' ? (
-        <ActivityIndicator color={theme.colors.focusRing} />
-      ) : !data || data.temperature === undefined ? (
-        <TVText text="Weather unavailable" typography="body" color="textSecondary" />
-      ) : (
-        <>
-          <CurrentWeatherHeader
-            temperature={data.temperature}
-            condition={data.condition}
-            conditionIcon={data.conditionIcon || 'cloud'}
-          />
-          <View style={[styles.forecastRow, compact && styles.compactForecastRow]}>
-            {data.forecast?.map((forecastItem) => (
-              <ForecastItemComponent
-                key={forecastItem.day}
-                day={forecastItem.day}
-                condition={forecastItem.condition}
-                icon={forecastItem.icon}
-                high={forecastItem.high}
-                low={forecastItem.low}
-              />
-            ))}
-          </View>
-        </>
-      )}
+      <View style={styles.weatherBody}>
+        {isLoading || data?.condition === 'Loading weather' ? (
+          <ActivityIndicator color={theme.colors.focusRing} />
+        ) : !data || data.temperature === undefined ? (
+          <TVText text="Weather unavailable" typography="body" color="textSecondary" />
+        ) : (
+          <>
+            <CurrentWeatherHeader
+              temperature={data.temperature}
+              condition={data.condition}
+              conditionIcon={data.conditionIcon || 'cloud'}
+            />
+            <View style={[styles.forecastRow, compact && styles.compactForecastRow]}>
+              {data.forecast?.map((forecastItem) => (
+                <ForecastItemComponent
+                  key={forecastItem.day}
+                  day={forecastItem.day}
+                  condition={forecastItem.condition}
+                  icon={forecastItem.icon}
+                  high={forecastItem.high}
+                  low={forecastItem.low}
+                />
+              ))}
+            </View>
+          </>
+        )}
+      </View>
     </View>
   );
 }
@@ -69,11 +71,16 @@ export default function WeatherWidget() {
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'stretch',
+    justifyContent: 'flex-start',
     height: '100%',
     paddingHorizontal: 4,
     position: 'relative',
+  },
+  weatherBody: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   locationPill: {
     flexDirection: 'row',
@@ -86,6 +93,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.12)',
     marginBottom: 6,
     gap: 6,
+    alignSelf: 'flex-start',
     ...Platform.select({
       web: {
         cursor: 'pointer',

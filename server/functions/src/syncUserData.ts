@@ -27,7 +27,8 @@ export async function syncUserDashboard(userId: string, timeZone = "UTC"): Promi
     ]);
 
   const summary: DashboardSummaryResponse = {
-    schedule: calendarResult.status === "fulfilled" ? calendarResult.value : [],
+    schedule: calendarResult.status === "fulfilled" ? calendarResult.value.today : [],
+    upcomingEvents: calendarResult.status === "fulfilled" ? calendarResult.value.upcoming : [],
     meals: mealsResult.status === "fulfilled" ? mealsResult.value :
       {status: "unavailable", items: [], message: "Meal plan is unavailable."},
     tasks: tasksResult.status === "fulfilled" ? tasksResult.value : [],
