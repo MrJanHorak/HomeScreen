@@ -22,11 +22,29 @@ export interface SavedLocation {
 
 export interface StoredUserTokens {
   google: GoogleTokens;
+  mealSheet?: GoogleTokens & {spreadsheetId?: string; spreadsheetTitle?: string};
   location?: UserLocation;
   weatherCity?: string;
   savedLocations?: SavedLocation[];
   stepGoal?: number;
   distanceGoal?: number;
+}
+
+export interface MealPlanItem {
+  date: string;
+  title: string;
+  side?: string;
+  cook?: string;
+  servings?: string;
+  recipeId?: string;
+  note?: string;
+  recipeUrl?: string;
+}
+
+export interface MealPlanSummary {
+  status: "ok" | "not_connected" | "unavailable";
+  items: MealPlanItem[];
+  message?: string;
 }
 
 
@@ -107,6 +125,7 @@ export interface WeatherSummary {
 
 export interface DashboardSummaryResponse {
   schedule: CalendarEventSummary[];
+  meals: MealPlanSummary;
   tasks: TaskSummary[];
   health: HealthSummary;
   weather: WeatherSummary;

@@ -36,4 +36,31 @@ This is separate from `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` used by `goo
 3. Google consent redirects to the Cloud Function callback. The server verifies OAuth state, the Google identity, and the still-pending TV code before storing encrypted access and refresh tokens.
 4. The TV receives a one-time Firebase custom token through its authenticated poll secret and signs in.
 
+## Connect a meal Sheet
+
+1. Enable the Google Sheets API in the same Google Cloud project. Add the
+   `https://www.googleapis.com/auth/spreadsheets.readonly` scope to the OAuth
+   consent screen before releasing this feature to users.
+2. Open `/meals` on the pairing site's domain on a phone or computer and sign in with the same
+   Google account as the TV. Choose **Allow Google Sheets
+   access**, then paste the Sheet's normal `docs.google.com/spreadsheets/d/...`
+   link. The account must have access to that Sheet. No public link is needed.
+   A paired TV also shows the `/meals` QR code under **Settings → Meals**.
+3. Keep adding future weeks to the same workbook. The TV's dinner card refreshes
+   with the dashboard (currently every five minutes). **Disconnect meal Sheet**
+   removes the stored Sheet selection and meal OAuth token from this app.
+
+The reader finds a visible tab with `Meal`, `Menu`, or `Week` in its name (or
+the first visible tab) and expects a header row near the top. It requires
+`Date` and `Meal_Name` (also accepts `Main`, `Meal`, or `Dinner`). It also reads
+`Servings`, `Recipe_ID`, and `Notes/Prep_Style` from the current workbook.
+Dates must be actual Google Sheets dates or `YYYY-MM-DD` text. Empty or past
+dates do not appear as upcoming dinners on the TV. Other tabs, including
+recipes and groceries, are not displayed by the current card.
+
+This optional connection uses Sheets read-only consent, which Google defines
+as access to all spreadsheets on that account. The backend reads only the
+Sheet URL that the user selects. Review OAuth verification and narrower
+file-selection alternatives before a public launch.
+
 The existing Google Fit REST integration has an announced end-of-2026 support limit. Plan a move to Google Health API or Health Connect for activity data.

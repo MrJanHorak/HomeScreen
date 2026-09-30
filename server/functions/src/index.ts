@@ -14,9 +14,11 @@ import { getLocationWeatherHandler } from "./getLocationWeather";
 import { authDeviceHandler } from "./authDevice";
 import { executeActionHandler } from "./executeAction";
 import { syncUserDataHandler } from "./syncUserData";
-import {beginGoogleLinkHandler, beginGooglePhotosHandler, googleOAuthCallbackHandler} from "./googlePairing";
+import {beginGoogleLinkHandler, beginGooglePhotosHandler,
+  beginGoogleMealsHandler, googleOAuthCallbackHandler} from "./googlePairing";
 import {googlePhotosPickerHandler} from "./googlePhotosPicker";
 import {userAppearanceHandler} from "./userAppearance";
+import {mealSheetConfigHandler} from "./mealSheetConfig";
 
 
 // import {onRequest} from "firebase-functions/https";
@@ -49,6 +51,8 @@ export const executeAction = executeActionHandler;
 export const syncUserData = syncUserDataHandler;
 export const beginGoogleLink = beginGoogleLinkHandler;
 export const beginGooglePhotos = beginGooglePhotosHandler;
+export const beginGoogleMeals = beginGoogleMealsHandler;
 export const googlePhotosPicker = googlePhotosPickerHandler;
 export const userAppearance = userAppearanceHandler;
+export const mealSheetConfig = mealSheetConfigHandler;
 export const googleOAuthCallback = googleOAuthCallbackHandler;

@@ -9,6 +9,7 @@ import {
   db,
   getDeviceCode,
   recordPairingAttempt,
+  saveMealSheetTokens,
   savePhotosTokens,
 } from "./utils/db";
 import {authenticatedUserId} from "./utils/requestAuth";
@@ -23,11 +24,12 @@ const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/fitness.location.read",
 ];
 const PHOTOS_SCOPE = "https://www.googleapis.com/auth/photospicker.mediaitems.readonly";
+const MEALS_SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
 
 interface OAuthState {
   userId: string;
   deviceCode?: string;
-  kind?: "device" | "photos";
+  kind?: "device" | "photos" | "meals";
   codeVerifier: string;
   expiresAt: number;
 }
@@ -42,8 +44,10 @@ function hash(value: string): string {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
 
-function pairingRedirect(result: "connected" | "denied" | "expired" | "error"): string {
+function pairingRedirect(result: "connected" | "denied" | "expired" | "error" |
+  "meals_connected" | "meals_denied" | "meals_error"): string {
   const url = new URL(requiredSetting("PAIRING_URL"));
+  if (result.startsWith("meals_")) url.pathname = "/meals";
   url.searchParams.set("result", result);
   return url.toString();
 }
@@ -173,6 +177,52 @@ export const beginGooglePhotosHandler = onRequest(
   }
 );
 
+/** Ask for meal Sheet access only when a signed-in person enables meals. */
+export const beginGoogleMealsHandler = onRequest(
+  {cors: true, maxInstances: 10},
+  async (req, res) => {
+    if (req.method === "OPTIONS") {
+      res.status(204).send("");
+      return;
+    }
+    if (req.method !== "POST") {
+      res.status(405).json({error: "Method not allowed"});
+      return;
+    }
+    const userId = await authenticatedUserId(req);
+    if (!userId) {
+      res.status(401).json({error: "Valid Firebase ID token required"});
+      return;
+    }
+    try {
+      const state = crypto.randomBytes(32).toString("base64url");
+      const codeVerifier = crypto.randomBytes(48).toString("base64url");
+      const codeChallenge = crypto.createHash("sha256")
+        .update(codeVerifier).digest("base64url");
+      await db.collection("oauth_states").doc(hash(state)).create({
+        userId, kind: "meals", codeVerifier,
+        expiresAt: Date.now() + STATE_LIFETIME_MS,
+      } satisfies OAuthState);
+      const oauthClient = new google.auth.OAuth2(
+        requiredSetting("GOOGLE_CLIENT_ID"), undefined,
+        requiredSetting("GOOGLE_REDIRECT_URI")
+      );
+      const authorizationUrl = oauthClient.generateAuthUrl({
+        access_type: "offline",
+        prompt: "consent",
+        scope: ["openid", "email", MEALS_SCOPE],
+        state,
+        code_challenge_method: CodeChallengeMethod.S256,
+        code_challenge: codeChallenge,
+      });
+      res.status(200).json({authorizationUrl});
+    } catch (error) {
+      console.error("Could not start meal Sheet consent:", error);
+      res.status(500).json({error: "Could not start meal Sheet connection"});
+    }
+  }
+);
+
 function photosResult(res: Response, message: string): void {
   res.status(200).type("html").send(`<!doctype html><html><meta name="viewport" content="width=device-width"><body style="font:20px system-ui;padding:2rem;background:#0f172a;color:white"><h1>HomeScreen</h1><p>${message}</p><p>You can return to your TV.</p></body></html>`);
 }
@@ -183,7 +233,7 @@ export const googleOAuthCallbackHandler = onRequest(
     secrets: ["GOOGLE_CLIENT_SECRET", "TOKEN_ENCRYPTION_KEY"],
   },
   async (req, res) => {
-    let photosFlow = false;
+    let flow: OAuthState["kind"] = "device";
     if (req.method !== "GET") {
       res.status(405).send("Method not allowed");
       return;
@@ -200,15 +250,17 @@ export const googleOAuthCallbackHandler = onRequest(
         res.redirect(303, pairingRedirect("expired"));
         return;
       }
-      photosFlow = record.kind === "photos";
+      flow = record.kind;
       if (req.query.error) {
         if (record.kind === "photos") photosResult(res, "Google Photos access was cancelled.");
+        else if (record.kind === "meals") res.redirect(303, pairingRedirect("meals_denied"));
         else res.redirect(303, pairingRedirect("denied"));
         return;
       }
       const code = req.query.code;
       if (typeof code !== "string" || !code) {
         if (record.kind === "photos") photosResult(res, "Google Photos could not be connected.");
+        else if (record.kind === "meals") res.redirect(303, pairingRedirect("meals_error"));
         else res.redirect(303, pairingRedirect("error"));
         return;
       }
@@ -251,6 +303,20 @@ export const googleOAuthCallbackHandler = onRequest(
         return;
       }
 
+      if (record.kind === "meals") {
+        if (!tokens.scope?.split(" ").includes(MEALS_SCOPE)) {
+          throw new Error("Google Sheets permission was not granted");
+        }
+        await saveMealSheetTokens(record.userId, {
+          accessToken: tokens.access_token,
+          refreshToken: tokens.refresh_token,
+          expiryDate: tokens.expiry_date ?? undefined,
+          scope: tokens.scope,
+        });
+        res.redirect(303, pairingRedirect("meals_connected"));
+        return;
+      }
+
       if (!record.deviceCode) throw new Error("Missing TV pairing code");
 
       const customToken = await auth.createCustomToken(record.userId);
@@ -268,7 +334,8 @@ export const googleOAuthCallbackHandler = onRequest(
       res.redirect(303, pairingRedirect(paired ? "connected" : "expired"));
     } catch (error) {
       console.error("Could not finish Google pairing:", error);
-      if (photosFlow) photosResult(res, "Google Photos could not be connected. Please try again.");
+      if (flow === "photos") photosResult(res, "Google Photos could not be connected. Please try again.");
+      else if (flow === "meals") res.redirect(303, pairingRedirect("meals_error"));
       else res.redirect(303, pairingRedirect("error"));
     }
   }

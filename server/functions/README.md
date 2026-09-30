@@ -33,6 +33,13 @@ server/functions/src/
 ### 1. `getDashboardSummary` (`GET`)
 Aggregates Calendar events, Tasks, Fitness activity, and Local Weather in parallel using `Promise.allSettled`.
 - **Header**: `Authorization: Bearer <Firebase_ID_Token>`. The verified token determines the UID.
+
+The optional meal integration uses `POST /beginGoogleMeals` for incremental
+Google Sheets consent and `GET`, `PUT`, and `DELETE /mealSheetConfig` for the
+signed-in user's Sheet selection. `PUT` accepts `{ "url": "https://docs.google.com/spreadsheets/d/..." }`,
+checks access and the Date/meal header, then stores only that spreadsheet ID
+and title alongside an encrypted meal OAuth token. Dashboard summary responses
+include `meals.status` and dated `meals.items` for the TV card.
 - **Response**:
   ```json
   {

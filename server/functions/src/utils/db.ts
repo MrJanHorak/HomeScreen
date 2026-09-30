@@ -53,6 +53,7 @@ export async function getStoredUserTokens(userId: string): Promise<StoredUserTok
 
   const data = userDoc.data() || {};
   const google = data.google || {};
+  const mealSheet = data.mealSheet;
 
   return {
     google: {
@@ -62,12 +63,49 @@ export async function getStoredUserTokens(userId: string): Promise<StoredUserTok
       expiryDate: google.expiryDate,
       scope: google.scope,
     },
+    mealSheet: mealSheet ? {
+      accessToken: mealSheet.accessToken ? decryptToken(mealSheet.accessToken) : undefined,
+      refreshToken: mealSheet.refreshToken ? decryptToken(mealSheet.refreshToken) : undefined,
+      expiryDate: mealSheet.expiryDate,
+      scope: mealSheet.scope,
+      spreadsheetId: mealSheet.spreadsheetId,
+      spreadsheetTitle: mealSheet.spreadsheetTitle,
+    } : undefined,
     location: data.location,
     weatherCity: data.weatherCity || data.location?.city || "New York",
     savedLocations: data.savedLocations,
     stepGoal: data.stepGoal || 10000,
     distanceGoal: data.distanceGoal || 8,
   };
+}
+
+/** Keep optional meal consent separate from the TV's other Google grants. */
+export async function saveMealSheetTokens(userId: string, tokens: GoogleTokens): Promise<void> {
+  await db.collection("users").doc(userId).set({
+    mealSheet: {
+      accessToken: tokens.accessToken ? encryptToken(tokens.accessToken) : null,
+      refreshToken: tokens.refreshToken ? encryptToken(tokens.refreshToken) : null,
+      expiryDate: tokens.expiryDate ?? null,
+      scope: tokens.scope ?? null,
+    },
+    updatedAt: FieldValue.serverTimestamp(),
+  }, {merge: true});
+}
+
+export async function saveMealSheetSelection(
+  userId: string, spreadsheetId: string, spreadsheetTitle: string
+): Promise<void> {
+  await db.collection("users").doc(userId).set({
+    mealSheet: {spreadsheetId, spreadsheetTitle},
+    updatedAt: FieldValue.serverTimestamp(),
+  }, {merge: true});
+}
+
+export async function clearMealSheetConnection(userId: string): Promise<void> {
+  await db.collection("users").doc(userId).update({
+    mealSheet: FieldValue.delete(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
 }
 
 /**

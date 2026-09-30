@@ -5,6 +5,7 @@ import { fetchCalendarEvents } from "./services/googleCalendar";
 import { fetchActiveTasks } from "./services/googleTasks";
 import { fetchHealthData } from "./services/googleFit";
 import { fetchLocalWeather } from "./services/weatherService";
+import { fetchMealPlan } from "./services/mealSheet";
 import { DashboardSummaryResponse } from "./types";
 
 /**
@@ -13,7 +14,7 @@ import { DashboardSummaryResponse } from "./types";
 export async function syncUserDashboard(userId: string, timeZone = "UTC"): Promise<DashboardSummaryResponse> {
   const userTokens = await getStoredUserTokens(userId);
 
-  const [calendarResult, tasksResult, healthResult, weatherResult] =
+  const [calendarResult, tasksResult, healthResult, weatherResult, mealsResult] =
     await Promise.allSettled([
       fetchCalendarEvents(userTokens.google),
       fetchActiveTasks(userTokens.google),
@@ -22,10 +23,13 @@ export async function syncUserDashboard(userId: string, timeZone = "UTC"): Promi
         distanceGoal: userTokens.distanceGoal,
       }, timeZone),
       fetchLocalWeather(userTokens.location || userTokens.weatherCity),
+      fetchMealPlan(userTokens.mealSheet),
     ]);
 
   const summary: DashboardSummaryResponse = {
     schedule: calendarResult.status === "fulfilled" ? calendarResult.value : [],
+    meals: mealsResult.status === "fulfilled" ? mealsResult.value :
+      {status: "unavailable", items: [], message: "Meal plan is unavailable."},
     tasks: tasksResult.status === "fulfilled" ? tasksResult.value : [],
     health:
       healthResult.status === "fulfilled"

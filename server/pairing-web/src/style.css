@@ -15,6 +15,7 @@ button,input{font:inherit}
 .eyebrow-line{width:30px;height:1px;background:#749b8e}
 h1{max-width:450px;margin:0;font-family:Outfit,sans-serif;font-size:clamp(33px,5vw,46px);font-weight:500;line-height:1.12;letter-spacing:-.045em}
 .intro{margin:18px 0 29px;color:#aab8be;font-size:15px;line-height:1.6}
+.mode-link{display:inline-block;margin:-12px 0 24px;color:#bcead8;font-size:13px;font-weight:700;text-decoration:underline;text-underline-offset:3px}.mode-link:focus-visible{outline:2px solid #bcead8;outline-offset:4px}
 .steps{display:flex;align-items:center;gap:12px;margin-bottom:29px;color:#91a3a9;font-size:13px;font-weight:600}
 .step{display:flex;align-items:center;gap:8px;white-space:nowrap}.step.active{color:#bcead8}
 .step-number{display:grid;place-items:center;width:24px;height:24px;border:1px solid #607b75;border-radius:50%;font-size:11px}.active .step-number{background:#bcead8;border-color:#bcead8;color:#183b31}
@@ -30,5 +31,6 @@ h1{max-width:450px;margin:0;font-family:Outfit,sans-serif;font-size:clamp(33px,5
 .button-primary{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:55px;padding:0 18px;border-radius:11px;background:#bcead8;color:#12372c;font-size:15px}.button-primary:hover:not(:disabled){background:#d3f5e7}.button-primary span{font-size:21px;font-weight:400}
 .status{min-height:22px;margin:15px 0 0;color:#aab8be;font-size:13px;line-height:1.45}.status[data-kind=error]{color:#ffc2b9}.status[data-kind=success]{color:#bcead8}
 .privacy-note{display:flex;gap:11px;margin-top:18px;padding-top:18px;border-top:1px solid #36474c;color:#84999e;font-size:11px;line-height:1.5}.privacy-icon{color:#bcead8;font-size:17px}
+.meal-panel{margin-top:30px;padding-top:24px;border-top:1px solid #36474c}.meal-panel h2{margin:9px 0;font-family:Outfit,sans-serif;font-size:23px;font-weight:500}.meal-copy{margin:0 0 17px;color:#aab8be;font-size:13px;line-height:1.55}.meal-panel form{margin-top:17px}.meal-panel form[hidden]{display:none}#meal-url{display:block;width:100%;min-height:47px;margin-top:9px;padding:0 12px;border:1px solid #53646a;border-radius:9px;background:#101920;color:#f1f7f3;font-size:13px}.meal-current{margin:13px 0 0;color:#bcead8;font-size:13px}.meal-panel .button-primary{min-height:48px;font-size:13px}.meal-panel .status{margin-top:12px}
 footer{position:relative;z-index:1;margin-top:27px;color:#7f9398;font-size:11px;letter-spacing:.06em}footer span{padding:0 8px}
 @media(max-width:570px){.layout{justify-content:flex-start;padding:20px 12px}.card{padding:29px 23px;border-radius:20px}.eyebrow{margin-top:31px}.account-panel{align-items:flex-start;flex-direction:column}.button-secondary,.button-text{align-self:flex-start}#pair-code{font-size:26px;letter-spacing:.24em}}

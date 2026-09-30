@@ -5,6 +5,7 @@ import { fetchCalendarEvents } from "./services/googleCalendar";
 import { fetchActiveTasks } from "./services/googleTasks";
 import { fetchHealthData } from "./services/googleFit";
 import { fetchLocalWeather } from "./services/weatherService";
+import { fetchMealPlan } from "./services/mealSheet";
 import { DashboardSummaryResponse } from "./types";
 
 export const getDashboardSummaryHandler = onRequest(
@@ -34,7 +35,7 @@ export const getDashboardSummaryHandler = onRequest(
       const userTokens = await getStoredUserTokens(userId);
 
       // 2. Execute upstream requests in parallel with graceful error isolation
-      const [calendarResult, tasksResult, healthResult, weatherResult] =
+      const [calendarResult, tasksResult, healthResult, weatherResult, mealsResult] =
         await Promise.allSettled([
           fetchCalendarEvents(userTokens.google),
           fetchActiveTasks(userTokens.google),
@@ -43,12 +44,15 @@ export const getDashboardSummaryHandler = onRequest(
             distanceGoal: userTokens.distanceGoal,
           }, req.header("X-Time-Zone") || "UTC"),
           fetchLocalWeather(userTokens.location || userTokens.weatherCity),
+          fetchMealPlan(userTokens.mealSheet),
         ]);
 
       // 3. Assemble response payload
       const responsePayload: DashboardSummaryResponse = {
         schedule:
           calendarResult.status === "fulfilled" ? calendarResult.value : [],
+        meals: mealsResult.status === "fulfilled" ? mealsResult.value :
+          {status: "unavailable", items: [], message: "Meal plan is unavailable."},
         tasks: tasksResult.status === "fulfilled" ? tasksResult.value : [],
         health:
           healthResult.status === "fulfilled"
