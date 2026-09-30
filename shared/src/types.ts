@@ -64,9 +64,13 @@ export interface Activity {
   distance: number;
   distanceGoal: number;
   calories: number;
-  activeMinutes: number;
+  activeMinutes: number | null;
   progress: number;
   weekly?: ActivityDay[];
+  fetchedAt?: string;
+  stepsRecordedThrough?: string;
+  caloriesRecordedThrough?: string;
+  estimatedRestingCalories?: number;
 }
 
 export interface ActivityDay {
@@ -74,7 +78,7 @@ export interface ActivityDay {
   steps: number;
   distance: number;
   calories: number;
-  activeMinutes: number;
+  activeMinutes: number | null;
 }
 
 export interface DashboardSummaryResponse {

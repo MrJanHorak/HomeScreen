@@ -7,7 +7,8 @@ interface ActivityStatsProps {
   steps: number;
   calories: number;
   distance: number;
-  activeMinutes: number;
+  activeMinutes: number | null;
+  estimatedRestingCalories?: number;
 }
 
 export default function ActivityStats({
@@ -15,6 +16,7 @@ export default function ActivityStats({
   calories,
   distance,
   activeMinutes,
+  estimatedRestingCalories = 0,
 }: ActivityStatsProps) {
   const theme = useTheme();
   const compact = useCompactTVLayout();
@@ -50,10 +52,10 @@ export default function ActivityStats({
       <View style={styles.statRow}>
         <MaterialCommunityIcons name="timer-outline" size={compact ? 15 : 20} color="#FBBF24" style={[styles.statIcon, compact && styles.compactIcon]} />
         <Text style={[styles.statValue, compact && styles.compactValue, { color: theme.colors.textPrimary }]}>
-          {activeMinutes}
+          {activeMinutes == null ? '—' : activeMinutes}
         </Text>
         <Text style={[styles.statUnit, compact && styles.compactUnit, { color: theme.colors.textSecondary }]}>
-          min
+          move min
         </Text>
       </View>
 
@@ -64,7 +66,7 @@ export default function ActivityStats({
           {formattedCalories}
         </Text>
         <Text style={[styles.statUnit, compact && styles.compactUnit, { color: theme.colors.textSecondary }]}>
-          cal
+          {estimatedRestingCalories > 0 ? 'est. kcal' : 'kcal'}
         </Text>
       </View>
     </View>

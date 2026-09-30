@@ -56,9 +56,13 @@ export interface HealthSummary {
   distance: number;
   distanceGoal: number;
   calories: number;
-  activeMinutes: number;
+  activeMinutes: number | null;
   progress: number;
   weekly: HealthDay[];
+  fetchedAt?: string;
+  stepsRecordedThrough?: string;
+  caloriesRecordedThrough?: string;
+  estimatedRestingCalories?: number;
 }
 
 export interface HealthDay {
@@ -66,7 +70,7 @@ export interface HealthDay {
   steps: number;
   distance: number;
   calories: number;
-  activeMinutes: number;
+  activeMinutes: number | null;
 }
 
 export interface WeatherForecastItem {

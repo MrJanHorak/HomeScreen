@@ -9,9 +9,6 @@ import ActivityStats from './ActivityStats';
 // hooks
 import { useHealthData } from '../../hooks/useHealthData';
 
-// helpers
-import { calculateStepPercentages } from '../../helpers/healthDataHelper';
-
 // theme
 import { useTheme } from '../../theme/ThemeContext';
 import useCompactTVLayout from '../../hooks/useCompactTVLayout';
@@ -32,23 +29,11 @@ export default function ActivityCard() {
     return <TVText text={data?.message || 'Activity unavailable'} typography="body" color="textSecondary" />;
   }
 
-  const steps = data?.steps ?? 0;
-  const goal = data?.stepGoal ?? 10000;
-  const distance = data?.distance ?? 0;
-  const calories = data?.calories ?? 0;
-  const activeMinutes = data?.activeMinutes ?? 0;
-
-  const stepPercentages = calculateStepPercentages(steps, goal);
-
-  const safePercentage = Number.isNaN(stepPercentages.stepPercentage)
-    ? 0
-    : stepPercentages.stepPercentage;
-
-  const safePercentageLeft = Number.isNaN(stepPercentages.stepPercentageLeft)
-    ? 100
-    : stepPercentages.stepPercentageLeft;
-
-  const progressDisplay = `${Math.round(data.progress * 100)}%`;
+  const steps = data.steps;
+  const goal = data.stepGoal;
+  const distance = data.distance;
+  const calories = data.calories;
+  const activeMinutes = data.activeMinutes;
 
   return (
     <View style={styles.container}>
@@ -65,12 +50,18 @@ export default function ActivityCard() {
       </View>
 
       <View style={[styles.chartWrapper, compact && styles.compactChart]}>
-        <TVProgressRing progress={data.progress} size={compact ? 62 : 82} strokeWidth={compact ? 6 : 8} />
+        <View style={styles.goalColumn}>
+          <TVProgressRing progress={data.progress} size={compact ? 62 : 82} strokeWidth={compact ? 6 : 8} />
+          <Text style={[styles.goalText, compact && styles.compactGoalText, { color: theme.colors.textSecondary }]}>
+            {steps.toLocaleString()} / {goal.toLocaleString()}
+          </Text>
+        </View>
         <ActivityStats
           steps={steps}
           distance={distance}
           calories={calories}
           activeMinutes={activeMinutes}
+          estimatedRestingCalories={data.estimatedRestingCalories}
         />
       </View>
     </View>
@@ -106,6 +97,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 14,
   },
+  goalColumn: { alignItems: 'center', gap: 4 },
+  goalText: { fontSize: 11, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  compactGoalText: { fontSize: 9 },
   compactHeaderRow: { marginBottom: 6 },
   compactTitle: { fontSize: 14 },
   compactChart: { gap: 8 },

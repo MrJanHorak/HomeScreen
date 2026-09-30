@@ -38,7 +38,7 @@ export async function syncUserDashboard(userId: string, timeZone = "UTC"): Promi
           distance: 0,
           distanceGoal: userTokens.distanceGoal || 8,
           calories: 0,
-          activeMinutes: 0,
+          activeMinutes: null,
           progress: 0,
           weekly: [],
         },

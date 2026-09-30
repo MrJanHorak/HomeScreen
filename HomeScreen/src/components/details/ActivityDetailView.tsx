@@ -5,6 +5,13 @@ import { useTheme } from '../../theme/ThemeContext';
 import { useDashboard } from '../../context/DashboardContext';
 import TVProgressRing from '../activityCard/TVProgressRing';
 
+function recordTime(value?: string): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null :
+    date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+}
+
 export default function ActivityDetailView() {
   const theme = useTheme();
   const { health: act, isLoading } = useDashboard();
@@ -27,9 +34,18 @@ export default function ActivityDetailView() {
   const weekly = act.weekly || [];
   const highestSteps = Math.max(act.stepGoal, ...weekly.map((day) => day.steps), 1);
   const totalSteps = weekly.reduce((sum, day) => sum + day.steps, 0);
+  const daysWithMoveMinutes = weekly.filter((day) => day.activeMinutes != null);
+  const totalMoveMinutes = daysWithMoveMinutes.reduce((sum, day) => sum + (day.activeMinutes || 0), 0);
+  const fetchedTime = recordTime(act.fetchedAt);
+  const stepsTime = recordTime(act.stepsRecordedThrough);
+  const caloriesTime = recordTime(act.caloriesRecordedThrough);
+  const restingEstimate = act.estimatedRestingCalories || 0;
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {fetchedTime && <Text style={[styles.metricSub, { color: theme.colors.textSecondary, marginBottom: 12 }]}>
+        Google Fit · fetched {fetchedTime}
+      </Text>}
       {/* Hero Overview */}
       <View style={styles.heroRow}>
         <View style={styles.ringCard}>
@@ -39,11 +55,14 @@ export default function ActivityDetailView() {
               {Math.round(act.progress * 100)}%
             </Text>
             <Text style={[styles.ringLabel, { color: theme.colors.focusRing }]}>
-              Daily Goal Reached
+              Daily Step Goal
             </Text>
             <Text style={[styles.ringSub, { color: theme.colors.textSecondary }]}>
               {act.steps.toLocaleString()} of {act.stepGoal.toLocaleString()} steps
             </Text>
+            {stepsTime && <Text style={[styles.metricSub, { color: theme.colors.textSecondary, marginTop: 6 }]}>
+              Latest step record: {stepsTime}
+            </Text>}
           </View>
         </View>
 
@@ -61,9 +80,13 @@ export default function ActivityDetailView() {
           <View style={styles.metricCard}>
             <MaterialCommunityIcons name="timer-outline" size={26} color="#FBBF24" />
             <View style={styles.metricMeta}>
-              <Text style={[styles.metricTitle, { color: theme.colors.textSecondary }]}>Active Minutes</Text>
-              <Text style={[styles.metricBig, { color: theme.colors.textPrimary }]}>{act.activeMinutes} min</Text>
-              <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>Today</Text>
+              <Text style={[styles.metricTitle, { color: theme.colors.textSecondary }]}>Move Minutes</Text>
+              <Text style={[styles.metricBig, { color: theme.colors.textPrimary }]}>
+                {act.activeMinutes == null ? '—' : `${act.activeMinutes} min`}
+              </Text>
+              <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>
+                {act.activeMinutes == null ? 'No Move Minutes data from Google Fit today' : 'Today'}
+              </Text>
             </View>
           </View>
 
@@ -72,7 +95,14 @@ export default function ActivityDetailView() {
             <View style={styles.metricMeta}>
               <Text style={[styles.metricTitle, { color: theme.colors.textSecondary }]}>Calories Burned</Text>
               <Text style={[styles.metricBig, { color: theme.colors.textPrimary }]}>{act.calories} kcal</Text>
-              <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>Resting + Active</Text>
+              <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>
+                {restingEstimate > 0 ? 'Resting + Active · estimated' : 'Resting + Active'}
+              </Text>
+              {(restingEstimate > 0 || caloriesTime) && <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>
+                {restingEstimate > 0
+                  ? `Includes ${restingEstimate.toLocaleString()} estimated resting kcal${caloriesTime ? ` since ${caloriesTime}` : ' today'}`
+                  : `Recorded through ${caloriesTime}`}
+              </Text>}
             </View>
           </View>
         </View>
@@ -86,6 +116,9 @@ export default function ActivityDetailView() {
           <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>
             {totalSteps.toLocaleString()} steps total · {Math.round(totalSteps / weekly.length).toLocaleString()} daily average
           </Text>
+          {daysWithMoveMinutes.length > 0 && <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>
+            {totalMoveMinutes.toLocaleString()} Move Minutes across {daysWithMoveMinutes.length} days with data
+          </Text>}
           <View style={styles.barsContainer}>
             {weekly.map((day) => (
               <View key={day.date} style={styles.barColumn}>

@@ -61,7 +61,7 @@ export const getDashboardSummaryHandler = onRequest(
               distance: 0,
               distanceGoal: userTokens.distanceGoal || 8,
               calories: 0,
-              activeMinutes: 0,
+              activeMinutes: null,
               progress: 0,
               weekly: [],
             },

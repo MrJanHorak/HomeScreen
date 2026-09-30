@@ -37,8 +37,12 @@ export interface Activity {
   distance: number;
   distanceGoal: number;
   calories: number;
-  activeMinutes: number;
+  activeMinutes: number | null;
   progress: number;
+  fetchedAt?: string;
+  stepsRecordedThrough?: string;
+  caloriesRecordedThrough?: string;
+  estimatedRestingCalories?: number;
 }
 
 export interface MediaItem {
