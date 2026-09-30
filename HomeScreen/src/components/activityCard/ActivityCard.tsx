@@ -28,8 +28,8 @@ export default function ActivityCard() {
       </View>
     );
   }
-  if (!data) {
-    return <TVText text="Activity unavailable" typography="body" color="textSecondary" />;
+  if (!data || (data.status && data.status !== 'ok')) {
+    return <TVText text={data?.message || 'Activity unavailable'} typography="body" color="textSecondary" />;
   }
 
   const steps = data?.steps ?? 0;

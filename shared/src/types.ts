@@ -57,6 +57,8 @@ export interface TaskItem {
 }
 
 export interface Activity {
+  status?: 'ok' | 'not_connected' | 'unavailable';
+  message?: string;
   steps: number;
   stepGoal: number;
   distance: number;
@@ -64,6 +66,15 @@ export interface Activity {
   calories: number;
   activeMinutes: number;
   progress: number;
+  weekly?: ActivityDay[];
+}
+
+export interface ActivityDay {
+  date: string;
+  steps: number;
+  distance: number;
+  calories: number;
+  activeMinutes: number;
 }
 
 export interface DashboardSummaryResponse {

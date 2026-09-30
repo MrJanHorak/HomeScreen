@@ -15,6 +15,19 @@ export default function ActivityDetailView() {
     </Text>;
   }
 
+  if (act.status && act.status !== 'ok') {
+    return <View style={styles.weeklyCard}>
+      <Text style={[styles.weeklyTitle, { color: theme.colors.textPrimary }]}>Activity unavailable</Text>
+      <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>
+        {act.message || 'Could not load Google Fit activity.'}
+      </Text>
+    </View>;
+  }
+
+  const weekly = act.weekly || [];
+  const highestSteps = Math.max(act.stepGoal, ...weekly.map((day) => day.steps), 1);
+  const totalSteps = weekly.reduce((sum, day) => sum + day.steps, 0);
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Hero Overview */}
@@ -65,14 +78,38 @@ export default function ActivityDetailView() {
         </View>
       </View>
 
-      {/* Weekly history requires a separate data feed. */}
       <View style={styles.weeklyCard}>
         <Text style={[styles.weeklyTitle, { color: theme.colors.textPrimary }]}>
-          Weekly Activity Breakdown
+          Last 7 Days
         </Text>
-        <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>
-          Weekly history is not included in the current activity feed yet.
-        </Text>
+        {weekly.length ? <>
+          <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>
+            {totalSteps.toLocaleString()} steps total · {Math.round(totalSteps / weekly.length).toLocaleString()} daily average
+          </Text>
+          <View style={styles.barsContainer}>
+            {weekly.map((day) => (
+              <View key={day.date} style={styles.barColumn}>
+                <Text style={[styles.barValueText, { color: theme.colors.textPrimary }]}>
+                  {day.steps.toLocaleString()}
+                </Text>
+                <View style={styles.barTrack}>
+                  <View style={[styles.barFill, {
+                    height: `${Math.max(day.steps > 0 ? 3 : 0, day.steps / highestSteps * 100)}%`,
+                    backgroundColor: theme.colors.focusRing,
+                  }]} />
+                </View>
+                <Text style={[styles.barDayText, { color: theme.colors.textSecondary }]}>
+                  {new Date(`${day.date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short' })}
+                </Text>
+              </View>
+            ))}
+          </View>
+          <Text style={[styles.metricSub, { color: theme.colors.textSecondary, marginTop: 14 }]}>
+            Bars show steps; the full bar represents {highestSteps.toLocaleString()} steps.
+          </Text>
+        </> : <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>
+          Weekly activity has not loaded yet.
+        </Text>}
       </View>
     </ScrollView>
   );

@@ -82,7 +82,10 @@ export async function fetchDashboardSummary(): Promise<DashboardSummaryResponse>
   const url = `${DEFAULT_API_URL}/getDashboardSummary`;
   const response = await fetch(url, {
     method: 'GET',
-    headers: await authHeaders(),
+    headers: {
+      ...await authHeaders(),
+      'X-Time-Zone': Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
+    },
   });
 
   if (!response.ok) {
