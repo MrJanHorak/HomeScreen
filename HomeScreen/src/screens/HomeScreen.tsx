@@ -75,8 +75,8 @@ const DETAILS: Record<Topic, DetailDefinition> = {
     View: ToDoDetailView,
   },
   settings: {
-    title: 'Settings & System Status', subtitle: 'Weather locations and device status',
-    icon: 'cog', iconColor: '#A78BFA', badgeText: 'System',
+    title: 'Settings',
+    icon: 'cog', iconColor: '#A78BFA',
     View: SettingsDetailView,
   },
 };
@@ -174,6 +174,7 @@ function HomeScreen() {
           icon={detail.icon}
           iconColor={detail.iconColor}
           badgeText={detail.badgeText}
+          spacious={activeModal === 'settings'}
         >
           <DetailView />
         </TVDetailModal>

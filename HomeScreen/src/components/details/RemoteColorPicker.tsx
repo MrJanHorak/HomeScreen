@@ -137,8 +137,8 @@ function ColorTile({ choice, kind, selected, disabled, onFocus, onBlur, onPress 
       onPress={onPress}
       style={[styles.tile, {
         backgroundColor: fill,
-        borderColor: focused || selected ? '#FFFFFF' : theme.colors.glassBorderTop,
-        borderWidth: focused || selected ? 4 : 1,
+        borderColor: focused ? '#FFFFFF' : selected ? theme.colors.focusRing : theme.colors.glassBorderTop,
+        borderWidth: focused ? 4 : selected ? 3 : 1,
         opacity: disabled ? 0.45 : 1,
       }, focused && styles.focused]}
     >

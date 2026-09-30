@@ -10,6 +10,7 @@ import nightSkyImage from '../../../assets/media/wp8860764-nasa-4k-wallpapers.jp
 
 interface OptionProps {
   label: string;
+  accessibilityLabel?: string;
   selected?: boolean;
   disabled?: boolean;
   subtitle?: string;
@@ -18,13 +19,13 @@ interface OptionProps {
   onPress: () => void;
 }
 
-function Option({ label, selected, disabled, subtitle, swatch, preview, onPress }: OptionProps) {
+function Option({ label, accessibilityLabel, selected, disabled, subtitle, swatch, preview, onPress }: OptionProps) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={subtitle ? `${label}. ${subtitle}` : label}
+      accessibilityLabel={accessibilityLabel || (subtitle ? `${label}. ${subtitle}` : label)}
       accessibilityState={{ selected: Boolean(selected), disabled: Boolean(disabled) }}
       disabled={disabled}
       onFocus={() => setFocused(true)}
@@ -33,7 +34,7 @@ function Option({ label, selected, disabled, subtitle, swatch, preview, onPress 
       style={[
         styles.option,
         Boolean(preview) && styles.layoutOption,
-        { borderColor: focused || selected ? theme.colors.focusRing : theme.colors.glassBorder,
+        { borderColor: focused ? theme.colors.focusRing : selected ? theme.colors.glassBorderTop : theme.colors.glassBorder,
           backgroundColor: selected ? theme.colors.glassSurfaceFocused : theme.colors.glassSurface,
           opacity: disabled ? 0.45 : 1 },
         focused && styles.focused,
@@ -41,7 +42,9 @@ function Option({ label, selected, disabled, subtitle, swatch, preview, onPress 
     >
       {swatch && <View style={[styles.swatch, { backgroundColor: swatch }]} />}
       <View>
-        <Text style={[styles.optionLabel, { color: theme.colors.textPrimary }]}>{label}</Text>
+        <Text style={[styles.optionLabel, { color: selected ? theme.colors.focusRing : theme.colors.textPrimary }]}>
+          {selected ? '✓ ' : ''}{label}
+        </Text>
         {subtitle && <Text style={[styles.optionSubtitle, { color: theme.colors.textSecondary }]}>{subtitle}</Text>}
       </View>
       {preview}
@@ -80,10 +83,12 @@ function LayoutPreview({ cards, large = false }: { cards: CardPreference[]; larg
   );
 }
 
-export default function AppearanceSettings() {
+export type AppearanceSection = 'colors' | 'background' | 'layout' | 'cards';
+
+export default function AppearanceSettings({ section = 'colors' }: { section?: AppearanceSection }) {
   const theme = useTheme();
   const { width } = useWindowDimensions();
-  const sideBySide = width >= 1100;
+  const sideBySide = width >= 900;
   const {
     appearance, ready, selectLayout, selectPalette, setCustomAccent,
     setBackground, setBackgroundColor,
@@ -93,6 +98,7 @@ export default function AppearanceSettings() {
   const [backgroundInput, setBackgroundInput] = useState(appearance.backgroundColor);
   const [showAccentHex, setShowAccentHex] = useState(false);
   const [showBackgroundHex, setShowBackgroundHex] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<'accent' | 'background' | null>(null);
   useEffect(() => setAccentInput(appearance.customAccent), [appearance.customAccent]);
   useEffect(() => setBackgroundInput(appearance.backgroundColor), [appearance.backgroundColor]);
   const validAccent = normalizeHexColor(accentInput);
@@ -108,12 +114,13 @@ export default function AppearanceSettings() {
             {index + 1}. {CARD_LABELS[card.id]}
           </Text>
           <View style={styles.cardActions}>
-            <Option label="Up" disabled={!ready || index === 0} onPress={() => moveCard(card.id, -1)} />
-            <Option label="Down" disabled={!ready || index === appearance.cards.length - 1}
+            <Option label="Up" accessibilityLabel={`Move ${CARD_LABELS[card.id]} up`} disabled={!ready || index === 0} onPress={() => moveCard(card.id, -1)} />
+            <Option label="Down" accessibilityLabel={`Move ${CARD_LABELS[card.id]} down`} disabled={!ready || index === appearance.cards.length - 1}
               onPress={() => moveCard(card.id, 1)} />
             <Option label={card.visible ? 'Shown' : 'Hidden'} selected={card.visible}
+              accessibilityLabel={`${CARD_LABELS[card.id]} ${card.visible ? 'shown' : 'hidden'}`}
               disabled={!ready || (card.visible && visibleCount === 1)} onPress={() => toggleCard(card.id)} />
-            <Option label={card.size === 'wide' ? 'Wide' : 'Standard'} disabled={!ready}
+            <Option label={card.size === 'wide' ? 'Wide' : 'Standard'} accessibilityLabel={`${CARD_LABELS[card.id]} ${card.size} size`} disabled={!ready}
               onPress={() => toggleCardSize(card.id)} />
           </View>
         </View>
@@ -145,13 +152,12 @@ export default function AppearanceSettings() {
 
   return (
     <View style={styles.section}>
-      <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Make it yours</Text>
-      <Text style={[styles.description, { color: theme.colors.textSecondary }]}>
-        Changes appear immediately and sync across your signed-in screens.
+      <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
+        {section === 'colors' ? 'Color palette' : section === 'background' ? 'Background' : section === 'layout' ? 'Choose a layout' : 'Arrange cards'}
       </Text>
       {!ready && <Text style={{ color: theme.colors.textSecondary }}>Loading appearance…</Text>}
 
-      <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>Colors</Text>
+      {section === 'colors' && <>
       <View style={styles.options}>
         {(Object.keys(PALETTES) as Array<keyof typeof PALETTES>).map((id) => (
           <Option
@@ -178,9 +184,10 @@ export default function AppearanceSettings() {
           <View style={styles.customColorRow}>
             <Text style={[styles.customColorLabel, { color: theme.colors.textSecondary }]}>Accent hex color</Text>
             <TextInput value={accentInput} onChangeText={setAccentInput} maxLength={7}
+              onFocus={() => setFocusedInput('accent')} onBlur={() => setFocusedInput(null)}
               autoCapitalize="characters" placeholder="#38BDF8" placeholderTextColor={theme.colors.textSecondary}
               accessibilityLabel="Custom accent hex color"
-              style={[styles.colorInput, { color: theme.colors.textPrimary, borderColor: theme.colors.glassBorder }]} />
+              style={[styles.colorInput, { color: theme.colors.textPrimary, borderColor: focusedInput === 'accent' ? theme.colors.focusRing : theme.colors.glassBorder }, focusedInput === 'accent' && styles.focusedInput]} />
             <Option label="Apply accent" disabled={!ready || !validAccent}
               onPress={() => validAccent && setCustomAccent(validAccent)} />
           </View>
@@ -188,7 +195,9 @@ export default function AppearanceSettings() {
         </>
       )}
 
-      <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>Background</Text>
+      </>}
+
+      {section === 'background' && <>
       <View style={styles.options}>
         <Option label="Night sky photo" selected={appearance.background === 'photo'} disabled={!ready}
           onPress={() => setBackground('photo')} />
@@ -205,9 +214,10 @@ export default function AppearanceSettings() {
         <View style={styles.customColorRow}>
           <Text style={[styles.customColorLabel, { color: theme.colors.textSecondary }]}>Background hex color</Text>
           <TextInput value={backgroundInput} onChangeText={setBackgroundInput} maxLength={7}
+            onFocus={() => setFocusedInput('background')} onBlur={() => setFocusedInput(null)}
             autoCapitalize="characters" placeholder="#0F172A" placeholderTextColor={theme.colors.textSecondary}
             accessibilityLabel="Custom background hex color"
-            style={[styles.colorInput, { color: theme.colors.textPrimary, borderColor: theme.colors.glassBorder }]} />
+            style={[styles.colorInput, { color: theme.colors.textPrimary, borderColor: focusedInput === 'background' ? theme.colors.focusRing : theme.colors.glassBorder }, focusedInput === 'background' && styles.focusedInput]} />
           <Option label="Apply background" disabled={!ready || !validBackground}
             onPress={() => validBackground && setBackgroundColor(validBackground)} />
         </View>
@@ -220,7 +230,9 @@ export default function AppearanceSettings() {
       </Text>
       <GooglePhotosBackgroundPicker />
 
-      <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>Layout</Text>
+      </>}
+
+      {section === 'layout' && <>
       <View style={styles.options}>
         {(Object.keys(LAYOUTS) as Array<keyof typeof LAYOUTS>).map((id) => (
           <Option
@@ -234,10 +246,11 @@ export default function AppearanceSettings() {
           />
         ))}
       </View>
+      </>}
 
-      <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>Cards</Text>
+      {section === 'cards' && <>
       <Text style={[styles.description, { color: theme.colors.textSecondary }]}>
-        Arrange their TV remote focus order, choose what appears, and give important cards more room.
+        Change card order, visibility, and size. The preview updates as you go.
       </Text>
       <View style={[styles.cardEditor, { flexDirection: sideBySide ? 'row' : 'column' }]}>
         {sideBySide ? <>{cardControls}{livePreview}</> : <>{livePreview}{cardControls}</>}
@@ -245,32 +258,34 @@ export default function AppearanceSettings() {
       <View style={styles.reset}>
         <Option label="Restore default appearance" disabled={!ready} onPress={resetAppearance} />
       </View>
+      </>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   section: {
-    padding: 24, borderRadius: 20, marginBottom: 20,
+    padding: 18, borderRadius: 18, marginBottom: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)',
   },
-  title: { fontSize: 22, fontWeight: '700' },
-  description: { fontSize: 14, lineHeight: 21, marginTop: 6, marginBottom: 10 },
+  title: { fontSize: 20, fontWeight: '700', marginBottom: 12 },
+  description: { fontSize: 14, lineHeight: 19, marginTop: 0, marginBottom: 10 },
   heading: { fontSize: 17, fontWeight: '700', marginTop: 17, marginBottom: 10 },
   options: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   advancedToggle: { alignSelf: 'flex-start', marginTop: 10 },
   customColorRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginTop: 11 },
   customColorLabel: { fontSize: 13, minWidth: 145 },
-  colorInput: { width: 130, minHeight: 44, borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 12, fontSize: 15 },
+  colorInput: { width: 150, minHeight: 52, borderWidth: 1.5, borderRadius: 10, paddingHorizontal: 12, fontSize: 17 },
+  focusedInput: { borderWidth: 3 },
   colorHint: { fontSize: 12, marginTop: 7 },
   option: {
     flexDirection: 'row', alignItems: 'center', gap: 9,
-    minHeight: 44, paddingVertical: 8, paddingHorizontal: 12,
+    minHeight: 52, paddingVertical: 10, paddingHorizontal: 15,
     borderWidth: 1.5, borderRadius: 12,
   },
-  layoutOption: { width: 252, alignItems: 'stretch', flexDirection: 'column', gap: 8 },
-  preview: { width: '100%', height: 82, borderRadius: 8, padding: 6, gap: 4 },
+  layoutOption: { width: '48%', minWidth: 250, alignItems: 'stretch', flexDirection: 'column', gap: 6 },
+  preview: { width: '100%', height: 90, borderRadius: 8, padding: 6, gap: 4 },
   previewImage: { ...StyleSheet.absoluteFill, borderRadius: 8 },
   largePreview: { height: 188, padding: 9, gap: 7 },
   previewRow: { flexDirection: 'row', gap: 4 },
@@ -281,7 +296,7 @@ const styles = StyleSheet.create({
   previewLabel: { fontSize: 9, fontWeight: '700' },
   largePreviewLabel: { fontSize: 12 },
   focused: { transform: [{ scale: 1.04 }] },
-  optionLabel: { fontSize: 14, fontWeight: '700' },
+  optionLabel: { fontSize: 16, fontWeight: '700' },
   optionSubtitle: { fontSize: 12, maxWidth: 200, marginTop: 2 },
   swatch: { width: 18, height: 18, borderRadius: 9, borderWidth: 1, borderColor: '#FFFFFF' },
   cardEditor: { gap: 18, alignItems: 'flex-start' },

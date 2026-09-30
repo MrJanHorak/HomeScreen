@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 4,
     paddingVertical: 2,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     height: '100%',
   },
   headerRow: {

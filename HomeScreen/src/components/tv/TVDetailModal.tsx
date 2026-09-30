@@ -19,6 +19,7 @@ export interface TVDetailModalProps {
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
   iconColor?: string;
   badgeText?: string;
+  spacious?: boolean;
   children: React.ReactNode;
 }
 
@@ -30,6 +31,7 @@ export default function TVDetailModal({
   icon,
   iconColor,
   badgeText,
+  spacious = false,
   children,
 }: TVDetailModalProps) {
   const theme = useTheme();
@@ -80,26 +82,28 @@ export default function TVDetailModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View style={styles.scrim}>
-        <View style={[styles.glassContainer, { backgroundColor: theme.colors.modalSurface, borderColor: theme.colors.glassBorder }]}>
+      <View style={[styles.scrim, spacious && styles.spaciousScrim]}>
+        <View style={[styles.glassContainer, spacious && styles.spaciousContainer,
+          { backgroundColor: theme.colors.modalSurface, borderColor: theme.colors.glassBorder }]}>
           {/* Header Bar */}
-          <View style={styles.header}>
+          <View style={[styles.header, spacious && styles.spaciousHeader]}>
             <View style={styles.titleArea}>
               <View
                 style={[
                   styles.iconBadge,
+                  spacious && styles.spaciousIconBadge,
                   { backgroundColor: iconColor ? `${iconColor}22` : 'rgba(56, 189, 248, 0.15)' },
                 ]}
               >
                 <MaterialCommunityIcons
                   name={icon}
-                  size={28}
+                  size={spacious ? 22 : 28}
                   color={iconColor || theme.colors.focusRing}
                 />
               </View>
               <View>
                 <View style={styles.titleRow}>
-                  <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
+                  <Text style={[styles.title, spacious && styles.spaciousTitle, { color: theme.colors.textPrimary }]}>
                     {title}
                   </Text>
                   {badgeText && (
@@ -121,7 +125,7 @@ export default function TVDetailModal({
             {/* TV-Focusable Close Button */}
             <Pressable
               ref={closeButtonRef}
-              hasTVPreferredFocus={true}
+              hasTVPreferredFocus={!spacious}
               onFocus={() => setCloseFocused(true)}
               onBlur={() => setCloseFocused(false)}
               onPress={onClose}
@@ -148,13 +152,13 @@ export default function TVDetailModal({
                   },
                 ]}
               >
-                Back <Text style={styles.escHint}>(Esc)</Text>
+                Back
               </Text>
             </Pressable>
           </View>
 
           {/* Divider */}
-          <View style={styles.divider} />
+          <View style={[styles.divider, spacious && styles.spaciousDivider]} />
 
           {/* Modal Content */}
           <View style={styles.contentArea}>{children}</View>
@@ -178,6 +182,7 @@ const styles = StyleSheet.create({
       } as any,
     }),
   },
+  spaciousScrim: { padding: 20 },
   glassContainer: {
     width: '100%',
     maxWidth: 1400,
@@ -202,12 +207,14 @@ const styles = StyleSheet.create({
       } as any,
     }),
   },
+  spaciousContainer: { height: '94%', padding: 18 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
+  spaciousHeader: { marginBottom: 10 },
   titleArea: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -222,6 +229,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  spaciousIconBadge: { width: 42, height: 42, borderRadius: 12 },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -232,6 +240,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.3,
   },
+  spaciousTitle: { fontSize: 22 },
   contextBadge: {
     paddingHorizontal: 10,
     paddingVertical: 3,
@@ -288,6 +297,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     marginBottom: 20,
   },
+  spaciousDivider: { marginBottom: 10 },
   contentArea: {
     flex: 1,
   },

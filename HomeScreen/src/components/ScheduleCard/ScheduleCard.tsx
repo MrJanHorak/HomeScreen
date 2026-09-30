@@ -69,7 +69,7 @@ export default function ScheduleCard() {
 
 const styles = StyleSheet.create({
   container: {
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     height: '100%',
     paddingHorizontal: 4,
   },

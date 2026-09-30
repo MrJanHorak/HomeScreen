@@ -1,11 +1,21 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { View, StyleSheet, Text, ScrollView, Pressable, TextInput, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useDashboard } from '../../context/DashboardContext';
 import { PRESET_CITIES } from '../../services/weatherLocationService';
-import AppearanceSettings from './AppearanceSettings';
+import AppearanceSettings, { AppearanceSection } from './AppearanceSettings';
+
+type SettingsSection = AppearanceSection | 'weather' | 'device';
+const SECTIONS: { id: SettingsSection; label: string; icon: keyof typeof MaterialCommunityIcons.glyphMap }[] = [
+  { id: 'colors', label: 'Colors', icon: 'palette-outline' },
+  { id: 'background', label: 'Background', icon: 'image-outline' },
+  { id: 'layout', label: 'Layout', icon: 'view-dashboard-outline' },
+  { id: 'cards', label: 'Cards', icon: 'view-grid-outline' },
+  { id: 'weather', label: 'Weather', icon: 'weather-partly-cloudy' },
+  { id: 'device', label: 'Device', icon: 'television' },
+];
 
 export default function SettingsDetailView() {
   const theme = useTheme();
@@ -25,6 +35,23 @@ export default function SettingsDetailView() {
   const [customName, setCustomName] = useState('');
   const [customQuery, setCustomQuery] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [section, setSection] = useState<SettingsSection>('colors');
+  const [focusedControl, setFocusedControl] = useState<string | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const cityInputRef = useRef<TextInput>(null);
+
+  const changeSection = (next: SettingsSection) => {
+    setSection(next);
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  };
+  const focusStyle = (id: string) => focusedControl === id
+    ? { borderColor: theme.colors.focusRing, borderWidth: 3,
+        transform: [{ scale: 1.03 }] }
+    : null;
+  const focusProps = (id: string) => ({
+    onFocus: () => setFocusedControl(id),
+    onBlur: () => setFocusedControl((current) => current === id ? null : current),
+  });
 
   const handleAddCustom = async () => {
     if (!customQuery.trim()) return;
@@ -43,8 +70,29 @@ export default function SettingsDetailView() {
   };
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <AppearanceSettings />
+    <View style={styles.container}>
+      <View style={styles.tabs} accessibilityRole="tablist">
+        {SECTIONS.map((item) => {
+          const active = section === item.id;
+          return (
+            <Pressable key={item.id} accessibilityRole="tab" accessibilityLabel={`${item.label} settings`}
+              accessibilityState={{ selected: active }} onPress={() => changeSection(item.id)}
+              {...focusProps(`tab-${item.id}`)}
+              style={[styles.tab, {
+                borderColor: active ? theme.colors.glassBorderTop : theme.colors.glassBorder,
+                backgroundColor: active ? theme.colors.glassSurfaceFocused : theme.colors.glassSurface,
+              }, focusStyle(`tab-${item.id}`)]}>
+              <MaterialCommunityIcons name={item.icon} size={22} color={active ? theme.colors.focusRing : theme.colors.textSecondary} />
+              <Text style={[styles.tabLabel, { color: theme.colors.textPrimary }]}>{item.label}</Text>
+            </Pressable>
+          );
+        })}
+      </View>
+      <ScrollView ref={scrollRef} style={styles.content} contentContainerStyle={styles.contentInner}
+        showsVerticalScrollIndicator={false}>
+      {(section === 'colors' || section === 'background' || section === 'layout' || section === 'cards') &&
+        <AppearanceSettings section={section} />}
+      {section === 'weather' && <>
       {/* Weather Locations Section */}
       <View style={styles.card}>
         <View style={styles.cardHeaderRow}>
@@ -55,10 +103,14 @@ export default function SettingsDetailView() {
             </Text>
           </View>
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={showAddForm ? 'Close add location' : 'Add weather location'}
+            {...focusProps('add-location')}
             onPress={() => setShowAddForm(!showAddForm)}
             style={[
               styles.smallActionBtn,
               { borderColor: theme.colors.focusRing, backgroundColor: 'rgba(56, 189, 248, 0.15)' },
+              focusStyle('add-location'),
             ]}
           >
             <MaterialCommunityIcons
@@ -71,10 +123,6 @@ export default function SettingsDetailView() {
             </Text>
           </Pressable>
         </View>
-
-        <Text style={[styles.cardSubtitle, { color: theme.colors.textSecondary }]}>
-          Manage tracked cities. Switch active weather anytime from your dashboard or detail view.
-        </Text>
 
         {/* Add Location Form / Presets */}
         {showAddForm && (
@@ -90,11 +138,15 @@ export default function SettingsDetailView() {
                 return (
                   <Pressable
                     key={city.query}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Add ${city.name}`}
+                    {...focusProps(`preset-${city.query}`)}
                     disabled={alreadyAdded}
                     onPress={() => handleAddPreset(city)}
                     style={[
                       styles.presetChip,
                       alreadyAdded && styles.presetChipDisabled,
+                      focusStyle(`preset-${city.query}`),
                     ]}
                   >
                     <Text
@@ -114,31 +166,49 @@ export default function SettingsDetailView() {
               Or Enter Custom City
             </Text>
             <View style={styles.inputsRow}>
+              <Text style={[styles.inputLabel, { color: theme.colors.textPrimary }]}>Label (optional)</Text>
               <TextInput
+                accessibilityLabel="Location label, optional"
+                {...focusProps('custom-name')}
                 value={customName}
                 onChangeText={setCustomName}
                 placeholder="Label (e.g. Vacation Cabin)"
+                returnKeyType="next"
+                onSubmitEditing={() => cityInputRef.current?.focus()}
                 placeholderTextColor={theme.colors.textSecondary}
-                style={[styles.textInput, { color: theme.colors.textPrimary }]}
+                style={[styles.textInput, { color: theme.colors.textPrimary }, focusStyle('custom-name')]}
               />
+              <Text style={[styles.inputLabel, { color: theme.colors.textPrimary }]}>City, state or country</Text>
               <TextInput
+                ref={cityInputRef}
+                accessibilityLabel="City, state or country"
+                {...focusProps('custom-query')}
                 value={customQuery}
                 onChangeText={setCustomQuery}
                 placeholder="City, State/Country (e.g. Denver, CO)"
+                returnKeyType="done"
+                onSubmitEditing={() => void handleAddCustom()}
                 placeholderTextColor={theme.colors.textSecondary}
-                style={[styles.textInput, { color: theme.colors.textPrimary }]}
+                style={[styles.textInput, { color: theme.colors.textPrimary }, focusStyle('custom-query')]}
               />
               <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Save custom weather location"
+                {...focusProps('save-location')}
                 onPress={handleAddCustom}
                 disabled={!customQuery.trim()}
                 style={[
                   styles.saveBtn,
-                  { backgroundColor: customQuery.trim() ? theme.colors.focusRing : 'rgba(255, 255, 255, 0.1)' },
+                  { backgroundColor: focusedControl === 'save-location' ? theme.colors.focusRing : theme.colors.glassSurface,
+                    borderColor: focusedControl === 'save-location' ? '#FFFFFF' : theme.colors.focusRing,
+                    opacity: customQuery.trim() ? 1 : 0.45 },
+                  focusedControl === 'save-location' && styles.saveBtnFocused,
                 ]}
               >
-                <Text style={styles.saveBtnText}>Save</Text>
+                <Text style={[styles.saveBtnText, { color: focusedControl === 'save-location' ? '#0F172A' : theme.colors.focusRing }]}>Save city</Text>
               </Pressable>
             </View>
+            <Text style={[styles.formHint, { color: theme.colors.textSecondary }]}>Press Done on the keyboard to save the city.</Text>
           </View>
         )}
 
@@ -200,8 +270,11 @@ export default function SettingsDetailView() {
                 <View style={styles.locActions}>
                   {!isActive && (
                     <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Select ${loc.name} for weather`}
+                      {...focusProps(`select-${loc.id}`)}
                       onPress={() => setActiveLocation(loc)}
-                      style={styles.pillActionBtn}
+                      style={[styles.pillActionBtn, focusStyle(`select-${loc.id}`)]}
                     >
                       <Text style={[styles.pillActionText, { color: theme.colors.focusRing }]}>
                         Select
@@ -211,8 +284,11 @@ export default function SettingsDetailView() {
 
                   {!isDefault && (
                     <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Make ${loc.name} the default weather location`}
+                      {...focusProps(`default-${loc.id}`)}
                       onPress={() => setDefaultLocation(loc.id)}
-                      style={styles.pillActionBtn}
+                      style={[styles.pillActionBtn, focusStyle(`default-${loc.id}`)]}
                     >
                       <Text style={[styles.pillActionText, { color: theme.colors.textSecondary }]}>
                         Make Default
@@ -222,8 +298,11 @@ export default function SettingsDetailView() {
 
                   {savedLocations.length > 1 && (
                     <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove ${loc.name} weather location`}
+                      {...focusProps(`remove-${loc.id}`)}
                       onPress={() => removeLocation(loc.id)}
-                      style={styles.deleteBtn}
+                      style={[styles.deleteBtn, focusStyle(`remove-${loc.id}`)]}
                     >
                       <MaterialCommunityIcons name="trash-can-outline" size={18} color="#EF4444" />
                     </Pressable>
@@ -234,7 +313,9 @@ export default function SettingsDetailView() {
           })}
         </View>
       </View>
+      </>}
 
+      {section === 'device' && <>
       {/* Device & Account Card */}
       <View style={styles.card}>
         <Text style={[styles.cardTitle, { color: theme.colors.textPrimary }]}>
@@ -281,11 +362,14 @@ export default function SettingsDetailView() {
       {/* Quick Actions */}
       <View style={styles.actionRow}>
         <Pressable
+          accessibilityRole="button"
+          {...focusProps('refresh')}
           onPress={() => refresh()}
           style={({ pressed }) => [
             styles.actionBtn,
             { borderColor: theme.colors.focusRing, backgroundColor: 'rgba(56, 189, 248, 0.15)' },
             pressed && { opacity: 0.8 },
+            focusStyle('refresh'),
           ]}
         >
           <MaterialCommunityIcons name="refresh" size={20} color={theme.colors.focusRing} />
@@ -294,7 +378,9 @@ export default function SettingsDetailView() {
           </Text>
         </Pressable>
       </View>
-    </ScrollView>
+      </>}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -303,8 +389,14 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
+  tab: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    minHeight: 46, paddingHorizontal: 13, borderWidth: 2, borderRadius: 12 },
+  tabLabel: { fontSize: 15, fontWeight: '700' },
+  content: { flex: 1 },
+  contentInner: { paddingBottom: 24 },
   card: {
-    padding: 24,
+    padding: 18,
     borderRadius: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 1,
@@ -334,8 +426,9 @@ const styles = StyleSheet.create({
   smallActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    minHeight: 48,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 1,
     gap: 6,
@@ -368,8 +461,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   presetChip: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    minHeight: 48,
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
@@ -388,25 +483,29 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   inputsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'center',
+    gap: 8,
+    maxWidth: 680,
   },
+  inputLabel: { fontSize: 16, fontWeight: '700', marginTop: 4 },
+  formHint: { fontSize: 13, marginTop: 10 },
   textInput: {
-    flex: 1,
-    paddingVertical: 10,
+    minHeight: 54,
+    paddingVertical: 12,
     paddingHorizontal: 14,
     borderRadius: 12,
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
-    fontSize: 14,
+    fontSize: 18,
     // outline: 'none',
   } as any,
   saveBtn: {
+    minHeight: 50,
+    alignSelf: 'flex-start',
     paddingVertical: 10,
     paddingHorizontal: 18,
     borderRadius: 12,
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
     ...Platform.select({
@@ -416,17 +515,19 @@ const styles = StyleSheet.create({
     }),
   },
   saveBtnText: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#0F172A',
   },
+  saveBtnFocused: { borderWidth: 3, transform: [{ scale: 1.05 }] },
   locationsList: {
     gap: 10,
   },
   locationRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 16,
@@ -492,8 +593,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   pillActionBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    minHeight: 46,
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
     borderRadius: 10,
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: 1,
@@ -509,6 +612,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   deleteBtn: {
+    minWidth: 46,
+    minHeight: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
     padding: 8,
     borderRadius: 10,
     backgroundColor: 'rgba(239, 68, 68, 0.1)',

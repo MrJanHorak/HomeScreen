@@ -16,6 +16,13 @@ export default function GooglePhotosBackgroundPicker() {
   const [link, setLink] = useState<string | null>(null);
   const [pollIntervalMs, setPollIntervalMs] = useState(3000);
   const [error, setError] = useState<string | null>(null);
+  const [focusedAction, setFocusedAction] = useState<string | null>(null);
+  const focusStyle = (action: string) => focusedAction === action
+    ? { borderColor: theme.colors.focusRing, borderWidth: 3 } : null;
+  const focusProps = (action: string) => ({
+    onFocus: () => setFocusedAction(action),
+    onBlur: () => setFocusedAction((current) => current === action ? null : current),
+  });
 
   const createSession = useCallback(async () => {
     const session = await createGooglePhotosSession();
@@ -102,17 +109,18 @@ export default function GooglePhotosBackgroundPicker() {
       <View style={styles.actions}>
         <Pressable
           accessibilityRole="button"
+          {...focusProps('choose')}
           disabled={!ready || phase !== 'idle'}
           onPress={() => void begin()}
-          style={[styles.button, { borderColor: theme.colors.focusRing, opacity: !ready || phase !== 'idle' ? 0.5 : 1 }]}
+          style={[styles.button, { borderColor: theme.colors.focusRing, opacity: !ready || phase !== 'idle' ? 0.5 : 1 }, focusStyle('choose')]}
         >
           <Text style={[styles.buttonText, { color: theme.colors.textPrimary }]}>
             {phase === 'connecting' ? 'Connecting…' : 'Choose from Google Photos'}
           </Text>
         </Pressable>
         {photoDataUrl && (
-          <Pressable accessibilityRole="button" onPress={() => setBackground('google-photo')}
-            style={[styles.button, { borderColor: appearance.background === 'google-photo' ? theme.colors.focusRing : theme.colors.glassBorder }]}>
+          <Pressable accessibilityRole="button" {...focusProps('use-photo')} onPress={() => setBackground('google-photo')}
+            style={[styles.button, { borderColor: appearance.background === 'google-photo' ? theme.colors.focusRing : theme.colors.glassBorder }, focusStyle('use-photo')]}>
             <Text style={[styles.buttonText, { color: theme.colors.textPrimary }]}>Use selected photo</Text>
           </Pressable>
         )}
@@ -126,11 +134,12 @@ export default function GooglePhotosBackgroundPicker() {
                 ? 'Scan with your phone to grant Google Photos access.'
                 : 'Scan with your phone and select a photo. The TV will update automatically.'}
             </Text>
-            <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(link)}
-              style={[styles.button, { borderColor: theme.colors.glassBorder }]}>
+            <Pressable accessibilityRole="link" {...focusProps('open-link')} onPress={() => void Linking.openURL(link)}
+              style={[styles.button, { borderColor: theme.colors.glassBorder }, focusStyle('open-link')]}>
               <Text style={[styles.buttonText, { color: theme.colors.focusRing }]}>Open link on this device</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" onPress={() => { setPhase('idle'); setLink(null); }}>
+            <Pressable accessibilityRole="button" {...focusProps('cancel')} onPress={() => { setPhase('idle'); setLink(null); }}
+              style={[styles.button, { borderColor: theme.colors.glassBorder }, focusStyle('cancel')]}>
               <Text style={[styles.cancel, { color: theme.colors.textSecondary }]}>Cancel</Text>
             </Pressable>
           </View>
@@ -146,8 +155,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 16, fontWeight: '700' },
   description: { fontSize: 13, lineHeight: 19, marginTop: 4 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10 },
-  button: { borderWidth: 1.5, borderRadius: 10, paddingVertical: 9, paddingHorizontal: 12, alignSelf: 'flex-start' },
-  buttonText: { fontSize: 14, fontWeight: '700' },
+  button: { minHeight: 50, justifyContent: 'center', borderWidth: 1.5, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 15, alignSelf: 'flex-start' },
+  buttonText: { fontSize: 16, fontWeight: '700' },
   qrRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginTop: 16, alignItems: 'center' },
   qrBox: { padding: 8, borderRadius: 10, backgroundColor: '#FFFFFF' },
   qrText: { flex: 1, minWidth: 180, gap: 12 },
