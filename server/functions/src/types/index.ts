@@ -49,6 +49,8 @@ export interface TaskSummary {
 }
 
 export interface HealthSummary {
+  status: "ok" | "not_connected" | "unavailable";
+  message?: string;
   steps: number;
   stepGoal: number;
   distance: number;
@@ -56,6 +58,15 @@ export interface HealthSummary {
   calories: number;
   activeMinutes: number;
   progress: number;
+  weekly: HealthDay[];
+}
+
+export interface HealthDay {
+  date: string;
+  steps: number;
+  distance: number;
+  calories: number;
+  activeMinutes: number;
 }
 
 export interface WeatherForecastItem {

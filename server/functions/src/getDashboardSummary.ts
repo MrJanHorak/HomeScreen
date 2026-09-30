@@ -41,7 +41,7 @@ export const getDashboardSummaryHandler = onRequest(
           fetchHealthData(userTokens.google, {
             stepGoal: userTokens.stepGoal,
             distanceGoal: userTokens.distanceGoal,
-          }),
+          }, req.header("X-Time-Zone") || "UTC"),
           fetchLocalWeather(userTokens.location || userTokens.weatherCity),
         ]);
 
@@ -54,6 +54,8 @@ export const getDashboardSummaryHandler = onRequest(
           healthResult.status === "fulfilled"
             ? healthResult.value
             : {
+              status: "unavailable",
+              message: "Google Fit activity is unavailable right now. Try refreshing later.",
               steps: 0,
               stepGoal: userTokens.stepGoal || 10000,
               distance: 0,
@@ -61,6 +63,7 @@ export const getDashboardSummaryHandler = onRequest(
               calories: 0,
               activeMinutes: 0,
               progress: 0,
+              weekly: [],
             },
         weather:
           weatherResult.status === "fulfilled"

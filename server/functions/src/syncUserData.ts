@@ -10,7 +10,7 @@ import { DashboardSummaryResponse } from "./types";
 /**
  * Sync and cache dashboard data in Firestore for a given user
  */
-export async function syncUserDashboard(userId: string): Promise<DashboardSummaryResponse> {
+export async function syncUserDashboard(userId: string, timeZone = "UTC"): Promise<DashboardSummaryResponse> {
   const userTokens = await getStoredUserTokens(userId);
 
   const [calendarResult, tasksResult, healthResult, weatherResult] =
@@ -20,7 +20,7 @@ export async function syncUserDashboard(userId: string): Promise<DashboardSummar
       fetchHealthData(userTokens.google, {
         stepGoal: userTokens.stepGoal,
         distanceGoal: userTokens.distanceGoal,
-      }),
+      }, timeZone),
       fetchLocalWeather(userTokens.location || userTokens.weatherCity),
     ]);
 
@@ -31,6 +31,8 @@ export async function syncUserDashboard(userId: string): Promise<DashboardSummar
       healthResult.status === "fulfilled"
         ? healthResult.value
         : {
+          status: "unavailable",
+          message: "Google Fit activity is unavailable right now. Try refreshing later.",
           steps: 0,
           stepGoal: userTokens.stepGoal || 10000,
           distance: 0,
@@ -38,6 +40,7 @@ export async function syncUserDashboard(userId: string): Promise<DashboardSummar
           calories: 0,
           activeMinutes: 0,
           progress: 0,
+          weekly: [],
         },
     weather:
       weatherResult.status === "fulfilled"
@@ -73,7 +76,7 @@ export const syncUserDataHandler = onRequest(
         return;
       }
 
-      const summary = await syncUserDashboard(userId);
+      const summary = await syncUserDashboard(userId, req.header("X-Time-Zone") || "UTC");
       res.status(200).json({
         success: true,
         message: "User dashboard synchronized and cached successfully",
