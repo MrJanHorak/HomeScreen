@@ -470,19 +470,13 @@ Some ideas include:
 
 ### Ambient Mode
 
-The dashboard now enters Ambient Mode after 10 minutes without remote input by default. In Settings → Ambient, you can turn it off, change the delay, choose a rotating built-in gallery, use the selected Google Photos background, or use a dark backdrop. A preview button starts the mode immediately. The time, weather, and next event move between screen areas; a navigation button restores the dashboard.
+The dashboard now enters Ambient Mode after 10 minutes without remote input by default. In Settings → Ambient, you can turn it off, change the delay, choose rotating built-in photos, select up to eight Google Photos for a personal slideshow, use a color-customizable plasma flow, or use a dark backdrop. The clock and date remain visible while selected weather, calendar, activity, task, and meal details rotate. A preview button starts the mode immediately, and a navigation button restores the dashboard.
 
-The Google Photos picker currently saves one selected photo. The built-in gallery rotates between three bundled photos; a multi-photo personal slideshow is a future extension of the picker and storage flow. Ambient Mode is not a substitute for the TV's own panel protection or powering the TV off when it is not needed.
+To choose personal photos, open Settings → Ambient → Google Photos and scan the QR code with your phone. Select up to eight photos and tap Done. The selection replaces the previous ambient photo set. Choosing photos from Settings → Background also uses the first selected photo as the dashboard background. Ambient Mode is not a substitute for the TV's own panel protection or powering the TV off when it is not needed.
 
-Future ambient content could include:
+If Google Photos says it cannot open a picker link, use **New QR code** on the TV and scan that code. The phone's browser must be signed into the Google account connected to the dashboard; if the Photos app opens to a different account or cannot open the link, use Chrome with the connected account. Picker links are single-use and expire. The photo selection and fresh-session behavior require the current Firebase Functions to be deployed to the API URL used by the TV app.
 
-- Time
-- Weather
-- Upcoming event
-- Photos
-- Artwork
-- Astronomy imagery
-- Minimal household information
+Future ambient content could include artwork, astronomy imagery, and more household information.
 
 ### Smart Home
 

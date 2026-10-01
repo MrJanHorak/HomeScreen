@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import { getSavedGooglePhoto, getUserAppearance, saveUserAppearance } from '../services/api';
+import { getSavedGooglePhoto, getSavedGooglePhotos, getUserAppearance, saveUserAppearance } from '../services/api';
+import type { SelectedPhoto } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
   AmbientPreference, CardId, DashboardAppearance, DEFAULT_APPEARANCE, LAYOUTS,
@@ -20,7 +21,8 @@ interface AppearanceContextValue {
   setBackground: (background: DashboardAppearance['background']) => void;
   setBackgroundColor: (color: string) => void;
   photoDataUrl: string | null;
-  setGooglePhoto: (dataUrl: string) => void;
+  ambientPhotos: SelectedPhoto[];
+  setGooglePhotos: (photos: SelectedPhoto[], useAsBackground: boolean) => void;
   setAmbientPreference: (changes: Partial<AmbientPreference>) => void;
   moveCard: (id: CardId, direction: -1 | 1) => void;
   toggleCard: (id: CardId) => void;
@@ -35,6 +37,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const uid = user?.uid ?? null;
   const [appearance, setAppearance] = useState<DashboardAppearance>(DEFAULT_APPEARANCE);
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
+  const [ambientPhotos, setAmbientPhotos] = useState<SelectedPhoto[]>([]);
   const [hydratedFor, setHydratedFor] = useState<string | null>(null);
   const syncedJson = useRef<string | null>(null);
   const pendingWrites = useRef(0);
@@ -48,6 +51,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setHydratedFor(null);
     setAppearance(DEFAULT_APPEARANCE);
     setPhotoDataUrl(null);
+    setAmbientPhotos([]);
     syncedJson.current = null;
     if (!uid) return () => { cancelled = true; };
     void (async () => {
@@ -104,6 +108,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     void getSavedGooglePhoto()
       .then((dataUrl) => { if (!cancelled) setPhotoDataUrl(dataUrl); })
       .catch((error) => console.warn('Could not load Google Photos background:', error));
+    void getSavedGooglePhotos()
+      .then((photos) => { if (!cancelled) setAmbientPhotos(photos); })
+      .catch((error) => console.warn('Could not load Google Photos gallery:', error));
     return () => { cancelled = true; };
   }, [uid]);
 
@@ -146,6 +153,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     appearance,
     ready,
     photoDataUrl,
+    ambientPhotos,
     selectLayout: (layout) => setAppearance((current) => ({
       ...current, layout, cards: LAYOUTS[layout].cards.map((card) => ({ ...card })),
     })),
@@ -153,9 +161,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setCustomAccent: (customAccent) => setAppearance((current) => ({ ...current, customAccent, palette: 'custom' })),
     setBackground: (background) => setAppearance((current) => ({ ...current, background })),
     setBackgroundColor: (backgroundColor) => setAppearance((current) => ({ ...current, backgroundColor, background: 'solid' })),
-    setGooglePhoto: (dataUrl) => {
-      setPhotoDataUrl(dataUrl);
-      setAppearance((current) => ({ ...current, background: 'google-photo' }));
+    setGooglePhotos: (photos, useAsBackground) => {
+      if (!photos.length) return;
+      setAmbientPhotos(photos);
+      if (useAsBackground) setPhotoDataUrl(photos[0].dataUrl);
+      setAppearance((current) => ({
+        ...current, background: useAsBackground ? 'google-photo' : current.background,
+        ambient: { ...current.ambient, photoSource: 'selected' },
+      }));
     },
     setAmbientPreference: (changes) => setAppearance((current) => ({
       ...current, ambient: { ...current.ambient, ...changes },
@@ -182,7 +195,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         ? { ...item, size: item.size === 'wide' ? 'standard' : 'wide' } : item),
     })),
     resetAppearance: () => setAppearance(DEFAULT_APPEARANCE),
-  }), [appearance, photoDataUrl, ready]);
+  }), [ambientPhotos, appearance, photoDataUrl, ready]);
 
   const theme = useMemo(() => themeForPalette(
     appearance.palette, appearance.customAccent, appearance.backgroundColor, appearance.background

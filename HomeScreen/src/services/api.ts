@@ -39,14 +39,25 @@ export async function getGooglePhotosStatus(): Promise<boolean> {
   return (await photosRequest<{ connected: boolean }>('status')).connected;
 }
 
-export async function createGooglePhotosSession(): Promise<{ pickerUri: string; pollIntervalMs: number }> {
-  return photosRequest('create', 'POST');
+export async function createGooglePhotosSession(
+  purpose: 'background' | 'ambient' = 'background'
+): Promise<{ pickerUri: string; pollIntervalMs: number }> {
+  return photosRequest(`create&purpose=${purpose}`, 'POST');
 }
 
 export async function pollGooglePhotosSession(): Promise<{
-  status: 'pending' | 'selected'; pollIntervalMs?: number; dataUrl?: string;
+  status: 'pending' | 'selected'; pollIntervalMs?: number; photos?: SelectedPhoto[];
 }> {
   return photosRequest('poll');
+}
+
+export interface SelectedPhoto {
+  id: string;
+  dataUrl: string;
+}
+
+export async function getSavedGooglePhotos(): Promise<SelectedPhoto[]> {
+  return (await photosRequest<{ photos: SelectedPhoto[] }>('gallery')).photos;
 }
 
 export async function getSavedGooglePhoto(): Promise<string | null> {

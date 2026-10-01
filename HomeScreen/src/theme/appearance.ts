@@ -25,11 +25,28 @@ export interface DashboardAppearance {
 export interface AmbientPreference {
   enabled: boolean;
   idleMinutes: 5 | 10 | 20;
-  photoSource: 'gallery' | 'selected' | 'none';
+  photoSource: 'gallery' | 'selected' | 'plasma' | 'none';
+  photoMinutes: 1 | 3 | 5;
+  infoCycleSeconds: 30 | 60 | 120;
+  info: Record<AmbientInfoId, boolean>;
+  plasmaColors: [string, string, string];
 }
+
+export const AMBIENT_INFO_IDS = ['weather', 'calendar', 'activity', 'tasks', 'meals'] as const;
+export type AmbientInfoId = typeof AMBIENT_INFO_IDS[number];
+
+export const PLASMA_PRESETS: Record<string, [string, string, string]> = {
+  Aurora: ['#16A085', '#38BDF8', '#A78BFA'],
+  Ocean: ['#0477BF', '#22D3EE', '#0D9488'],
+  Sunset: ['#E8795B', '#F59E0B', '#A855F7'],
+  Ember: ['#D94657', '#F97316', '#EAB308'],
+};
 
 export const DEFAULT_AMBIENT: AmbientPreference = {
   enabled: true, idleMinutes: 10, photoSource: 'gallery',
+  photoMinutes: 3, infoCycleSeconds: 60,
+  info: { weather: true, calendar: true, activity: false, tasks: false, meals: false },
+  plasmaColors: PLASMA_PRESETS.Aurora,
 };
 
 export const CARD_LABELS: Record<CardId, string> = {
@@ -126,12 +143,26 @@ export function normalizeAppearance(value: unknown): DashboardAppearance {
   }
   if (!cards.some((card) => card.visible)) cards[0].visible = true;
   const ambientRaw = raw.ambient;
+  const infoRaw = ambientRaw?.info;
+  const inputColors = ambientRaw?.plasmaColors;
+  const plasmaColors = Array.isArray(inputColors) && inputColors.length === 3
+    ? inputColors.map((color) => normalizeHexColor(typeof color === 'string' ? color : '')) : [];
   const ambient: AmbientPreference = {
     enabled: typeof ambientRaw?.enabled === 'boolean' ? ambientRaw.enabled : DEFAULT_AMBIENT.enabled,
     idleMinutes: ambientRaw?.idleMinutes === 5 || ambientRaw?.idleMinutes === 20
       ? ambientRaw.idleMinutes : 10,
-    photoSource: ambientRaw?.photoSource === 'selected' || ambientRaw?.photoSource === 'none'
+    photoSource: ambientRaw?.photoSource === 'selected' || ambientRaw?.photoSource === 'none' ||
+      ambientRaw?.photoSource === 'plasma'
       ? ambientRaw.photoSource : 'gallery',
+    photoMinutes: ambientRaw?.photoMinutes === 1 || ambientRaw?.photoMinutes === 5
+      ? ambientRaw.photoMinutes : 3,
+    infoCycleSeconds: ambientRaw?.infoCycleSeconds === 30 || ambientRaw?.infoCycleSeconds === 120
+      ? ambientRaw.infoCycleSeconds : 60,
+    info: Object.fromEntries(AMBIENT_INFO_IDS.map((id) => [
+      id, typeof infoRaw?.[id] === 'boolean' ? infoRaw[id] : DEFAULT_AMBIENT.info[id],
+    ])) as AmbientPreference['info'],
+    plasmaColors: plasmaColors.length === 3 && plasmaColors.every(Boolean)
+      ? plasmaColors as [string, string, string] : PLASMA_PRESETS.Aurora,
   };
   return { layout, palette, customAccent, background, backgroundColor, cards, ambient };
 }

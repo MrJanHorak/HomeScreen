@@ -94,7 +94,7 @@ const CARDS: Record<CardId, React.ComponentType> = {
 
 function HomeScreen() {
   const { error } = useDashboard();
-  const { appearance, photoDataUrl } = useAppearance();
+  const { appearance, ambientPhotos } = useAppearance();
   const theme = useTheme();
   const compact = useCompactTVLayout();
   const [activeModal, setActiveModal] = useState<DetailTopic>(null);
@@ -132,7 +132,7 @@ function HomeScreen() {
           left: compact ? -30 : -theme.spacing.safeHorizontal,
           right: compact ? -30 : -theme.spacing.safeHorizontal,
         }]}>
-          <AmbientScreen preference={appearance.ambient} selectedPhoto={photoDataUrl} />
+          <AmbientScreen preference={appearance.ambient} selectedPhotos={ambientPhotos} />
         </View>
       </View>
     );
