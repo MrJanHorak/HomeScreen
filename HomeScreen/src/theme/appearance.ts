@@ -19,7 +19,18 @@ export interface DashboardAppearance {
   background: 'photo' | 'solid' | 'google-photo';
   backgroundColor: string;
   cards: CardPreference[];
+  ambient: AmbientPreference;
 }
+
+export interface AmbientPreference {
+  enabled: boolean;
+  idleMinutes: 5 | 10 | 20;
+  photoSource: 'gallery' | 'selected' | 'none';
+}
+
+export const DEFAULT_AMBIENT: AmbientPreference = {
+  enabled: true, idleMinutes: 10, photoSource: 'gallery',
+};
 
 export const CARD_LABELS: Record<CardId, string> = {
   weather: 'Weather', schedule: 'Schedule', activity: 'Activity',
@@ -77,6 +88,7 @@ export const DEFAULT_APPEARANCE: DashboardAppearance = {
   layout: 'balanced', palette: 'night', customAccent: '#38BDF8',
   background: 'photo', backgroundColor: '#0F172A',
   cards: LAYOUTS.balanced.cards,
+  ambient: DEFAULT_AMBIENT,
 };
 
 /** One or two TV rows, with the card order and widths shared by the picker preview. */
@@ -113,5 +125,13 @@ export function normalizeAppearance(value: unknown): DashboardAppearance {
     if (!seen.has(item.id)) cards.push({ ...item });
   }
   if (!cards.some((card) => card.visible)) cards[0].visible = true;
-  return { layout, palette, customAccent, background, backgroundColor, cards };
+  const ambientRaw = raw.ambient;
+  const ambient: AmbientPreference = {
+    enabled: typeof ambientRaw?.enabled === 'boolean' ? ambientRaw.enabled : DEFAULT_AMBIENT.enabled,
+    idleMinutes: ambientRaw?.idleMinutes === 5 || ambientRaw?.idleMinutes === 20
+      ? ambientRaw.idleMinutes : 10,
+    photoSource: ambientRaw?.photoSource === 'selected' || ambientRaw?.photoSource === 'none'
+      ? ambientRaw.photoSource : 'gallery',
+  };
+  return { layout, palette, customAccent, background, backgroundColor, cards, ambient };
 }

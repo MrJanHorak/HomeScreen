@@ -8,11 +8,13 @@ import { PRESET_CITIES } from '../../services/weatherLocationService';
 import AppearanceSettings, { AppearanceSection } from './AppearanceSettings';
 import MealConnectionSettings from './MealConnectionSettings';
 import FavoriteAppsSettings from './FavoriteAppsSettings';
+import AmbientSettings from './AmbientSettings';
 
-type SettingsSection = AppearanceSection | 'weather' | 'meals' | 'apps' | 'device';
+type SettingsSection = AppearanceSection | 'weather' | 'meals' | 'apps' | 'device' | 'ambient';
 const SECTIONS: { id: SettingsSection; label: string; icon: keyof typeof MaterialCommunityIcons.glyphMap }[] = [
   { id: 'colors', label: 'Colors', icon: 'palette-outline' },
   { id: 'background', label: 'Background', icon: 'image-outline' },
+  { id: 'ambient', label: 'Ambient', icon: 'weather-night' },
   { id: 'layout', label: 'Layout', icon: 'view-dashboard-outline' },
   { id: 'cards', label: 'Cards', icon: 'view-grid-outline' },
   { id: 'weather', label: 'Weather', icon: 'weather-partly-cloudy' },
@@ -21,7 +23,7 @@ const SECTIONS: { id: SettingsSection; label: string; icon: keyof typeof Materia
   { id: 'device', label: 'Device', icon: 'television' },
 ];
 
-export default function SettingsDetailView() {
+export default function SettingsDetailView({ onPreviewAmbient = () => {} }: { onPreviewAmbient?: () => void }) {
   const theme = useTheme();
   const { user } = useAuth();
   const {
@@ -97,6 +99,7 @@ export default function SettingsDetailView() {
         showsVerticalScrollIndicator={false}>
       {(section === 'colors' || section === 'background' || section === 'layout' || section === 'cards') &&
         <AppearanceSettings section={section} />}
+      {section === 'ambient' && <AmbientSettings onPreview={onPreviewAmbient} />}
       {section === 'meals' && <MealConnectionSettings />}
       {section === 'apps' && <FavoriteAppsSettings />}
       {section === 'weather' && <>

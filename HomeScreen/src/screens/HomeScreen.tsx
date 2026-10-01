@@ -22,10 +22,12 @@ import ToDoDetailView from '../components/details/ToDoDetailView';
 import SettingsDetailView from '../components/details/SettingsDetailView';
 
 import { useDashboard } from '../context/DashboardContext';
-import { useAppearance } from '../theme/ThemeContext';
+import { useAppearance, useTheme } from '../theme/ThemeContext';
 import { getCardRows } from '../theme/appearance';
 import type { CardId, CardPreference } from '../theme/appearance';
 import useCompactTVLayout from '../hooks/useCompactTVLayout';
+import useAmbientMode from '../hooks/useAmbientMode';
+import AmbientScreen from '../components/ambient/AmbientScreen';
 
 type DetailTopic =
   | 'weather'
@@ -92,13 +94,21 @@ const CARDS: Record<CardId, React.ComponentType> = {
 
 function HomeScreen() {
   const { error } = useDashboard();
-  const { appearance } = useAppearance();
+  const { appearance, photoDataUrl } = useAppearance();
+  const theme = useTheme();
   const compact = useCompactTVLayout();
   const [activeModal, setActiveModal] = useState<DetailTopic>(null);
+  const ambient = useAmbientMode(
+    appearance.ambient.enabled, appearance.ambient.idleMinutes, activeModal !== null
+  );
   const closeModal = useCallback(() => setActiveModal(null), []);
   const detail = activeModal ? DETAILS[activeModal] : null;
   const DetailView = detail?.View;
   const rows = getCardRows(appearance.cards);
+  const previewAmbient = () => {
+    setActiveModal(null);
+    ambient.preview();
+  };
 
   const renderCard = (card: CardPreference) => {
     const Content = CARDS[card.id];
@@ -112,6 +122,21 @@ function HomeScreen() {
       </TVCard>
     );
   };
+
+  if (ambient.active) {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.ambientFrame, {
+          top: compact ? -16 : -theme.spacing.safeVertical,
+          bottom: compact ? -16 : -theme.spacing.safeVertical,
+          left: compact ? -30 : -theme.spacing.safeHorizontal,
+          right: compact ? -30 : -theme.spacing.safeHorizontal,
+        }]}>
+          <AmbientScreen preference={appearance.ambient} selectedPhoto={photoDataUrl} />
+        </View>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -150,7 +175,9 @@ function HomeScreen() {
           badgeText={detail.badgeText}
           spacious={activeModal === 'settings'}
         >
-          <DetailView />
+          {activeModal === 'settings'
+            ? <SettingsDetailView onPreviewAmbient={previewAmbient} />
+            : <DetailView />}
         </TVDetailModal>
       )}
     </View>
@@ -184,6 +211,7 @@ const styles = StyleSheet.create({
   },
   compactCardRows: { gap: 12, marginVertical: 8 },
   compactCardRow: { gap: 12, minHeight: 0 },
+  ambientFrame: { position: 'absolute' },
 });
 
 

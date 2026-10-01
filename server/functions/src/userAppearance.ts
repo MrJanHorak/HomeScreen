@@ -10,6 +10,14 @@ const BACKGROUNDS = ["photo", "solid", "google-photo"];
 function validAppearance(value: unknown): boolean {
   if (!value || typeof value !== "object") return false;
   const appearance = value as Record<string, unknown>;
+  const ambient = appearance.ambient;
+  if (ambient !== undefined) {
+    if (!ambient || typeof ambient !== "object") return false;
+    const preference = ambient as Record<string, unknown>;
+    if (typeof preference.enabled !== "boolean" ||
+      ![5, 10, 20].includes(preference.idleMinutes as number) ||
+      !["gallery", "selected", "none"].includes(String(preference.photoSource))) return false;
+  }
   if (!LAYOUTS.includes(String(appearance.layout)) ||
     !PALETTES.includes(String(appearance.palette)) ||
     !BACKGROUNDS.includes(String(appearance.background)) ||

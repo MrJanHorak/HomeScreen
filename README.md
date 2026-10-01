@@ -470,7 +470,11 @@ Some ideas include:
 
 ### Ambient Mode
 
-When the dashboard is inactive, the TV could transition into a minimal information or photo display containing:
+The dashboard now enters Ambient Mode after 10 minutes without remote input by default. In Settings → Ambient, you can turn it off, change the delay, choose a rotating built-in gallery, use the selected Google Photos background, or use a dark backdrop. A preview button starts the mode immediately. The time, weather, and next event move between screen areas; a navigation button restores the dashboard.
+
+The Google Photos picker currently saves one selected photo. The built-in gallery rotates between three bundled photos; a multi-photo personal slideshow is a future extension of the picker and storage flow. Ambient Mode is not a substitute for the TV's own panel protection or powering the TV off when it is not needed.
+
+Future ambient content could include:
 
 - Time
 - Weather

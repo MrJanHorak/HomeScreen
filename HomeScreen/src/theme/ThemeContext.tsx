@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 import { getSavedGooglePhoto, getUserAppearance, saveUserAppearance } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
-  CardId, DashboardAppearance, DEFAULT_APPEARANCE, LAYOUTS,
+  AmbientPreference, CardId, DashboardAppearance, DEFAULT_APPEARANCE, LAYOUTS,
   LayoutId, normalizeAppearance,
 } from './appearance';
 import { PaletteChoice, themeForPalette, TVTheme, TVThemeType } from './tvTheme';
@@ -21,6 +21,7 @@ interface AppearanceContextValue {
   setBackgroundColor: (color: string) => void;
   photoDataUrl: string | null;
   setGooglePhoto: (dataUrl: string) => void;
+  setAmbientPreference: (changes: Partial<AmbientPreference>) => void;
   moveCard: (id: CardId, direction: -1 | 1) => void;
   toggleCard: (id: CardId) => void;
   toggleCardSize: (id: CardId) => void;
@@ -156,6 +157,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setPhotoDataUrl(dataUrl);
       setAppearance((current) => ({ ...current, background: 'google-photo' }));
     },
+    setAmbientPreference: (changes) => setAppearance((current) => ({
+      ...current, ambient: { ...current.ambient, ...changes },
+    })),
     moveCard: (id, direction) => setAppearance((current) => {
       const cards = [...current.cards];
       const index = cards.findIndex((card) => card.id === id);
