@@ -1,4 +1,5 @@
-import { StatusBar } from 'react-native';
+import { useEffect, useState } from 'react';
+import { BackHandler, Platform, StatusBar } from 'react-native';
 import { ThemeProvider, useAppearance } from './src/theme/ThemeContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { DashboardProvider } from './src/context/DashboardContext';
@@ -7,6 +8,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import PairingScreen from './src/screens/PairingScreen';
 import { WatchNextProvider } from './src/hooks/useWatchNext';
 import { FavoriteAppsProvider } from './src/hooks/useFavoriteApps';
+import ExitConfirmationModal from './src/components/ExitConfirmationModal';
 
 import backgroundImage from './assets/media/wp8860764-nasa-4k-wallpapers.jpg';
 
@@ -31,6 +33,17 @@ function Root() {
 
 function ThemedScreen() {
   const { appearance, photoDataUrl } = useAppearance();
+  const [showExitConfirmation, setShowExitConfirmation] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      setShowExitConfirmation(true);
+      return true;
+    });
+    return () => subscription.remove();
+  }, []);
+
   const selectedBackground = appearance.background === 'google-photo' && photoDataUrl
     ? { uri: photoDataUrl }
     : appearance.background === 'photo' ? backgroundImage : undefined;
@@ -40,6 +53,13 @@ function ThemedScreen() {
       <TVScreenWrapper backgroundImage={selectedBackground}>
         <Root />
       </TVScreenWrapper>
+      {Platform.OS === 'android' && (
+        <ExitConfirmationModal
+          visible={showExitConfirmation}
+          onCancel={() => setShowExitConfirmation(false)}
+          onExit={() => BackHandler.exitApp()}
+        />
+      )}
     </>
   );
 }
