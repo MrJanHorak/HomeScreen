@@ -19,6 +19,8 @@
       "package": "com.anonymous.mytvapp"
     },
     "plugins": [
+      "./plugins/withTvAppQueries",
+      "./plugins/withNativeCleanOrder",
       [
         "@react-native-tvos/config-tv",
         {

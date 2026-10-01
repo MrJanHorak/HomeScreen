@@ -7,8 +7,9 @@ import { useDashboard } from '../../context/DashboardContext';
 import { PRESET_CITIES } from '../../services/weatherLocationService';
 import AppearanceSettings, { AppearanceSection } from './AppearanceSettings';
 import MealConnectionSettings from './MealConnectionSettings';
+import FavoriteAppsSettings from './FavoriteAppsSettings';
 
-type SettingsSection = AppearanceSection | 'weather' | 'meals' | 'device';
+type SettingsSection = AppearanceSection | 'weather' | 'meals' | 'apps' | 'device';
 const SECTIONS: { id: SettingsSection; label: string; icon: keyof typeof MaterialCommunityIcons.glyphMap }[] = [
   { id: 'colors', label: 'Colors', icon: 'palette-outline' },
   { id: 'background', label: 'Background', icon: 'image-outline' },
@@ -16,6 +17,7 @@ const SECTIONS: { id: SettingsSection; label: string; icon: keyof typeof Materia
   { id: 'cards', label: 'Cards', icon: 'view-grid-outline' },
   { id: 'weather', label: 'Weather', icon: 'weather-partly-cloudy' },
   { id: 'meals', label: 'Meals', icon: 'silverware-fork-knife' },
+  { id: 'apps', label: 'Apps', icon: 'apps' },
   { id: 'device', label: 'Device', icon: 'television' },
 ];
 
@@ -74,10 +76,11 @@ export default function SettingsDetailView() {
   return (
     <View style={styles.container}>
       <View style={styles.tabs} accessibilityRole="tablist">
-        {SECTIONS.map((item) => {
+        {SECTIONS.filter((item) => Platform.OS === 'android' || item.id !== 'apps').map((item) => {
           const active = section === item.id;
           return (
             <Pressable key={item.id} accessibilityRole="tab" accessibilityLabel={`${item.label} settings`}
+              hasTVPreferredFocus={item.id === 'colors'}
               accessibilityState={{ selected: active }} onPress={() => changeSection(item.id)}
               {...focusProps(`tab-${item.id}`)}
               style={[styles.tab, {
@@ -95,6 +98,7 @@ export default function SettingsDetailView() {
       {(section === 'colors' || section === 'background' || section === 'layout' || section === 'cards') &&
         <AppearanceSettings section={section} />}
       {section === 'meals' && <MealConnectionSettings />}
+      {section === 'apps' && <FavoriteAppsSettings />}
       {section === 'weather' && <>
       {/* Weather Locations Section */}
       <View style={styles.card}>

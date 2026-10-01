@@ -6,6 +6,7 @@ import TVScreenWrapper from './src/components/layout/TVScreenWrapper';
 import HomeScreen from './src/screens/HomeScreen';
 import PairingScreen from './src/screens/PairingScreen';
 import { WatchNextProvider } from './src/hooks/useWatchNext';
+import { FavoriteAppsProvider } from './src/hooks/useFavoriteApps';
 
 import backgroundImage from './assets/media/wp8860764-nasa-4k-wallpapers.jpg';
 
@@ -18,7 +19,9 @@ function Root() {
   return user ? (
     <DashboardProvider>
       <WatchNextProvider>
-        <HomeScreen />
+        <FavoriteAppsProvider>
+          <HomeScreen />
+        </FavoriteAppsProvider>
       </WatchNextProvider>
     </DashboardProvider>
   ) : (

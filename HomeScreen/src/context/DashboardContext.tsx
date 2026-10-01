@@ -38,6 +38,10 @@ const DashboardContext = createContext<DashboardContextValue | null>(null);
 
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // Auto-refresh every 5 minutes
 
+function keepIfUnchanged<T>(previous: T, next: T): T {
+  return JSON.stringify(previous) === JSON.stringify(next) ? previous : next;
+}
+
 export function DashboardProvider({ children }: { children: ReactNode }) {
   const [weatherByLocation, setWeatherByLocation] = useState<Record<string, Weather>>({});
   const [schedule, setSchedule] = useState<CalendarEvent[]>([]);
@@ -64,24 +68,19 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   const loadData = useCallback(async () => {
     try {
-      setIsLoading(true);
-      setError(null);
       const data: DashboardSummaryResponse = await fetchDashboardSummary();
 
-      setSchedule(data.schedule || []);
-      setUpcomingEvents(data.upcomingEvents || []);
-      setMeals(data.meals || {status: 'not_connected', items: []});
-      setTasks(data.tasks || []);
-      setHealth(data.health);
+      setSchedule((previous) => keepIfUnchanged(previous, data.schedule || []));
+      setUpcomingEvents((previous) => keepIfUnchanged(previous, data.upcomingEvents || []));
+      setMeals((previous) => keepIfUnchanged(previous, data.meals || {status: 'not_connected', items: []}));
+      setTasks((previous) => keepIfUnchanged(previous, data.tasks || []));
+      setHealth((previous) => keepIfUnchanged(previous, data.health));
       setIsLive(true);
+      setError(null);
 
     } catch (err) {
       console.warn('Backend unavailable:', err);
-      setSchedule([]);
-      setUpcomingEvents([]);
-      setMeals({status: 'unavailable', items: [], message: 'Meal plan is unavailable.'});
-      setTasks([]);
-      setHealth(null);
+      // Keep the last successful snapshot visible during a temporary outage.
       setIsLive(false);
       setError(err instanceof Error ? err.message : 'Failed to fetch live data');
     } finally {
@@ -188,13 +187,17 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const loadLocationWeather = useCallback(async (loc: SavedLocation) => {
     try {
       const result = await fetchLocationWeather(loc.query);
-      setWeatherByLocation((previous) => ({ ...previous, [loc.id]: result }));
+      setWeatherByLocation((previous) => {
+        if (keepIfUnchanged(previous[loc.id], result) === previous[loc.id]) return previous;
+        return { ...previous, [loc.id]: result };
+      });
     } catch (error) {
       console.warn(`Weather unavailable for ${loc.query}:`, error);
-      setWeatherByLocation((previous) => ({
-        ...previous,
-        [loc.id]: { temp: '--', condition: 'Unavailable' },
-      }));
+      setWeatherByLocation((previous) => {
+        // A failed refresh should not replace weather we already displayed.
+        if (previous[loc.id]) return previous;
+        return { ...previous, [loc.id]: { temp: '--', condition: 'Unavailable' } };
+      });
     }
   }, []);
 

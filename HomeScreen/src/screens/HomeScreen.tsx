@@ -9,7 +9,7 @@ import ActivityCard from '../components/activityCard/ActivityCard';
 import MealCard from '../components/MealCard/MealCard';
 import ToDo from '../components/ToDo/ToDo';
 import MediaCard from '../components/tv/MediaCard';
-import TVGlassNavBar from '../components/tv/TVGlassNavBar';
+import FavoriteAppsCarousel from '../components/FavoriteAppsCarousel';
 import TVDetailModal, { TVDetailModalProps } from '../components/tv/TVDetailModal';
 
 // Detail Views
@@ -113,32 +113,10 @@ function HomeScreen() {
     );
   };
 
-  const handleNavSelect = (id: string) => {
-    switch (id) {
-      case 'home':
-        setActiveModal(null);
-        break;
-      case 'schedule':
-        setActiveModal('schedule');
-        break;
-      case 'media':
-        setActiveModal('media');
-        break;
-      case 'tasks':
-        setActiveModal('todo');
-        break;
-      case 'settings':
-        setActiveModal('settings');
-        break;
-      default:
-        break;
-    }
-  };
-
   return (
     <View style={styles.container}>
       {/* Top Header */}
-      <HeaderBar />
+      <HeaderBar onOpenSettings={() => setActiveModal('settings')} />
 
       {error && (
         <View style={styles.errorBanner}>
@@ -159,11 +137,7 @@ function HomeScreen() {
         ))}
       </View>
 
-      {/* Bottom Floating Glass Navigation Dock */}
-      <TVGlassNavBar
-        activeId={activeModal === 'schedule' ? 'schedule' : activeModal === 'media' ? 'media' : activeModal === 'todo' ? 'tasks' : activeModal === 'settings' ? 'settings' : 'home'}
-        onSelect={handleNavSelect}
-      />
+      <FavoriteAppsCarousel />
 
       {detail && DetailView && (
         <TVDetailModal

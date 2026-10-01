@@ -6,6 +6,6 @@ export function useWeather(): {
   isLoading: boolean;
   error: string | null;
 } {
-  const { weather, isLoading, error } = useDashboard();
-  return { data: weather, isLoading, error };
+  const { weather, error } = useDashboard();
+  return { data: weather, isLoading: weather?.condition === 'Loading weather', error };
 }
