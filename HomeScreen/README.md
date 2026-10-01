@@ -240,6 +240,16 @@ Dashboard
 
 ---
 
+## TV Continue Watching
+
+On Android TV, the Watch widget and Watch detail read unfinished titles published to the system Play Next row. The app requests `android.permission.READ_TV_LISTINGS`; access can be enabled from Watch if the user has not granted it. Cards show the publishing app, poster when available, episode, and progress supplied by that app. Selecting **Resume in app** launches the publishing app's program intent.
+
+In the TV Watch detail, press a title to move it to **Up Next**. That choice is saved locally and also controls the home widget. Hold a title to open its Hide action. Hidden series stay off this dashboard as new episodes appear; use **Hidden titles** in Watch to restore them. These preferences are stored on this TV.
+
+This uses the local Expo module in `modules/tv-watch-next`, so native changes require a new Android build. The web version keeps its sample Watch queue and does not load the Android TV reader. Streaming apps choose what they publish to Play Next, so this is not a complete viewing history.
+
+---
+
 ## 🖼️ Image & Media Assets
 
 ### Background Image

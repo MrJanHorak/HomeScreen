@@ -9,6 +9,7 @@
 # React Native / Expo
 **/.expo/
 **/android/
+!HomeScreen/modules/tv-watch-next/android/
 **/ios/
 
 # TypeScript & Backend Builds

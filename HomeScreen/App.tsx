@@ -5,6 +5,7 @@ import { DashboardProvider } from './src/context/DashboardContext';
 import TVScreenWrapper from './src/components/layout/TVScreenWrapper';
 import HomeScreen from './src/screens/HomeScreen';
 import PairingScreen from './src/screens/PairingScreen';
+import { WatchNextProvider } from './src/hooks/useWatchNext';
 
 import backgroundImage from './assets/media/wp8860764-nasa-4k-wallpapers.jpg';
 
@@ -16,7 +17,9 @@ function Root() {
   // DashboardProvider only mounts once signed in, so it never fetches anonymously
   return user ? (
     <DashboardProvider>
-      <HomeScreen />
+      <WatchNextProvider>
+        <HomeScreen />
+      </WatchNextProvider>
     </DashboardProvider>
   ) : (
     <PairingScreen />

@@ -6,6 +6,7 @@
     "orientation": "landscape",
     "userInterfaceStyle": "dark",
     "android": {
+      "permissions": ["android.permission.READ_TV_LISTINGS"],
       "intentFilters": [
         {
           "action": "MAIN",

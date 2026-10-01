@@ -1,8 +1,10 @@
 import React from 'react';
-import { View, StyleSheet, Text } from 'react-native';
+import { View, StyleSheet, Text, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
 import useCompactTVLayout from '../../hooks/useCompactTVLayout';
+import { useWatchNext } from '../../hooks/useWatchNext';
+import WatchPoster from './WatchPoster';
 
 interface MediaCardProps {
   title?: string;
@@ -19,6 +21,8 @@ export default function MediaCard({
 }: MediaCardProps) {
   const theme = useTheme();
   const compact = useCompactTVLayout();
+
+  if (Platform.OS === 'android') return <AndroidMediaCard />;
 
   return (
     <View style={styles.container}>
@@ -82,6 +86,57 @@ export default function MediaCard({
           {duration}
         </Text>
       </View>
+    </View>
+  );
+}
+
+function AndroidMediaCard() {
+  const theme = useTheme();
+  const compact = useCompactTVLayout();
+  const { items, status } = useWatchNext();
+  const first = items[0];
+  const progress = first?.positionMs != null && first.durationMs && first.durationMs > 0
+    ? Math.min(1, first.positionMs / first.durationMs) : null;
+  const subtitle = first?.episodeTitle || (first?.season && first?.episode
+    ? `Season ${first.season} · Episode ${first.episode}` : 'From TV Play Next');
+  const emptyMessage = status === 'permission' ? 'Open Watch to enable TV access'
+    : status === 'unavailable' ? 'Rebuild the Android app to enable Watch Next'
+    : status === 'error' ? 'Could not read TV Play Next'
+    : status === 'ready' ? 'No unfinished titles in TV Play Next'
+    : 'Checking TV Play Next…';
+
+  return (
+    <View style={styles.container}>
+      <View style={[styles.headerRow, compact && styles.compactHeaderRow]}>
+        <View style={styles.titleWithIcon}>
+          <MaterialCommunityIcons name="movie-play-outline" size={compact ? 17 : 22} color={theme.colors.focusRing} />
+          <Text style={[styles.headerTitle, compact && styles.compactTitle, { color: theme.colors.textPrimary }]}>CONTINUE WATCHING</Text>
+        </View>
+        <View style={styles.liveBadge}>
+          <Text style={[styles.liveBadgeText, compact && styles.compactBadgeText, { color: theme.colors.focusRing }]}>TV</Text>
+        </View>
+      </View>
+      <View style={[styles.mediaBox, compact && styles.compactMediaBox]}>
+        <WatchPoster uri={first?.posterUri} width={compact ? 38 : 50} height={compact ? 50 : 66} />
+        <View style={styles.metaColumn}>
+          <Text numberOfLines={1} style={[styles.mediaTitle, compact && styles.compactMediaTitle, { color: theme.colors.textPrimary }]}>
+            {first?.title || 'TV Play Next'}
+          </Text>
+          <Text numberOfLines={2} style={[styles.mediaSubtitle, compact && styles.compactMediaSubtitle, { color: theme.colors.textSecondary }]}>
+            {first ? [first.appName || first.packageName || 'TV app', subtitle].join(' · ') : emptyMessage}
+          </Text>
+        </View>
+      </View>
+      {progress != null && (
+        <View style={styles.progressSection}>
+          <View style={styles.progressBarTrack}>
+            <View style={[styles.progressBarFill, { width: `${progress * 100}%`, backgroundColor: theme.colors.focusRing }]} />
+          </View>
+          <Text style={[styles.durationText, compact && styles.compactDuration, { color: theme.colors.textSecondary }]}>
+            {Math.round(progress * 100)}%
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
