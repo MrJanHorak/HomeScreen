@@ -8,6 +8,14 @@ The goal is to create a TV experience that is useful even when you're not active
 
 ---
 
+## Android TV artwork
+
+The app includes a 16:9 launcher banner (`assets/tv-banner.png`), a square launcher icon (`assets/icon.png`), and a dark startup mark (`assets/homescreen-splash.png`). Android TV uses the banner for its app tile. The native launch screen shows the mark briefly; an in-app loading view covers the remaining account and appearance setup.
+
+To change the artwork, edit and run `scripts/generate-brand-assets.ps1`, or replace the PNG files with your own. Keep the banner at a 16:9 ratio with readable text. The app config and TV config plugin copy these assets into Android resources during prebuild. After changing app artwork, run `npx expo prebuild --platform android` and build and reinstall the Android app. A Metro reload cannot update launcher or native splash assets.
+
+---
+
 ## 🚧 Project Status
 
 **Early development — Phase 1: UI Prototype**

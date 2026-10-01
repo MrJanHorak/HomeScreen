@@ -67,7 +67,7 @@ const DETAILS: Record<Topic, DetailDefinition> = {
     View: MediaDetailView,
   },
   meal: {
-    title: 'Family Meal Planner', subtitle: 'Dinner and weekly menu',
+    title: 'Meal Planner', subtitle: 'Dinner and weekly menu',
     icon: 'silverware-fork-knife', iconColor: '#F59E0B', badgeText: 'Dinner Menu',
     View: MealDetailView,
   },

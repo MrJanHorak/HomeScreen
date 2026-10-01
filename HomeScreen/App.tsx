@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { BackHandler, Platform, StatusBar } from 'react-native';
+import { ActivityIndicator, BackHandler, Image, Platform, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { ThemeProvider, useAppearance } from './src/theme/ThemeContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { DashboardProvider } from './src/context/DashboardContext';
@@ -12,10 +12,20 @@ import ExitConfirmationModal from './src/components/ExitConfirmationModal';
 
 import backgroundImage from './assets/media/wp8860764-nasa-4k-wallpapers.jpg';
 
+function StartupScreen() {
+  return (
+    <View style={styles.startup} accessibilityLabel="HomeScreen is loading">
+      <Image source={require('./assets/homescreen-splash.png')} style={styles.startupMark} />
+      <Text style={styles.startupTitle}>HomeScreen</Text>
+      <ActivityIndicator size="large" color="#38BDF8" style={styles.startupSpinner} />
+    </View>
+  );
+}
+
 function Root() {
   const { user, initializing } = useAuth();
   const { ready } = useAppearance();
-  if (initializing || (user && !ready)) return null;
+  if (initializing || (user && !ready)) return <StartupScreen />;
 
   // DashboardProvider only mounts once signed in, so it never fetches anonymously
   return user ? (
@@ -73,3 +83,10 @@ export default function App() {
     </AuthProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  startup: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  startupMark: { width: 150, height: 150 },
+  startupTitle: { marginTop: 8, color: '#F0F9FF', fontSize: 28, fontWeight: '700' },
+  startupSpinner: { marginTop: 28 },
+});
