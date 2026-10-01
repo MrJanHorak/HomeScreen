@@ -8,6 +8,7 @@ import {GoogleTokens} from "./types";
 const API = "https://photospicker.googleapis.com/v1";
 const SCOPE = "https://www.googleapis.com/auth/photospicker.mediaitems.readonly";
 const MAX_IMAGE_BYTES = 550_000; // Base64 stays well below Firestore's 1 MiB document limit.
+const MAX_PHOTOS = 8;
 
 interface PickingSession {
   id: string;
@@ -20,6 +21,11 @@ interface PickingSession {
 interface PickedMediaItem {
   type: string;
   mediaFile?: {baseUrl?: string; mimeType?: string};
+}
+
+interface SelectedPhoto {
+  id: string;
+  dataUrl: string;
 }
 
 async function accessToken(tokens: GoogleTokens): Promise<string> {
@@ -55,7 +61,7 @@ async function downloadPhoto(token: string, item: PickedMediaItem): Promise<stri
   if (baseUrl.protocol !== "https:" || !baseUrl.hostname.endsWith(".googleusercontent.com")) {
     throw new Error("Google Photos returned an unexpected image URL");
   }
-  for (const [width, height] of [[1280, 720], [960, 540], [720, 405]]) {
+  for (const [width, height] of [[1280, 720], [960, 540], [720, 405], [640, 360], [480, 270]]) {
     const response = await fetch(`${baseUrl.toString()}=w${width}-h${height}`, {
       headers: {Authorization: `Bearer ${token}`},
     });
@@ -91,12 +97,28 @@ export const googlePhotosPickerHandler = onRequest(
     }
     const action = req.query.action;
     const photoRef = db.collection("users").doc(userId).collection("appearance").doc("background");
+    const galleryRef = photoRef.collection("photos");
     const sessionRef = db.collection("users").doc(userId).collection("appearance").doc("picker");
 
     try {
       if (action === "background" && req.method === "GET") {
         const snapshot = await photoRef.get();
         res.status(200).json({dataUrl: snapshot.data()?.dataUrl || null});
+        return;
+      }
+
+      if (action === "gallery" && req.method === "GET") {
+        const gallery = await galleryRef.orderBy("order").limit(MAX_PHOTOS).get();
+        if (!gallery.empty) {
+          res.status(200).json({photos: gallery.docs.map((doc) => ({
+            id: doc.id, dataUrl: doc.data().dataUrl,
+          }))});
+          return;
+        }
+        // Preserve a photo picked before the gallery was introduced.
+        const oldBackground = (await photoRef.get()).data()?.dataUrl;
+        res.status(200).json({photos: oldBackground
+          ? [{id: "legacy-background", dataUrl: oldBackground}] : []});
         return;
       }
 
@@ -114,17 +136,22 @@ export const googlePhotosPickerHandler = onRequest(
 
       if (action === "create" && req.method === "POST") {
         const active = (await sessionRef.get()).data();
-        if (active?.id && active?.pickerUri && Date.now() < active.expiresAt) {
-          res.status(200).json({pickerUri: active.pickerUri, pollIntervalMs: active.pollIntervalMs});
-          return;
+        const purpose = req.query.purpose === "ambient" ? "ambient" : "background";
+        if (active?.id) {
+          try {
+            await apiRequest<unknown>(token, `/sessions/${encodeURIComponent(active.id)}`, "DELETE");
+          } catch (error) {
+            console.warn("Could not close the previous Photos Picker session:", error);
+          }
         }
         const session = await apiRequest<PickingSession>(token, "/sessions", "POST", {
-          pickingConfig: {maxItemCount: "1"},
+          pickingConfig: {maxItemCount: String(MAX_PHOTOS)},
         });
         if (!session.id || !session.pickerUri) throw new Error("Google Photos did not start a picker session");
         const pollIntervalMs = pollMs(session);
         await sessionRef.set({
           id: session.id, pickerUri: session.pickerUri, pollIntervalMs,
+          maxItemCount: MAX_PHOTOS, purpose,
           expiresAt: session.expireTime && Number.isFinite(Date.parse(session.expireTime))
             ? Date.parse(session.expireTime) : Date.now() + 600_000,
         });
@@ -143,24 +170,47 @@ export const googlePhotosPickerHandler = onRequest(
           res.status(200).json({status: "pending", pollIntervalMs: pollMs(session)});
           return;
         }
-        const selected = await apiRequest<{mediaItems?: PickedMediaItem[]}>(
-          token, `/mediaItems?sessionId=${encodeURIComponent(active.id)}&pageSize=10`
-        );
-        const photo = selected.mediaItems?.find((item) => item.type === "PHOTO");
-        if (!photo) {
+        const picked: PickedMediaItem[] = [];
+        let pageToken: string | undefined;
+        do {
+          const params = new URLSearchParams({sessionId: active.id, pageSize: String(MAX_PHOTOS)});
+          if (pageToken) params.set("pageToken", pageToken);
+          const page = await apiRequest<{mediaItems?: PickedMediaItem[]; nextPageToken?: string}>(
+            token, `/mediaItems?${params.toString()}`
+          );
+          picked.push(...(page.mediaItems || []));
+          pageToken = page.nextPageToken;
+        } while (pageToken && picked.length <= MAX_PHOTOS);
+        if (!picked.length || picked.length > MAX_PHOTOS || picked.some((item) => item.type !== "PHOTO")) {
           await sessionRef.delete();
-          res.status(400).json({error: "Select a photo rather than a video"});
+          res.status(400).json({error: `Choose 1–${MAX_PHOTOS} photos, without videos`});
           return;
         }
-        const dataUrl = await downloadPhoto(token, photo);
-        await photoRef.set({dataUrl, updatedAt: FieldValue.serverTimestamp()});
-        await sessionRef.delete();
+        // Download before replacing the existing selection, so a failed item keeps the old gallery.
+        const dataUrls: string[] = [];
+        for (const item of picked) dataUrls.push(await downloadPhoto(token, item));
+        const existing = await galleryRef.get();
+        const photos: SelectedPhoto[] = dataUrls.map((dataUrl) => ({
+          id: galleryRef.doc().id, dataUrl,
+        }));
+        const batch = db.batch();
+        for (const doc of existing.docs) batch.delete(doc.ref);
+        for (const [order, photo] of photos.entries()) {
+          batch.set(galleryRef.doc(photo.id), {
+            dataUrl: photo.dataUrl, order, updatedAt: FieldValue.serverTimestamp(),
+          });
+        }
+        if (active.purpose === "background") {
+          batch.set(photoRef, {dataUrl: photos[0].dataUrl, updatedAt: FieldValue.serverTimestamp()});
+        }
+        batch.delete(sessionRef);
+        await batch.commit();
         try {
           await apiRequest<unknown>(token, `/sessions/${encodeURIComponent(active.id)}`, "DELETE");
         } catch (error) {
           console.warn("Could not delete Photos Picker session:", error);
         }
-        res.status(200).json({status: "selected", dataUrl});
+        res.status(200).json({status: "selected", photos});
         return;
       }
 

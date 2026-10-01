@@ -6,6 +6,7 @@ const CARD_IDS = ["weather", "schedule", "activity", "media", "meal", "todo"];
 const LAYOUTS = ["balanced", "agenda", "wellness", "calm", "custom"];
 const PALETTES = ["night", "forest", "plum", "contrast", "custom"];
 const BACKGROUNDS = ["photo", "solid", "google-photo"];
+const AMBIENT_INFO_IDS = ["weather", "calendar", "activity", "tasks", "meals"];
 
 function validAppearance(value: unknown): boolean {
   if (!value || typeof value !== "object") return false;
@@ -16,7 +17,19 @@ function validAppearance(value: unknown): boolean {
     const preference = ambient as Record<string, unknown>;
     if (typeof preference.enabled !== "boolean" ||
       ![5, 10, 20].includes(preference.idleMinutes as number) ||
-      !["gallery", "selected", "none"].includes(String(preference.photoSource))) return false;
+      !["gallery", "selected", "plasma", "none"].includes(String(preference.photoSource))) return false;
+    if (preference.photoMinutes !== undefined && ![1, 3, 5].includes(preference.photoMinutes as number)) return false;
+    if (preference.infoCycleSeconds !== undefined &&
+      ![30, 60, 120].includes(preference.infoCycleSeconds as number)) return false;
+    if (preference.plasmaColors !== undefined &&
+      (!Array.isArray(preference.plasmaColors) || preference.plasmaColors.length !== 3 ||
+        !preference.plasmaColors.every((color) => typeof color === "string" &&
+          /^#[0-9a-fA-F]{6}$/.test(color)))) return false;
+    if (preference.info !== undefined) {
+      if (!preference.info || typeof preference.info !== "object") return false;
+      const info = preference.info as Record<string, unknown>;
+      if (AMBIENT_INFO_IDS.some((id) => typeof info[id] !== "boolean")) return false;
+    }
   }
   if (!LAYOUTS.includes(String(appearance.layout)) ||
     !PALETTES.includes(String(appearance.palette)) ||
