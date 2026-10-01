@@ -2,6 +2,8 @@
 
 This small TypeScript/Vite app lives beside the Cloud Functions under `server/` because both deploy to the same Firebase project. Firebase Hosting serves it at `/pair`; the Hosting root redirects there for easier typing. The TV also displays a QR link containing its six-character code, which this page pre-fills for the user. The QR does **not** include the private TV poll secret.
 
+The [TV app README](../../HomeScreen/README.md) shows the current dashboard and settings screenshots. This site handles account pairing and the optional meal Sheet connection; personal photo selection starts from the TV's Background or Ambient settings.
+
 ## Setup
 
 1. Copy `env.example` to `.env.local` and use the Firebase **web app** config from Project settings. `VITE_API_URL` is the Cloud Functions base URL without a trailing function name. These `VITE_` values are public and bundled into the site. Never put `GOOGLE_CLIENT_SECRET` or `TOKEN_ENCRYPTION_KEY` here.
@@ -64,3 +66,9 @@ Sheet URL that the user selects. Review OAuth verification and narrower
 file-selection alternatives before a public launch.
 
 The existing Google Fit REST integration has an announced end-of-2026 support limit. Plan a move to Google Health API or Health Connect for activity data.
+
+## Select personal photos on the TV
+
+Open **Settings → Background** or **Settings → Ambient → Google Photos** on the TV. After connecting Google Photos, scan the picker QR code with a phone signed into the same Google account and choose up to eight photos. The TV saves the selection for its background or ambient slideshow. Picker links are single-use and expire; use **New QR code** on the TV if a link no longer opens.
+
+This flow uses the Cloud Functions `beginGooglePhotos`, `googleOAuthCallback`, and `googlePhotosPicker` endpoints. It requires the Google Photos Picker API and the `photospicker.mediaitems.readonly` scope configured for the OAuth client; see the [backend setup](../functions/README.md). Photos are selected in Google's picker, not uploaded through this pairing site's `/pair` page.

@@ -14,6 +14,24 @@ The goal is to create a calm, customizable dashboard that provides useful househ
 
 ---
 
+## Current build
+
+The repository now contains a working Android TV client, Firebase Cloud Functions, and a browser-based pairing site. The TV dashboard has schedule, tasks, activity, weather, meals, and Continue Watching cards; remote-selectable detail views; favorite apps; appearance and card controls; and an idle ambient mode. Google Calendar, Tasks, Fit, OpenWeatherMap, and an optional Google Sheet provide live data after account pairing. Continue Watching uses Android TV's Play Next row when installed apps publish titles to it. Some media in the web preview is sample data.
+
+![Current HomeScreen dashboard](assets/Screenshot_20261001_174433.png)
+
+The screenshot shows one configured TV on October 1, 2026. See the [TV app README](HomeScreen/README.md#screenshots) for the ambient screen, detail views, and settings screenshots.
+
+| Component | Guide |
+| --- | --- |
+| TV app and local run instructions | [HomeScreen/README.md](HomeScreen/README.md) |
+| Cloud Functions and API setup | [server/functions/README.md](server/functions/README.md) |
+| Pairing site and meal Sheet setup | [server/pairing-web/README.md](server/pairing-web/README.md) |
+
+The sections below describe the product vision as well as implemented features. Family profiles, household polls, universal search, and cross-app deep links beyond supported Play Next intents remain future ideas.
+
+---
+
 ## Project Vision
 
 HomeScreen is intended to become a personal and household / dorm / work information dashboard designed specifically for a **10-foot TV experience**.
@@ -55,11 +73,9 @@ Rather than forcing every user into the same dashboard layout, the long-term goa
 
 ---
 
-## Current Scope
+## Feature Ideas
 
-The initial version of HomeScreen will focus heavily on integrations with Google services because they can provide much of the information needed for a useful household dashboard.
-
-Potential widgets include:
+The current build uses Google Calendar, Tasks, Fit, and an optional Google Sheet for several household cards. The broader set of possible widgets includes:
 
 - **Tasks / To-Dos**
   - Google Tasks
@@ -104,7 +120,7 @@ For example, a household could keep a running poll throughout the week for Frida
 
 ## Widget-Based Dashboard
 
-The dashboard will eventually be highly customizable.
+The dashboard already supports palette and accent choices, backgrounds, layout presets, and changes to card order, visibility, and width. More customization may follow.
 
 Each piece of information will be represented by a **widget** that provides a concise overview.
 
@@ -152,7 +168,7 @@ The Home screen should remain intentionally simple while deeper screens provide 
 
 Long term, users should be able to determine both the **widgets** and the **layout** of their dashboard.
 
-Possible customization options include:
+Current and possible future customization options include:
 
 - Enable or disable widgets
 - Reorder widgets
@@ -165,7 +181,7 @@ Possible customization options include:
 - Customize media sections
 - Select ambient / screensaver modes
 
-Because configuring these options with a TV remote could become tedious, a future companion web or mobile interface could provide easier dashboard management.
+The current controls are available on the TV. A broader companion web or mobile interface could make configuration easier later.
 
 ---
 
@@ -238,33 +254,21 @@ This would allow HomeScreen to function as an alternative starting point to the 
 
 # Architecture
 
-The initial architecture uses a React Native TV client backed by cloud services and Firebase.
+The current architecture uses a React Native TV client, Firebase Authentication, Cloud Functions, Firestore, and a small browser pairing site.
 
 ```text
-                        ┌─────────────────────────────────┐
-                        │   React Native TV App (Client)  │
-                        └────────────────┬────────────────┘
-                                         │
-       ┌─────────────────────┬────────────┼────────────┬─────────────────────┐
-       │                     │            │            │                     │
-       ▼                     ▼            ▼            ▼                     │
-┌────────────────┐   ┌────────────────┐   ┌────────────────┐   ┌────────────────┐
-│ Dashboard      │   │ Device OAuth   │   │ Remote         │   │ Background     │
-│ Summary        │   │ & Pairing      │   │ Actions        │   │ Sync           │
-└───────┬────────┘   └───────┬────────┘   └───────┬────────┘   └───────┬────────┘
-        │                    │                    │                    │
-        └────────────────────┴──────────┬─────────┴────────────────────┘
-                                        │
-                              ┌─────────▼──────────┐
-                              │ Firebase Firestore │
-                              └────────────────────┘
+Android TV app ── authenticated requests ──► Cloud Functions ──► Google APIs / weather
+       │                                           │
+       │                                           └─────────────► Firestore
+       │                                                              ▲
+       └── pairing code / QR ──► Pairing site ──► OAuth callback ──────┘
 ```
 
 The architecture is designed around one important TV-specific requirement:
 
 > **The dashboard should feel immediate when the TV turns on.**
 
-Where practical, external data is synchronized and cached ahead of time so the TV does not need to wait for several external APIs before displaying the dashboard.
+The backend writes dashboard summaries to Firestore, while the current TV app requests live data from the summary endpoint. Reading the cache at startup is a future performance improvement.
 
 ---
 
@@ -272,21 +276,16 @@ Where practical, external data is synchronized and cached ahead of time so the T
 
 ### `getDashboardSummary`
 
-**HTTP GET — High-Performance Dashboard Reader**
+**Authenticated HTTP GET — Dashboard Reader**
 
-Fetches the information required to render the user's dashboard and returns it as a lightweight JSON payload.
+Fetches Calendar, Tasks, Fit, weather, and optional meal information for the signed-in user and returns a dashboard JSON payload. The handler uses `Promise.allSettled()` so an upstream failure can leave other cards available.
 
-Potential data includes:
+Current response data includes Calendar events, Tasks, Fit activity, weather, and optional meals. Future data could include:
 
-- Calendar events
-- Tasks
-- Activity information
-- Weather
-- Meal information
 - Polls
 - Widget configuration
 
-Where multiple external services must be queried, the backend can use `Promise.allSettled()` so a failure from one service does not prevent the rest of the dashboard from loading.
+The current backend queries these services in parallel.
 
 For example:
 
@@ -302,7 +301,7 @@ Activity API ─────── ✓
 Dashboard still renders available data.
 ```
 
-Cached widget data can be stored in Firestore so the initial dashboard request does not depend entirely on live third-party API calls.
+The endpoint writes the returned summary to Firestore in the background. The current GET handler still calls upstream services; cache-first startup remains a performance goal.
 
 ---
 
@@ -310,7 +309,7 @@ Cached widget data can be stored in Firestore so the initial dashboard request d
 
 **HTTP POST — TV Authentication & Pairing Manager**
 
-Handles account authorization and device pairing.
+Issues a six-character TV code and a private poll secret. The companion site handles Google sign-in and consent; the TV receives a one-time custom token after the matching code is approved.
 
 Typing usernames, passwords, and authorization information using a TV remote is a poor user experience, so authentication should be designed around a TV-friendly pairing process.
 
@@ -343,25 +342,20 @@ Any long-lived credentials or refresh tokens should be encrypted and never store
 
 ### `executeAction`
 
-**HTTP POST — Remote-Control Interactions**
+**Authenticated HTTP POST — Remote-Control Interactions**
 
 Handles actions initiated from the TV interface.
 
 Examples include:
 
 ```text
-TOGGLE_TASK
-REFRESH_WIDGET
-SWITCH_PROFILE
-SUBMIT_POLL
+completeTask
+updatePreferences
 ```
 
 Possible actions:
 
 - Mark a task as complete
-- Refresh a widget
-- Switch the active profile
-- Submit a poll response
 - Update a dashboard preference
 
 Keeping these operations behind a consistent action API allows TV components to remain relatively simple.
@@ -370,9 +364,9 @@ Keeping these operations behind a consistent action API allows TV components to 
 
 ### `syncUserData`
 
-**Scheduled Background Synchronization**
+**Authenticated HTTP POST — On-Demand Synchronization**
 
-Runs periodically in the cloud to refresh data from connected services.
+Refreshes connected-service data and writes a dashboard cache when called. There is no scheduled trigger in the current code.
 
 Possible synchronized data includes:
 
@@ -382,13 +376,13 @@ Possible synchronized data includes:
 - Weather
 - Household information
 
-The updated data is written to Firestore before the TV requests it.
+The updated data is written to Firestore, but the current TV summary request does not read from that cache.
 
 ```text
 External Services
        │
        ▼
-syncUserData
+syncUserData (on demand)
        │
        ▼
    Firestore
@@ -400,7 +394,7 @@ getDashboardSummary
       TV
 ```
 
-This approach reduces the number of external API calls required during dashboard startup and helps minimize visible loading states.
+The cache supports future startup improvements; the current TV client refreshes its live dashboard every five minutes.
 
 ---
 
@@ -408,7 +402,7 @@ This approach reduces the number of external API calls required during dashboard
 
 A television dashboard should not behave like a traditional web page that displays several loading spinners while waiting for independent API requests.
 
-Whenever possible, HomeScreen should follow this pattern:
+The longer-term performance target is:
 
 ```text
 Synchronize → Cache → Display → Refresh
@@ -420,7 +414,7 @@ rather than:
 Open App → Call APIs → Wait → Wait → Wait → Display
 ```
 
-Cached information can appear immediately while newer information is refreshed in the background.
+The current summary request still fetches upstream data, and the TV retains its last successful snapshot during a temporary request failure.
 
 ---
 
@@ -462,13 +456,13 @@ Additional services and APIs will likely be introduced as individual widgets are
 
 ---
 
-# Future Ideas
+# Current Features and Future Ideas
 
 HomeScreen is intentionally an experimental project, so the feature set may evolve considerably.
 
-Some ideas include:
+Current features and future directions include:
 
-### Ambient Mode
+### Ambient Mode (implemented)
 
 The dashboard now enters Ambient Mode after 10 minutes without remote input by default. In Settings → Ambient, you can turn it off, change the delay, choose rotating built-in photos, select up to eight Google Photos for a personal slideshow, use a color-customizable plasma flow, or use a dark backdrop. The clock and date remain visible while selected weather, calendar, activity, task, and meal details rotate. A preview button starts the mode immediately, and a navigation button restores the dashboard.
 

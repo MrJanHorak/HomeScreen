@@ -1,392 +1,70 @@
-# HomeScreen <i>(working title)</i>
+# HomeScreen TV app
 
-A personal, ad-free smart TV dashboard built with **React Native** and designed specifically for **Android TV / 10-foot interfaces**.
+HomeScreen is an ad-free household dashboard built with Expo, React Native TV, and TypeScript for Android TV. It is an active personal project, not a finished launcher replacement.
 
-The goal is to create a TV experience that is useful even when you're not actively watching something — providing a quick glance at the information, entertainment, and activities that matter to you and your family.
+![HomeScreen dashboard with schedule, activity, media, weather, meals, tasks, and favorite apps](../assets/Screenshot_20261001_174433.png)
 
-> **The TV belongs to the owner, not the advertisers.**
+## Current implementation
 
----
+- The home dashboard shows a clock and greeting, six configurable cards (schedule, activity, media, weather, meals, and tasks), and a favorite-app row. Selecting a card opens a larger detail panel.
+- A TV pairing code and QR link connect the app to a Google account through the companion [pairing site](../server/pairing-web/README.md). Firebase Authentication persists the TV session.
+- The [Cloud Functions backend](../server/functions/README.md) provides Google Calendar, Google Tasks, Google Fit activity, OpenWeatherMap weather, and an optional Google Sheets dinner plan. Dashboard data refreshes every five minutes. Individual upstream failures do not prevent the other cards from loading.
+- On Android TV, Continue Watching reads titles that installed apps publish to the system Play Next row. The web preview uses sample media data.
+- Settings include color palettes, a custom accent, backgrounds, layout presets, card order/visibility/width, saved weather locations, favorite apps, meal connection, and device controls. Appearance settings sync through the backend; some TV-specific preferences are local to the device.
+- Ambient mode starts after 10 minutes without remote input by default. It can use built-in photos, up to eight selected Google Photos, a plasma backdrop, or a dark background, with a clock and optional rotating information.
+
+The screenshots capture one configured TV on October 1, 2026. Names, connected data, artwork, weather, and available media depend on the account and installed apps.
+
+## Screenshots
+
+| View | Preview |
+| --- | --- |
+| Dashboard | [Full-size dashboard](../assets/Screenshot_20261001_174433.png) |
+| Activity detail | [Fitness and health goals](../assets/Screenshot_20261001_174506.png) |
+| Meal detail | [Family meal planner](../assets/Screenshot_20261001_174531.png) |
+| Weather detail | [Weather forecast](../assets/Screenshot_20261001_174551.png) |
+| Color settings | [Palette and accent controls](../assets/Screenshot_20261001_174623.png) |
+| Card settings | [Card order and live preview](../assets/Screenshot_20261001_175228.png) |
+| Ambient mode | [Ambient photo and information](../assets/Screenshot_20261001_174401.png) |
+
+## Run the app
+
+1. Install dependencies from this directory with `npm install`.
+2. Copy `.env.example` to `.env.local` and fill in the Firebase web app identifiers and `EXPO_PUBLIC_API_URL`. The API URL is the Cloud Functions base URL without a function name. Set `EXPO_PUBLIC_PAIRING_URL` if the meal setup QR link should use a pairing URL other than the default derived from the Firebase project ID. For an Android TV device, use an API URL the device can reach; `localhost` points at the TV itself.
+3. Start Metro with `npm run start`. Use `npm run android` to build and install the native Android TV app, or `npm run web` for a browser preview.
+
+The backend and pairing site need their own configuration and deployment. See their READMEs before testing account pairing or live data. The web preview cannot read the Android TV Play Next row. Native module or launcher-artwork changes require a fresh Android build.
+
+## Using the dashboard
+
+### Pair a TV
+
+When signed out, the TV shows a six-character code and QR link. Open the link on a phone or computer, sign in with Google, and approve the matching code. The TV polls with a separate private secret and signs in when pairing succeeds.
+
+### Connect a meal plan
+
+Open **Settings → Meals** on the TV and scan its QR link, or open `/meals` on the pairing site's domain. Grant Sheets read access and provide a Sheet URL that the connected Google account can open. The Sheet needs `Date` and `Meal_Name` (or `Main`, `Meal`, or `Dinner`) headers. See the [pairing site guide](../server/pairing-web/README.md#connect-a-meal-sheet) for accepted columns and date formats.
+
+### Customize cards and ambient mode
+
+Open **Settings → Layout** for presets or **Settings → Cards** to reorder, show/hide, and resize dashboard cards; the preview updates as you make changes. **Settings → Colors** changes the palette and accent. **Settings → Background** can use a built-in background, a solid color, or a selected Google Photo.
+
+Open **Settings → Ambient** to change the idle delay, backdrop, rotation interval, and displayed information. **Preview** starts ambient mode immediately; pressing a navigation button returns to the dashboard. To select personal photos, scan the QR code in the Google Photos picker and choose up to eight photos on a phone. A fresh picker link is needed if an earlier one expired. Ambient mode does not replace the TV's own panel protection or power settings.
+
+### Continue Watching
+
+On Android TV, the Watch section reads unfinished titles published to the system Play Next row. If prompted, grant TV listings access. The publishing app controls which titles, posters, episode details, and progress are available. **Resume in app** opens its program intent when provided.
+
+Press a title to move it to **Up Next**. Hold a title to hide it; **Hidden titles** restores hidden series. Those choices are stored on this TV. This feature uses the local `modules/tv-watch-next` Expo module, so native changes need a new Android build.
 
 ## Android TV artwork
 
-The app includes a 16:9 launcher banner (`assets/tv-banner.png`), a square launcher icon (`assets/icon.png`), and a dark startup mark (`assets/homescreen-splash.png`). Android TV uses the banner for its app tile. The native launch screen shows the mark briefly; an in-app loading view covers the remaining account and appearance setup.
+The app includes `assets/tv-banner.png` for the launcher tile, `assets/icon.png` for the square icon, and `assets/homescreen-splash.png` for the startup mark. Edit and run `scripts/generate-brand-assets.ps1`, or replace the PNGs. Keep the banner at 16:9 with readable text. After changing artwork, run `npx expo prebuild --platform android`, then build and reinstall the app; a Metro reload cannot update native assets.
 
-To change the artwork, edit and run `scripts/generate-brand-assets.ps1`, or replace the PNG files with your own. Keep the banner at a 16:9 ratio with readable text. The app config and TV config plugin copy these assets into Android resources during prebuild. After changing app artwork, run `npx expo prebuild --platform android` and build and reinstall the Android app. A Metro reload cannot update launcher or native splash assets.
+## Next steps
 
----
+Current work is focused on TV readability, remote focus behavior, and reliability across different display sizes and upstream service failures. Family profiles, smart-home integration, deeper media integration, and additional ambient content remain ideas for later development.
 
-## 🚧 Project Status
+## Asset credits and license
 
-**Early development — Phase 1: UI Prototype**
-
-Currently focusing on:
-
-* TV-first UI and visual design
-* D-pad navigation and focus behavior
-* Reusable TV components
-* Mock data
-* 16:9 (1920×1080 for mock-up / **3840 × 2160 (4K UHD)** for implementation) layout
-* Home dashboard
-* Calendar
-* Watch / media sections
-* Favorites
-* Settings
-
-External APIs and persistent user data will be introduced in later phases.
-
----
-
-## 🎯 Vision
-
-This project is intended to become a **personal household information and entertainment dashboard**, rather than another streaming launcher.
-
-The home screen should answer:
-
-> **"What's going on right now?"**
-
-At a glance, users should be able to see:
-
-* 🕐 Current time
-* 🌤️ Weather
-* 📅 Today's schedule
-* 👟 Activity / step count
-* 🎬 Continue watching
-* ⭐ Favorites
-* 📺 Watchlist
-* 🏠 Smart-home information
-* 📰 Optional news and information
-
-The dashboard should remain calm, useful, and personal rather than becoming another source of advertising or endless content feeds.
-
----
-
-## 🖥️ Design Philosophy
-
-The interface is designed for **10-foot viewing** and remote control.
-
-### Core principles
-
-1. **Readable from across the room**
-2. **Large, clear typography**
-3. **Generous spacing**
-4. **Obvious focus states**
-5. **Predictable D-pad navigation**
-6. **Minimal visual clutter**
-7. **Respect the user's attention**
-8. **Personal rather than advertiser-driven**
-9. **TV-first rather than mobile UI scaled up**
-10. **Useful even when nobody is actively watching**
-
----
-
-## 🧭 Planned Navigation
-
-```text
-Home
-├── Calendar
-├── Watch
-├── Favorites
-└── Settings
-```
-
-Additional functionality will live within these primary sections.
-
----
-
-## 🏠 Home Dashboard
-
-The Home screen is intended to provide a quick overview of the household.
-
-### Current concept
-
-* Personalized greeting
-* Date and large clock
-* Current weather
-* Weather forecast
-* Today's calendar
-* Activity progress
-* Continue Watching
-* Quick navigation
-
-Example:
-
-```text
-┌──────────────────────────────────────────────────────────────┐
-│ Good evening, Jan                          8:42 PM            │
-│ Wednesday, September 9, 2026                                  │
-│                                                               │
-│ ┌──────────────────┐  ┌──────────────────┐                   │
-│ │     WEATHER      │  │      TODAY       │                   │
-│ │      72°F        │  │  9:00  Standup   │                   │
-│ │      Clear       │  │ 10:00  Class     │                   │
-│ │  H 78°  L 61°    │  │  3:00  Planning  │                   │
-│ └──────────────────┘  └──────────────────┘                   │
-│                                                               │
-│ ┌──────────────────┐                                          │
-│ │     ACTIVITY     │                                          │
-│ │    7,842 steps   │                                          │
-│ │    ████████░░    │                                          │
-│ └──────────────────┘                                          │
-│                                                               │
-│ Continue Watching                                              │
-│ [ The Bear ] [ Stranger Things ] [ Dune ] [ Fallout ]        │
-│                                                               │
-│ Home   Calendar   Watch   Favorites   Settings                │
-└──────────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🧩 Planned TV Component System
-
-Rather than relying entirely on a general-purpose mobile component library, the project will use a small internal TV component system.
-
-```text
-src/
-└── components/
-    └── tv/
-        ├── TVButton.tsx
-        ├── TVCard.tsx
-        ├── TVIconButton.tsx
-        ├── TVNavigation.tsx
-        ├── TVFocusRow.tsx
-        ├── TVFocusGrid.tsx
-        ├── TVCarousel.tsx
-        ├── TVModal.tsx
-        ├── TVSection.tsx
-        ├── TVText.tsx
-        └── TVScreen.tsx
-```
-
-The components will encapsulate TV-specific behavior such as:
-
-* D-pad focus
-* Focus animations
-* Scale effects
-* Visual focus indicators
-* Press feedback
-* Accessibility
-* Spatial navigation
-* Consistent spacing and typography
-
----
-
-## 📐 Target Display
-
-Primary design target:
-
-**3840 × 2160 (4K UHD)**
-
-The interface should also scale appropriately to other common TV resolutions while maintaining the 10-foot viewing experience.
-
----
-
-## 🛠️ Technology
-
-### Current
-
-* React Native
-* React Native for TV
-* TypeScript
-* React Navigation
-* Reanimated
-* Local mock data
-
-### Planned
-
-* Weather API
-* Google Calendar
-* TMDB
-* Health Connect
-* Local persistence
-* Family profiles
-* Customizable widgets
-* Ambient Mode
-* Smart-home integration
-* Home Assistant
-* Optional AI-powered information/search features
-
----
-
-## 📊 Mock Data
-
-Phase 1 uses local mock data so the UI can be developed independently of external services.
-
-Planned mock data includes:
-
-```text
-User
-├── Profile
-├── Greeting
-└── Preferences
-
-Weather
-├── Current conditions
-├── High / Low
-└── Forecast
-
-Calendar
-├── Today's events
-└── Upcoming events
-
-Activity
-├── Steps
-├── Distance
-├── Calories
-└── Active minutes
-
-Media
-├── Continue Watching
-├── Watchlist
-├── Recently Watched
-└── Suggestions
-
-Dashboard
-└── Favorite Widgets
-```
-
----
-
-## TV Continue Watching
-
-On Android TV, the Watch widget and Watch detail read unfinished titles published to the system Play Next row. The app requests `android.permission.READ_TV_LISTINGS`; access can be enabled from Watch if the user has not granted it. Cards show the publishing app, poster when available, episode, and progress supplied by that app. Selecting **Resume in app** launches the publishing app's program intent.
-
-In the TV Watch detail, press a title to move it to **Up Next**. That choice is saved locally and also controls the home widget. Hold a title to open its Hide action. Hidden series stay off this dashboard as new episodes appear; use **Hidden titles** in Watch to restore them. These preferences are stored on this TV.
-
-This uses the local Expo module in `modules/tv-watch-next`, so native changes require a new Android build. The web version keeps its sample Watch queue and does not load the Android TV reader. Streaming apps choose what they publish to Play Next, so this is not a complete viewing history.
-
----
-
-## 🖼️ Image & Media Assets
-
-### Background Image
-
-Photo by **Jonatan Pie** on Unsplash.
-
-[View photographer on Unsplash](https://unsplash.com/@r3dmax)
-
-[View original photograph](https://unsplash.com/photos/silhouette-of-off-road-car-h8nxGssjQXs)
-
-The image is used as a visual/design asset for the dashboard prototype.
-
-### TV & Movie Artwork
-
-Mock TV and movie media artwork is sourced from **TMDB (The Movie Database)** for development and UI prototyping.
-
-[TMDB](https://www.themoviedb.org/)
-
-> Media artwork is used for development/prototyping purposes and is subject to the respective rights and licensing of the content owners.
-
-### NASA / ESA / Hubble
-
-Space and astronomy imagery may be sourced from:
-
-* NASA
-* ESA
-* Hubble Space Telescope
-
-These assets are intended primarily for future **Ambient Mode**, backgrounds, and informational displays.
-
-[NASA](https://www.nasa.gov/)
-
-[ESA](https://www.esa.int/)
-
-[Hubble Space Telescope](https://science.nasa.gov/mission/hubble/)
-
----
-
-## 🗺️ Development Roadmap
-
-### Phase 1 — UI Prototype
-
-* [ ] Project structure
-* [ ] TV theme/design tokens
-* [ ] Home screen
-* [ ] TV typography
-* [ ] TV cards
-* [ ] Focus states
-* [ ] D-pad navigation
-* [ ] Calendar screen
-* [ ] Watch screen
-* [ ] Favorites screen
-* [ ] Settings screen
-* [ ] Mock media artwork
-* [ ] 1920×1080 polish
-
-### Phase 2 — Real Data
-
-* [ ] Weather API
-* [ ] Calendar integration
-* [ ] TMDB integration
-* [ ] Watchlist persistence
-* [ ] Recently watched
-* [ ] Continue Watching
-
-### Phase 3 — Personalization
-
-* [ ] Family profiles
-* [ ] Custom dashboard
-* [ ] Widget configuration
-* [ ] Favorite widgets
-* [ ] Persistent preferences
-* [ ] Custom layouts
-
-### Phase 4 — TV Polish
-
-* [ ] Advanced focus management
-* [ ] Focus transitions
-* [ ] Remote navigation
-* [ ] Back-button behavior
-* [ ] Performance optimization
-* [ ] Accessibility
-* [ ] TV readability testing
-
-### Phase 5 — Ambient Mode
-
-* [ ] Information mode
-* [ ] Photo mode
-* [ ] NASA / Hubble imagery
-* [ ] Time-of-day backgrounds
-* [ ] Weather-aware backgrounds
-* [ ] Screensaver behavior
-* [ ] Automatic transitions
-
-### Phase 6 — Smart Home
-
-Potential integrations:
-
-* [ ] Home Assistant
-* [ ] Thermostat
-* [ ] Lights
-* [ ] Door / garage status
-* [ ] Sensors
-* [ ] Home energy information
-
----
-
-## 💡 Long-Term Concept
-
-The long-term goal is to explore the idea of a **personal household operating system for the TV**.
-
-Not:
-
-> "Which streaming service should I watch?"
-
-But:
-
-> "What's happening in my world?"
-
-The TV becomes a shared household information surface combining:
-
-**Information + Entertainment + Activity + Personalization + Smart Home**
-
-while remaining calm, private, and free from advertising.
-
----
-
-## 📜 License
-
-This project is currently a personal development project.
-
-Third-party assets, artwork, photographs, logos, and media remain the property of their respective owners and are subject to their respective licenses and terms of use.
+The dashboard background photograph is by [Jonatan Pie](https://unsplash.com/@r3dmax) on [Unsplash](https://unsplash.com/photos/silhouette-of-off-road-car-h8nxGssjQXs). Sample TV and movie artwork is used for development and remains subject to the rights of its respective owners; [TMDB](https://www.themoviedb.org/) is one source of prototype artwork. Third-party assets retain their own terms. This repository is currently a personal development project; see [LICENSE](LICENSE) for the app's license text.

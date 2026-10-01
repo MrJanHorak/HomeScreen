@@ -1,6 +1,6 @@
 # Smart TV Dashboard - Firebase Cloud Functions Backend
 
-This backend provides real-time and cached dashboard data for the Smart TV React Native client, integrating **Google Calendar**, **Google Tasks**, **Google Fit**, and **OpenWeatherMap**.
+This backend provides dashboard data for the Smart TV React Native client, integrating **Google Calendar**, **Google Tasks**, **Google Fit**, **OpenWeatherMap**, and an optional **Google Sheets** dinner plan. The summary endpoint queries upstream services on each request and writes a Firestore snapshot in the background; it does not currently read that cache for the response.
 
 ---
 
@@ -9,16 +9,22 @@ This backend provides real-time and cached dashboard data for the Smart TV React
 ```
 server/functions/src/
 ├── index.ts                     # Main entrypoint exporting Cloud Functions (v2)
-├── authDevice.ts                # TV Device Code Pairing & Google OAuth Token storage
-├── getDashboardSummary.ts       # Unified dashboard endpoint (Calendar, Tasks, Fit, Weather)
+├── authDevice.ts                # TV device-code request and polling
+├── getDashboardSummary.ts       # Unified dashboard endpoint (Calendar, Tasks, Fit, Weather, Meals)
 ├── executeAction.ts             # TV remote quick actions (e.g. complete task, update preferences)
-├── syncUserData.ts              # Background user data sync and Firestore caching
+├── syncUserData.ts              # Authenticated on-demand sync and Firestore caching
+├── getLocationWeather.ts       # Weather for a selected city
+├── googlePairing.ts             # Google OAuth flows for TV, Photos, and Meals
+├── googlePhotosPicker.ts        # Select and save up to eight Google Photos
+├── mealSheetConfig.ts           # Connect or disconnect a meal Sheet
+├── userAppearance.ts            # Read and save dashboard appearance
 ├── services/
 │   ├── googleAuth.ts            # OAuth2Client setup & token refresh handling
 │   ├── googleCalendar.ts        # Google Calendar API (events for today)
 │   ├── googleFit.ts             # Google Fitness API (daily steps, distance, calories)
 │   ├── googleTasks.ts           # Google Tasks API (active tasks & task completion)
-│   └── weatherService.ts        # OpenWeatherMap API (current weather + 5-day forecast)
+│   ├── mealSheet.ts             # Google Sheets dinner-plan reader
+│   └── weatherService.ts        # OpenWeatherMap API (current weather + forecast)
 ├── utils/
 │   ├── crypto.ts                # AES-256-GCM encryption/decryption for OAuth refresh tokens
 │   └── db.ts                    # Firestore database helpers (users, cache, device codes)
@@ -31,15 +37,9 @@ server/functions/src/
 ## 🚀 Cloud Function Endpoints
 
 ### 1. `getDashboardSummary` (`GET`)
-Aggregates Calendar events, Tasks, Fitness activity, and Local Weather in parallel using `Promise.allSettled`.
+Aggregates Calendar events, Tasks, Fitness activity, local Weather, and optional Meals in parallel using `Promise.allSettled`. An upstream failure can leave the other cards available.
 - **Header**: `Authorization: Bearer <Firebase_ID_Token>`. The verified token determines the UID.
 
-The optional meal integration uses `POST /beginGoogleMeals` for incremental
-Google Sheets consent and `GET`, `PUT`, and `DELETE /mealSheetConfig` for the
-signed-in user's Sheet selection. `PUT` accepts `{ "url": "https://docs.google.com/spreadsheets/d/..." }`,
-checks access and the Date/meal header, then stores only that spreadsheet ID
-and title alongside an encrypted meal OAuth token. Dashboard summary responses
-include `meals.status` and dated `meals.items` for the TV card.
 - **Response**:
   ```json
   {
@@ -67,8 +67,10 @@ include `meals.status` and dated `meals.items` for the TV card.
       "windDirection": "NW",
       "high": 78,
       "low": 61,
-      "forecast": [ ... ]
+      "forecast": []
     },
+    "upcomingEvents": [],
+    "meals": { "status": "not_connected", "items": [] },
     "updatedAt": "2026-09-28T20:00:00.000Z"
   }
   ```
@@ -100,7 +102,16 @@ Handles actions triggered by the TV remote:
   ```
 
 ### 5. `syncUserData` (`POST`)
-Requires `Authorization: Bearer <Firebase_ID_Token>` and updates the verified user's dashboard cache.
+Requires `Authorization: Bearer <Firebase_ID_Token>` and updates the verified user's dashboard cache on demand. The current code does not schedule this function.
+
+### 6. Weather, appearance, meals, and photos
+
+- `GET /getLocationWeather?city=...` returns live weather for a saved city.
+- `GET` and `PUT /userAppearance` read and save the signed-in user's palette, background, layout, card, and ambient settings.
+- `POST /beginGoogleMeals` starts incremental Google Sheets consent. `GET`, `PUT`, and `DELETE /mealSheetConfig` manage the selected Sheet. `PUT` accepts `{ "url": "https://docs.google.com/spreadsheets/d/..." }`, checks access and the Date/meal header, then stores the spreadsheet ID and title with an encrypted meal OAuth token. The dashboard response includes `meals.status` and dated `meals.items`.
+- `POST /beginGooglePhotos` starts Google Photos Picker consent. `GET` and `POST /googlePhotosPicker?action=...` provide connection status, create or poll a picker session, and return saved background or gallery photos. The picker accepts up to eight photos.
+
+These endpoints require a Firebase ID token, except for the public device-code request/poll and the OAuth callback. See the [TV app guide](../../HomeScreen/README.md) for the corresponding settings controls and screenshots and the [pairing site guide](../pairing-web/README.md) for meal setup.
 
 ---
 
@@ -111,21 +122,25 @@ Requires `Authorization: Bearer <Firebase_ID_Token>` and updates the verified us
      - **Google Calendar API**
      - **Google Tasks API**
      - **Fitness API**
+     - **Google Sheets API** for optional meals
+     - **Google Photos Picker API** for optional personal backgrounds
    - Create an **OAuth 2.0 Client ID** (Web application). Add the exact `GOOGLE_REDIRECT_URI` function URL as an authorized redirect URI.
    - Add scopes:
      - `https://www.googleapis.com/auth/calendar.readonly`
      - `https://www.googleapis.com/auth/tasks`
      - `https://www.googleapis.com/auth/fitness.activity.read`
      - `https://www.googleapis.com/auth/fitness.location.read`
+     - `https://www.googleapis.com/auth/spreadsheets.readonly` for optional meals
+     - `https://www.googleapis.com/auth/photospicker.mediaitems.readonly` for optional personal backgrounds
 2. In **[OpenWeatherMap](https://openweathermap.org/api)**:
    - Create an API key.
-3. Put `GOOGLE_CLIENT_ID`, `GOOGLE_REDIRECT_URI`, and `PAIRING_URL` in `server/functions/.env`. Provision the private values as Firebase function secrets:
+3. Copy `.env.example` to `.env` in `server/functions`, then set `GOOGLE_CLIENT_ID`, `GOOGLE_REDIRECT_URI`, and `PAIRING_URL`. Provision the private values as Firebase function secrets:
    ```bash
    firebase functions:secrets:set GOOGLE_CLIENT_SECRET
    firebase functions:secrets:set OPENWEATHER_API_KEY
    firebase functions:secrets:set TOKEN_ENCRYPTION_KEY
    ```
-4. For the 2nd gen `googleOAuthCallback` function, grant its runtime service account **Service Account Token Creator** on the service account that signs Firebase custom tokens. This project uses the default Compute Engine service account for both (`488478409476-compute@developer.gserviceaccount.com`). Grant the role on that service account resource, rather than across the whole project. Without `iam.serviceAccounts.signBlob`, Google consent succeeds but TV pairing redirects back with `result=error` when `auth.createCustomToken()` runs.
+4. For the 2nd gen `googleOAuthCallback` function, grant its runtime service account **Service Account Token Creator** on the service account that signs Firebase custom tokens. Check the runtime account in your project; the existing deployment used `488478409476-compute@developer.gserviceaccount.com`. Grant the role on that service account resource rather than across the whole project. Without `iam.serviceAccounts.signBlob`, Google consent succeeds but TV pairing redirects back with `result=error` when `auth.createCustomToken()` runs.
 
 ---
 
@@ -136,6 +151,7 @@ Requires `Authorization: Bearer <Firebase_ID_Token>` and updates the verified us
 npm install
 npm run build
 npm run lint
+npm test
 
 # Run Firebase Emulators locally:
 npm run serve
