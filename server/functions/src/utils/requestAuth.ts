@@ -11,7 +11,9 @@ export async function authenticatedUserId(req: Request): Promise<string | null> 
 
 export async function verifiedUserId(idToken: string): Promise<string | null> {
   try {
-    const decoded = await auth.verifyIdToken(idToken);
+    // Rejected after sign-out-everywhere or account deletion, including an
+    // otherwise unexpired one-hour ID token.
+    const decoded = await auth.verifyIdToken(idToken, true);
     return decoded.uid;
   } catch {
     return null;

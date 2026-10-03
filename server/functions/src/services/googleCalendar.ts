@@ -1,6 +1,7 @@
 import { google, calendar_v3 as CalendarV3 } from "googleapis";
 import { GoogleTokens, CalendarEventSummary } from "../types";
 import { getOAuth2Client } from "./googleAuth";
+import {logSafeError} from "../utils/safeLog";
 
 const UPCOMING_DAYS = 14;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -118,33 +119,39 @@ export async function fetchCalendarEvents(tokens: GoogleTokens): Promise<Calenda
     const timeZone = userCalendars.find((cal) => cal.primary)?.timeZone ||
       userCalendars[0]?.timeZone || "UTC";
     const calendarsToFetch: CalendarEntry[] = userCalendars.length > 0
-      ? userCalendars
+      ? userCalendars.slice(0, 10)
       : [{ id: "primary", summary: "General", backgroundColor: "#3f51b5", primary: true }];
 
     // UTC bounds cover every local date in the feed, including DST changes.
     const timeMin = new Date(now.getTime() - DAY_MS).toISOString();
     const timeMax = new Date(now.getTime() + 16 * DAY_MS).toISOString();
-    const results = await Promise.all(calendarsToFetch.map(async (entry) => {
+    const fetchOne = async (entry: CalendarEntry) => {
       try {
         const events: Array<{ calendar: CalendarEntry; event: CalendarV3.Schema$Event }> = [];
         let pageToken: string | undefined;
+        let pages = 0;
         do {
           const response = await calendar.events.list({
             calendarId: entry.id || "primary", timeMin, timeMax, timeZone,
-            singleEvents: true, orderBy: "startTime", maxResults: 2500, pageToken,
+            singleEvents: true, orderBy: "startTime", maxResults: 250, pageToken,
           });
           events.push(...(response.data.items || []).map((event) => ({ calendar: entry, event })));
           pageToken = response.data.nextPageToken || undefined;
-        } while (pageToken);
+          pages++;
+        } while (pageToken && pages < 2);
         return events;
       } catch (err) {
-        console.warn(`Failed to fetch events for calendar ${entry.summary}:`, err);
+        logSafeError("Failed to fetch calendar events", err);
         return [];
       }
-    }));
+    };
+    const results: Array<{calendar: CalendarEntry; event: CalendarV3.Schema$Event}[]> = [];
+    for (let start = 0; start < calendarsToFetch.length; start += 5) {
+      results.push(...await Promise.all(calendarsToFetch.slice(start, start + 5).map(fetchOne)));
+    }
     return buildCalendarFeed(results.flat(), now, timeZone);
   } catch (error) {
-    console.error("Error fetching Google Calendar events:", error);
+    logSafeError("Error fetching Google Calendar events", error);
     return empty;
   }
 }

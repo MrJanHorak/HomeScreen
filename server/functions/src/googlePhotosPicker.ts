@@ -1,9 +1,10 @@
 import {onRequest} from "firebase-functions/v2/https";
-import {FieldValue} from "firebase-admin/firestore";
+import {FieldValue, Timestamp} from "firebase-admin/firestore";
 import {db, getStoredPhotosTokens} from "./utils/db";
 import {authenticatedUserId} from "./utils/requestAuth";
 import {getOAuth2Client} from "./services/googleAuth";
 import {GoogleTokens} from "./types";
+import {logSafeError} from "./utils/safeLog";
 
 const API = "https://photospicker.googleapis.com/v1";
 const SCOPE = "https://www.googleapis.com/auth/photospicker.mediaitems.readonly";
@@ -37,6 +38,7 @@ async function accessToken(tokens: GoogleTokens): Promise<string> {
 async function apiRequest<T>(token: string, path: string, method = "GET", body?: unknown): Promise<T> {
   const response = await fetch(`${API}${path}`, {
     method,
+    signal: AbortSignal.timeout(15_000),
     headers: {
       Authorization: `Bearer ${token}`,
       ...(body ? {"Content-Type": "application/json"} : {}),
@@ -64,6 +66,7 @@ async function downloadPhoto(token: string, item: PickedMediaItem): Promise<stri
   for (const [width, height] of [[1280, 720], [960, 540], [720, 405], [640, 360], [480, 270]]) {
     const response = await fetch(`${baseUrl.toString()}=w${width}-h${height}`, {
       headers: {Authorization: `Bearer ${token}`},
+      signal: AbortSignal.timeout(15_000),
     });
     if (!response.ok) throw new Error(`Could not download selected photo (${response.status})`);
     const mime = response.headers.get("content-type")?.split(";")[0] || "";
@@ -75,8 +78,22 @@ async function downloadPhoto(token: string, item: PickedMediaItem): Promise<stri
       await response.body?.cancel();
       continue;
     }
-    const bytes = Buffer.from(await response.arrayBuffer());
-    if (bytes.length <= MAX_IMAGE_BYTES) {
+    const chunks: Buffer[] = [];
+    let total = 0;
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("Photo download had no content");
+    for (;;) {
+      const {done, value} = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > MAX_IMAGE_BYTES) {
+        await reader.cancel();
+        break;
+      }
+      chunks.push(Buffer.from(value));
+    }
+    const bytes = Buffer.concat(chunks);
+    if (total <= MAX_IMAGE_BYTES) {
       return `data:${mime};base64,${bytes.toString("base64")}`;
     }
   }
@@ -86,6 +103,7 @@ async function downloadPhoto(token: string, item: PickedMediaItem): Promise<stri
 export const googlePhotosPickerHandler = onRequest(
   {cors: true, maxInstances: 10, secrets: ["GOOGLE_CLIENT_SECRET", "TOKEN_ENCRYPTION_KEY"]},
   async (req, res) => {
+    res.set("Cache-Control", "private, no-store");
     if (req.method === "OPTIONS") {
       res.status(204).send("");
       return;
@@ -99,6 +117,7 @@ export const googlePhotosPickerHandler = onRequest(
     const photoRef = db.collection("users").doc(userId).collection("appearance").doc("background");
     const galleryRef = photoRef.collection("photos");
     const sessionRef = db.collection("users").doc(userId).collection("appearance").doc("picker");
+    let processingSessionId: string | null = null;
 
     try {
       if (action === "background" && req.method === "GET") {
@@ -141,7 +160,7 @@ export const googlePhotosPickerHandler = onRequest(
           try {
             await apiRequest<unknown>(token, `/sessions/${encodeURIComponent(active.id)}`, "DELETE");
           } catch (error) {
-            console.warn("Could not close the previous Photos Picker session:", error);
+            logSafeError("Could not close the previous Photos Picker session", error);
           }
         }
         const session = await apiRequest<PickingSession>(token, "/sessions", "POST", {
@@ -154,6 +173,7 @@ export const googlePhotosPickerHandler = onRequest(
           maxItemCount: MAX_PHOTOS, purpose,
           expiresAt: session.expireTime && Number.isFinite(Date.parse(session.expireTime))
             ? Date.parse(session.expireTime) : Date.now() + 600_000,
+          deleteAt: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000),
         });
         res.status(200).json({pickerUri: session.pickerUri, pollIntervalMs});
         return;
@@ -170,6 +190,21 @@ export const googlePhotosPickerHandler = onRequest(
           res.status(200).json({status: "pending", pollIntervalMs: pollMs(session)});
           return;
         }
+        const acquired = await db.runTransaction(async (transaction) => {
+          const snapshot = await transaction.get(sessionRef);
+          const current = snapshot.data();
+          if (!current || current.id !== active.id ||
+            (typeof current.processingUntil === "number" && current.processingUntil > Date.now())) {
+            return false;
+          }
+          transaction.update(sessionRef, {processingUntil: Date.now() + 3 * 60_000});
+          return true;
+        });
+        if (!acquired) {
+          res.status(200).json({status: "pending", pollIntervalMs: 3000});
+          return;
+        }
+        processingSessionId = active.id;
         const picked: PickedMediaItem[] = [];
         let pageToken: string | undefined;
         do {
@@ -208,7 +243,7 @@ export const googlePhotosPickerHandler = onRequest(
         try {
           await apiRequest<unknown>(token, `/sessions/${encodeURIComponent(active.id)}`, "DELETE");
         } catch (error) {
-          console.warn("Could not delete Photos Picker session:", error);
+          logSafeError("Could not delete Photos Picker session", error);
         }
         res.status(200).json({status: "selected", photos});
         return;
@@ -216,7 +251,13 @@ export const googlePhotosPickerHandler = onRequest(
 
       res.status(400).json({error: "Unsupported Photos Picker request"});
     } catch (error) {
-      console.error("Google Photos Picker request failed:", error);
+      if (processingSessionId) {
+        const current = await sessionRef.get().catch(() => null);
+        if (current?.data()?.id === processingSessionId) {
+          await sessionRef.update({processingUntil: 0}).catch(() => undefined);
+        }
+      }
+      logSafeError("Google Photos Picker request failed", error);
       res.status(502).json({error: error instanceof Error ? error.message : "Google Photos is unavailable"});
     }
   }

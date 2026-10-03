@@ -1,6 +1,7 @@
 import {google} from "googleapis";
 import {MealPlanItem, MealPlanSummary, StoredUserTokens} from "../types";
 import {getOAuth2Client} from "./googleAuth";
+import {logSafeError} from "../utils/safeLog";
 
 type Cell = string | number | boolean | null;
 
@@ -153,8 +154,7 @@ export async function fetchMealPlan(
     }
     return {status: "ok", items: result.items};
   } catch (error) {
-    console.error("Could not read meal Sheet:",
-      error instanceof Error ? error.message : "unknown error");
+    logSafeError("Could not read meal Sheet", error);
     return {status: "unavailable", items: [],
       message: "The meal Sheet is unavailable. Check its connection on your phone."};
   }

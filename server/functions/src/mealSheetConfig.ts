@@ -1,13 +1,15 @@
 import {onRequest} from "firebase-functions/v2/https";
 import {authenticatedUserId} from "./utils/requestAuth";
-import {clearMealSheetConnection, getStoredUserTokens,
+import {clearMealSheetConnection, getStoredUserTokens, invalidateDashboardCache,
   saveMealSheetSelection} from "./utils/db";
 import {readMealSheet, spreadsheetIdFromUrl} from "./services/mealSheet";
+import {logSafeError} from "./utils/safeLog";
 
 export const mealSheetConfigHandler = onRequest(
   {cors: true, maxInstances: 10,
     secrets: ["GOOGLE_CLIENT_SECRET", "TOKEN_ENCRYPTION_KEY"]},
   async (req, res) => {
+    res.set("Cache-Control", "private, no-store");
     if (req.method === "OPTIONS") {
       res.status(204).send("");
       return;
@@ -29,6 +31,7 @@ export const mealSheetConfigHandler = onRequest(
       }
       if (req.method === "DELETE") {
         if (connection) await clearMealSheetConnection(userId);
+        await invalidateDashboardCache(userId);
         res.status(200).json({success: true});
         return;
       }
@@ -53,15 +56,15 @@ export const mealSheetConfigHandler = onRequest(
           return;
         }
         await saveMealSheetSelection(userId, spreadsheetId, result.title);
+        await invalidateDashboardCache(userId);
         res.status(200).json({success: true, spreadsheetTitle: result.title,
           mealCount: result.items.length});
       } catch (error) {
-        console.warn("Meal Sheet selection failed:",
-          error instanceof Error ? error.message : "unknown error");
+        logSafeError("Meal Sheet selection failed", error);
         res.status(400).json({error: "Could not open that Sheet. Check the link and Google account."});
       }
     } catch (error) {
-      console.error("Meal Sheet configuration failed:", error);
+      logSafeError("Meal Sheet configuration failed", error);
       res.status(500).json({error: "Could not update meal Sheet connection"});
     }
   }

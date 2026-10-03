@@ -268,7 +268,7 @@ The architecture is designed around one important TV-specific requirement:
 
 > **The dashboard should feel immediate when the TV turns on.**
 
-The backend writes dashboard summaries to Firestore, while the current TV app requests live data from the summary endpoint. Reading the cache at startup is a future performance improvement.
+The backend writes dashboard summaries to Firestore. The TV requests the summary endpoint, which serves a recent cache when available and refreshes connected services when the cache expires.
 
 ---
 
@@ -301,7 +301,7 @@ Activity API ─────── ✓
 Dashboard still renders available data.
 ```
 
-The endpoint writes the returned summary to Firestore in the background. The current GET handler still calls upstream services; cache-first startup remains a performance goal.
+The endpoint reads a ten-minute Firestore cache before calling upstream services. On a miss, it writes the new summary before returning it.
 
 ---
 
@@ -376,7 +376,7 @@ Possible synchronized data includes:
 - Weather
 - Household information
 
-The updated data is written to Firestore, but the current TV summary request does not read from that cache.
+The updated data is written to Firestore and can be read by the TV summary endpoint.
 
 ```text
 External Services
@@ -394,7 +394,7 @@ getDashboardSummary
       TV
 ```
 
-The cache supports future startup improvements; the current TV client refreshes its live dashboard every five minutes.
+The TV requests a dashboard refresh every five minutes; the summary endpoint serves its ten-minute cache when it is fresh.
 
 ---
 
@@ -414,7 +414,7 @@ rather than:
 Open App → Call APIs → Wait → Wait → Wait → Display
 ```
 
-The current summary request still fetches upstream data, and the TV retains its last successful snapshot during a temporary request failure.
+The summary request fetches upstream data when its cache expires, and the TV retains its last successful snapshot during a temporary request failure.
 
 ---
 

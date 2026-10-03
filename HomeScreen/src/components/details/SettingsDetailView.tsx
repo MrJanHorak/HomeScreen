@@ -25,7 +25,7 @@ const SECTIONS: { id: SettingsSection; label: string; icon: keyof typeof Materia
 
 export default function SettingsDetailView({ onPreviewAmbient = () => {} }: { onPreviewAmbient?: () => void }) {
   const theme = useTheme();
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const {
     isLive,
     refresh,
@@ -386,6 +386,21 @@ export default function SettingsDetailView({ onPreviewAmbient = () => {} }: { on
           <Text style={[styles.actionBtnText, { color: theme.colors.textPrimary }]}>
             Refresh Live Data
           </Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Sign out this TV"
+          {...focusProps('sign-out')}
+          onPress={() => void signOut()}
+          style={({ pressed }) => [
+            styles.actionBtn,
+            { borderColor: theme.colors.glassBorder, backgroundColor: theme.colors.glassSurface },
+            pressed && { opacity: 0.8 },
+            focusStyle('sign-out'),
+          ]}
+        >
+          <MaterialCommunityIcons name="logout" size={20} color={theme.colors.textPrimary} />
+          <Text style={[styles.actionBtnText, { color: theme.colors.textPrimary }]}>Sign out this TV</Text>
         </Pressable>
       </View>
       </>}

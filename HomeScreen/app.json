@@ -25,6 +25,7 @@
       "package": "com.anonymous.mytvapp"
     },
     "plugins": [
+      "expo-secure-store",
       "./plugins/withTvAppQueries",
       "./plugins/withNativeCleanOrder",
       "./plugins/withHomeScreenSplash",

@@ -3,6 +3,7 @@ import type { SavedLocation, Weather } from '../../../shared/src/types';
 
 export const STORAGE_KEY_LOCATIONS = '@tv_weather_locations_v1';
 export const STORAGE_KEY_ACTIVE_LOC = '@tv_weather_active_loc_v1';
+const userKey = (base: string, uid: string) => `${base}:${uid}`;
 
 export const DEFAULT_LOCATIONS: SavedLocation[] = [
   { id: 'loc-new-york', name: 'New York', query: 'New York, US', isDefault: true },
@@ -30,14 +31,15 @@ export function getWeatherForLocation(location: SavedLocation, weather?: Weather
   };
 }
 
-export async function loadStoredLocations(): Promise<{
+export async function loadStoredLocations(uid: string): Promise<{
   locations: SavedLocation[];
   activeId: string;
 }> {
   try {
+    await AsyncStorage.multiRemove([STORAGE_KEY_LOCATIONS, STORAGE_KEY_ACTIVE_LOC]);
     const [rawLocs, rawActive] = await Promise.all([
-      AsyncStorage.getItem(STORAGE_KEY_LOCATIONS),
-      AsyncStorage.getItem(STORAGE_KEY_ACTIVE_LOC),
+      AsyncStorage.getItem(userKey(STORAGE_KEY_LOCATIONS, uid)),
+      AsyncStorage.getItem(userKey(STORAGE_KEY_ACTIVE_LOC, uid)),
     ]);
     const parsed: unknown = rawLocs ? JSON.parse(rawLocs) : DEFAULT_LOCATIONS;
     const locations = Array.isArray(parsed) && parsed.length > 0 && parsed.every((loc) =>
@@ -54,11 +56,11 @@ export async function loadStoredLocations(): Promise<{
   }
 }
 
-export async function persistLocations(locations: SavedLocation[], activeId: string): Promise<void> {
+export async function persistLocations(locations: SavedLocation[], activeId: string, uid: string): Promise<void> {
   try {
     await Promise.all([
-      AsyncStorage.setItem(STORAGE_KEY_LOCATIONS, JSON.stringify(locations)),
-      AsyncStorage.setItem(STORAGE_KEY_ACTIVE_LOC, activeId),
+      AsyncStorage.setItem(userKey(STORAGE_KEY_LOCATIONS, uid), JSON.stringify(locations)),
+      AsyncStorage.setItem(userKey(STORAGE_KEY_ACTIVE_LOC, uid), activeId),
     ]);
   } catch (error) {
     console.error('Failed to save locations:', error);

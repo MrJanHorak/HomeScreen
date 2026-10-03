@@ -1,4 +1,8 @@
 import { HourlyForecastItem, UserLocation, WeatherForecastItem, WeatherSummary } from "../types";
+import * as crypto from "crypto";
+import {Timestamp} from "firebase-admin/firestore";
+import {db} from "../utils/db";
+import {logSafeError} from "../utils/safeLog";
 
 function mapWeatherIcon(weatherMain: string, iconCode: string): string {
   const isNight = iconCode.endsWith("n");
@@ -28,7 +32,7 @@ function getWindDirection(degrees: number): string {
 /**
  * Fetch local weather and 5-day forecast from OpenWeatherMap
  */
-export async function fetchLocalWeather(
+async function fetchWeatherUncached(
   location?: UserLocation | string
 ): Promise<WeatherSummary> {
   const apiKey = process.env.OPENWEATHER_API_KEY;
@@ -56,8 +60,10 @@ export async function fetchLocalWeather(
 
   try {
     const [currentRes, forecastRes] = await Promise.all([
-      fetch(`https://api.openweathermap.org/data/2.5/weather?${queryParam}&appid=${apiKey}&units=${units}`),
-      fetch(`https://api.openweathermap.org/data/2.5/forecast?${queryParam}&appid=${apiKey}&units=${units}`),
+      fetch(`https://api.openweathermap.org/data/2.5/weather?${queryParam}&appid=${apiKey}&units=${units}`,
+        {signal: AbortSignal.timeout(10_000)}),
+      fetch(`https://api.openweathermap.org/data/2.5/forecast?${queryParam}&appid=${apiKey}&units=${units}`,
+        {signal: AbortSignal.timeout(10_000)}),
     ]);
 
     if (!currentRes.ok) {
@@ -154,10 +160,37 @@ export async function fetchLocalWeather(
       hourly,
     };
   } catch (error) {
-    console.error("Error fetching OpenWeather data:", error);
+    logSafeError("Error fetching OpenWeather data", error);
     return {
       temp: "--",
       condition: "Unknown",
     };
   }
+}
+
+/** Weather can be shared between users without storing an identifying city in the document ID. */
+export async function fetchLocalWeather(location?: UserLocation | string): Promise<WeatherSummary> {
+  const key = crypto.createHash("sha256")
+    .update(typeof location === "string" ? location.trim().toLowerCase() :
+      location ? JSON.stringify(location) : "new york")
+    .digest("hex");
+  const ref = db.collection("weather_cache").doc(key);
+  try {
+    const snapshot = await ref.get();
+    const cached = snapshot.data();
+    if (typeof cached?.cachedAtMs === "number" &&
+      Date.now() - cached.cachedAtMs < 10 * 60 * 1000) return cached.weather as WeatherSummary;
+  } catch {
+    // Weather still works if the shared cache is unavailable.
+  }
+  const weather = await fetchWeatherUncached(location);
+  if (weather.condition !== "Unavailable" && weather.condition !== "Unknown") {
+    try {
+      await ref.set({weather, cachedAtMs: Date.now(),
+        deleteAt: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000)});
+    } catch {
+      // A cache failure must not hide a successful weather lookup.
+    }
+  }
+  return weather;
 }

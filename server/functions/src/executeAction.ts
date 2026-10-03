@@ -1,6 +1,8 @@
 import { onRequest } from "firebase-functions/v2/https";
-import { getStoredUserTokens, saveUserTokens } from "./utils/db";
+import { getStoredUserTokens, invalidateDashboardCache, saveUserTokens } from "./utils/db";
 import { authenticatedUserId } from "./utils/requestAuth";
+import {parsePreferences} from "./utils/validation";
+import {logSafeError} from "./utils/safeLog";
 import { markTaskCompleted } from "./services/googleTasks";
 
 export const executeActionHandler = onRequest(
@@ -31,26 +33,28 @@ export const executeActionHandler = onRequest(
       switch (action) {
         case "completeTask": {
           const taskId = payload?.taskId;
-          if (!taskId) {
-            res.status(400).json({ error: "Missing taskId in payload" });
+          if (typeof taskId !== "string" || !taskId || taskId.length > 256 ||
+            (payload?.tasklistId !== undefined &&
+              (typeof payload.tasklistId !== "string" || payload.tasklistId.length > 256))) {
+            res.status(400).json({ error: "Invalid task in payload" });
             return;
           }
 
           const userTokens = await getStoredUserTokens(userId);
           await markTaskCompleted(userTokens.google, taskId, payload?.tasklistId);
+          await invalidateDashboardCache(userId);
           res.status(200).json({ success: true, message: `Task ${taskId} marked as completed` });
           return;
         }
 
         case "updatePreferences": {
-          const { weatherCity, stepGoal, distanceGoal, location, savedLocations } = payload || {};
-          await saveUserTokens(userId, {
-            weatherCity,
-            stepGoal,
-            distanceGoal,
-            location,
-            savedLocations,
-          });
+          const preferences = parsePreferences(payload);
+          if (!preferences) {
+            res.status(400).json({error: "Invalid preferences"});
+            return;
+          }
+          await saveUserTokens(userId, preferences);
+          await invalidateDashboardCache(userId);
           res.status(200).json({ success: true, message: "Preferences updated successfully" });
           return;
         }
@@ -61,7 +65,7 @@ export const executeActionHandler = onRequest(
           return;
       }
     } catch (error) {
-      console.error("Error executing action:", error);
+      logSafeError("Error executing action", error);
       res.status(500).json({error: "Internal server error"});
     }
   }

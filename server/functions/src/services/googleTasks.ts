@@ -1,6 +1,7 @@
-import { google } from "googleapis";
+import { google, tasks_v1 as TasksV1 } from "googleapis";
 import { GoogleTokens, TaskSummary } from "../types";
 import { getOAuth2Client } from "./googleAuth";
+import {logSafeError} from "../utils/safeLog";
 
 /**
  * Fetch active (incomplete) tasks from all of the user's Google Tasks lists.
@@ -14,8 +15,9 @@ export async function fetchActiveTasks(tokens: GoogleTokens): Promise<TaskSummar
   const tasksService = google.tasks({ version: "v1", auth });
 
   try {
-    const tasklists = [];
+    const tasklists: TasksV1.Schema$TaskList[] = [];
     let listPageToken: string | undefined;
+    let listPages = 0;
     do {
       const response = await tasksService.tasklists.list({
         maxResults: 100,
@@ -23,12 +25,14 @@ export async function fetchActiveTasks(tokens: GoogleTokens): Promise<TaskSummar
       });
       tasklists.push(...(response.data.items || []));
       listPageToken = response.data.nextPageToken || undefined;
-    } while (listPageToken);
+      listPages++;
+    } while (listPageToken && listPages < 2);
 
-    const listsOfTasks = await Promise.all(tasklists.map(async (tasklist) => {
+    const fetchOne = async (tasklist: typeof tasklists[number]) => {
       if (!tasklist.id) return [];
       const items = [];
       let pageToken: string | undefined;
+      let pages = 0;
       do {
         const response = await tasksService.tasks.list({
           tasklist: tasklist.id,
@@ -39,7 +43,8 @@ export async function fetchActiveTasks(tokens: GoogleTokens): Promise<TaskSummar
         });
         items.push(...(response.data.items || []));
         pageToken = response.data.nextPageToken || undefined;
-      } while (pageToken);
+        pages++;
+      } while (pageToken && pages < 2);
 
       return items
         .filter((task) => !!task.id && !!task.title)
@@ -55,11 +60,16 @@ export async function fetchActiveTasks(tokens: GoogleTokens): Promise<TaskSummar
           }) : null,
           completed: false,
         }));
-    }));
+    };
+    const listsOfTasks: TaskSummary[][] = [];
+    const selected = tasklists.slice(0, 20);
+    for (let start = 0; start < selected.length; start += 5) {
+      listsOfTasks.push(...await Promise.all(selected.slice(start, start + 5).map(fetchOne)));
+    }
 
     return listsOfTasks.flat();
   } catch (error) {
-    console.error("Error fetching Google Tasks:", error);
+    logSafeError("Error fetching Google Tasks", error);
     throw error;
   }
 }

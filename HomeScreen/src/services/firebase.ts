@@ -1,6 +1,7 @@
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import * as FirebaseAuth from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 // Web-app config from Firebase console > Project settings > Your apps.
@@ -14,6 +15,31 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
+// Firebase stores a refresh token in its persistence record. Migrate an existing
+// AsyncStorage session once, then remove the unencrypted copy.
+const secureAuthStorage = {
+  async getItem(key: string): Promise<string | null> {
+    const secureKey = `auth_${key.replace(/[^A-Za-z0-9._-]/g, '_')}`;
+    const saved = await SecureStore.getItemAsync(secureKey);
+    if (saved !== null) return saved;
+    const legacy = await AsyncStorage.getItem(key);
+    if (legacy !== null) {
+      await SecureStore.setItemAsync(secureKey, legacy);
+      await AsyncStorage.removeItem(key);
+    }
+    return legacy;
+  },
+  async setItem(key: string, value: string): Promise<void> {
+    const secureKey = `auth_${key.replace(/[^A-Za-z0-9._-]/g, '_')}`;
+    await SecureStore.setItemAsync(secureKey, value);
+    await AsyncStorage.removeItem(key);
+  },
+  async removeItem(key: string): Promise<void> {
+    const secureKey = `auth_${key.replace(/[^A-Za-z0-9._-]/g, '_')}`;
+    await Promise.all([SecureStore.deleteItemAsync(secureKey), AsyncStorage.removeItem(key)]);
+  },
+};
+
 let _auth: FirebaseAuth.Auth;
 try {
   // Persists the session across TV app restarts
@@ -22,14 +48,15 @@ try {
   } else {
     // The Firebase RN runtime exports this, although its web type entry omits it.
     const nativeAuth = FirebaseAuth as typeof FirebaseAuth & {
-      getReactNativePersistence: (storage: typeof AsyncStorage) => FirebaseAuth.Persistence;
+      getReactNativePersistence: (storage: typeof secureAuthStorage) => FirebaseAuth.Persistence;
     };
     _auth = FirebaseAuth.initializeAuth(app, {
-      persistence: nativeAuth.getReactNativePersistence(AsyncStorage),
+      persistence: nativeAuth.getReactNativePersistence(secureAuthStorage),
     });
   }
-} catch {
+} catch (error) {
   // Fast Refresh re-runs this module; auth is already initialized
+  if ((error as {code?: string}).code !== 'auth/already-initialized') throw error;
   _auth = FirebaseAuth.getAuth(app);
 }
 

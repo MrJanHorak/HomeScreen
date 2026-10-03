@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, useCallback, Rea
 import type { Weather, CalendarEvent, TaskItem, Activity, DashboardSummaryResponse,
   SavedLocation, MealPlanSummary } from '../../../shared/src/types';
 import { fetchDashboardSummary, fetchLocationWeather, executeTVAction } from '../services/api';
+import { useAuth } from './AuthContext';
 import {
   DEFAULT_LOCATIONS,
   ExtendedWeather,
@@ -43,6 +44,8 @@ function keepIfUnchanged<T>(previous: T, next: T): T {
 }
 
 export function DashboardProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
+  const uid = user?.uid || '';
   const [weatherByLocation, setWeatherByLocation] = useState<Record<string, Weather>>({});
   const [schedule, setSchedule] = useState<CalendarEvent[]>([]);
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([]);
@@ -59,12 +62,12 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   // Load persisted locations on mount
   useEffect(() => {
-    loadStoredLocations().then(({ locations, activeId }) => {
+    loadStoredLocations(uid).then(({ locations, activeId }) => {
       setSavedLocations(locations);
       const active = locations.find((l) => l.id === activeId) || locations[0];
       setActiveLocationState(active);
     });
-  }, []);
+  }, [uid]);
 
   const loadData = useCallback(async () => {
     try {
@@ -75,6 +78,13 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       setMeals((previous) => keepIfUnchanged(previous, data.meals || {status: 'not_connected', items: []}));
       setTasks((previous) => keepIfUnchanged(previous, data.tasks || []));
       setHealth((previous) => keepIfUnchanged(previous, data.health));
+      const defaultLocation = savedLocations.find((location) => location.isDefault) || savedLocations[0];
+      if (defaultLocation && data.weather) {
+        setWeatherByLocation((previous) => ({
+          ...previous,
+          [defaultLocation.id]: keepIfUnchanged(previous[defaultLocation.id], data.weather),
+        }));
+      }
       setIsLive(true);
       setError(null);
 
@@ -86,7 +96,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [savedLocations]);
 
   const completeTask = useCallback(async (taskId: string) => {
     // Optimistic UI update
@@ -104,16 +114,16 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   // Multi-location actions
   const setActiveLocation = useCallback((loc: SavedLocation) => {
     setActiveLocationState(loc);
-    void persistLocations(savedLocations, loc.id);
-  }, [savedLocations]);
+    void persistLocations(savedLocations, loc.id, uid);
+  }, [savedLocations, uid]);
 
   const cycleNextLocation = useCallback(() => {
     if (savedLocations.length < 2) return;
     const currentIndex = savedLocations.findIndex((loc) => loc.id === activeLocation.id);
     const nextLoc = savedLocations[(currentIndex + 1) % savedLocations.length];
     setActiveLocationState(nextLoc);
-    void persistLocations(savedLocations, nextLoc.id);
-  }, [activeLocation.id, savedLocations]);
+    void persistLocations(savedLocations, nextLoc.id, uid);
+  }, [activeLocation.id, savedLocations, uid]);
 
   const addLocation = useCallback(async (name: string, query: string) => {
     const newLoc: SavedLocation = {
@@ -125,7 +135,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     const updated = [...savedLocations, newLoc];
     setSavedLocations(updated);
     setActiveLocationState(newLoc);
-    await persistLocations(updated, newLoc.id);
+    await persistLocations(updated, newLoc.id, uid);
 
     // Sync to Firestore DB
     const targetDefault = updated.find((l) => l.isDefault) || updated[0];
@@ -133,7 +143,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       savedLocations: updated,
       weatherCity: targetDefault.query,
     }).catch((err) => console.warn('Could not sync locations to backend:', err));
-  }, [savedLocations]);
+  }, [savedLocations, uid]);
 
   const removeLocation = useCallback(async (id: string) => {
     if (savedLocations.length <= 1) return; // Keep at least one location
@@ -143,7 +153,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     const nextActive = activeLocation.id === id ? updated[0] : activeLocation;
     setSavedLocations(updated);
     setActiveLocationState(nextActive);
-    await persistLocations(updated, nextActive.id);
+    await persistLocations(updated, nextActive.id, uid);
 
     // Sync to Firestore DB
     const targetDefault = updated.find((l) => l.isDefault) || updated[0];
@@ -151,7 +161,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       savedLocations: updated,
       weatherCity: targetDefault.query,
     }).catch((err) => console.warn('Could not sync locations to backend:', err));
-  }, [savedLocations, activeLocation]);
+  }, [savedLocations, activeLocation, uid]);
 
   const setDefaultLocation = useCallback(async (id: string) => {
     const updated = savedLocations.map((l) => ({
@@ -162,7 +172,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     const targetLoc = updated.find((l) => l.id === id);
     if (targetLoc) {
       setActiveLocationState(targetLoc);
-      await persistLocations(updated, targetLoc.id);
+      await persistLocations(updated, targetLoc.id, uid);
       // Sync default preference and location list with backend
       try {
         await executeTVAction('updatePreferences', {
@@ -173,7 +183,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         console.warn('Could not sync default location to backend:', e);
       }
     }
-  }, [savedLocations]);
+  }, [savedLocations, uid]);
 
 
   const getWeatherForLoc = useCallback(
@@ -202,13 +212,14 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    if (activeLocation.isDefault) return;
     void loadLocationWeather(activeLocation);
     const interval = setInterval(() => void loadLocationWeather(activeLocation), REFRESH_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [activeLocation, loadLocationWeather]);
 
   const refresh = useCallback(async () => {
-    await Promise.all([loadData(), loadLocationWeather(activeLocation)]);
+    await Promise.all([loadData(), ...(activeLocation.isDefault ? [] : [loadLocationWeather(activeLocation)])]);
   }, [activeLocation, loadData, loadLocationWeather]);
 
   useEffect(() => {

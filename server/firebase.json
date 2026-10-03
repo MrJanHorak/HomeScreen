@@ -17,6 +17,9 @@
       ]
     }
   ],
+  "firestore": {
+    "rules": "firestore.rules"
+  },
   "hosting": {
     "public": "pairing-web/dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],

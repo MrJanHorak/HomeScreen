@@ -21,7 +21,7 @@ npm --prefix pairing-web run build
 firebase deploy --only functions,hosting
 ```
 
-Hosting also runs the web build before a Hosting deploy. `../firestore.rules.example` shows a deny-all client policy for this repo, which accesses Firestore only through Cloud Functions. Review and merge it with any rules used by other apps on the Firebase project before deploying Firestore rules.
+Hosting also runs the web build before a Hosting deploy. `../firestore.rules` is the deny-all client policy for this repo, which accesses Firestore only through Cloud Functions. Review and merge it with any rules used by other apps on the Firebase project before deploying Firestore rules.
 
 For local UI work, run `npm run dev` from `server/pairing-web`. The full OAuth round trip also needs a registered callback URI and matching `PAIRING_URL` for that environment.
 
@@ -72,3 +72,5 @@ The existing Google Fit REST integration has an announced end-of-2026 support li
 Open **Settings → Background** or **Settings → Ambient → Google Photos** on the TV. After connecting Google Photos, scan the picker QR code with a phone signed into the same Google account and choose up to eight photos. The TV saves the selection for its background or ambient slideshow. Picker links are single-use and expire; use **New QR code** on the TV if a link no longer opens.
 
 This flow uses the Cloud Functions `beginGooglePhotos`, `googleOAuthCallback`, and `googlePhotosPicker` endpoints. It requires the Google Photos Picker API and the `photospicker.mediaitems.readonly` scope configured for the OAuth client; see the [backend setup](../functions/README.md). Photos are selected in Google's picker, not uploaded through this pairing site's `/pair` page.
+
+The signed-in pairing page also has account controls to remove stored photos, disconnect Calendar/Tasks/activity, sign out all devices, or delete the account and saved data. See [security and retention setup](../SECURITY.md) before enabling these actions in production.

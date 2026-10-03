@@ -3,6 +3,7 @@ import { AppState, PermissionsAndroid, Platform } from 'react-native';
 import type { Permission } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { requireOptionalNativeModule } from 'expo';
+import { useAuth } from '../context/AuthContext';
 
 const READ_TV_LISTINGS = 'android.permission.READ_TV_LISTINGS' as Permission;
 const PREFERENCES_KEY = 'tv-watch-next-preferences-v1';
@@ -63,6 +64,9 @@ export function watchNextKey(item: WatchNextItem): string {
 }
 
 export function WatchNextProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const uid = user?.uid || '';
+  const preferenceKey = `${PREFERENCES_KEY}:${uid}`;
   const [rawItems, setRawItems] = useState<WatchNextItem[]>([]);
   const [preferences, setPreferences] = useState<WatchPreferences | null>(null);
   const preferencesRef = useRef<WatchPreferences>(emptyPreferences);
@@ -95,7 +99,8 @@ export function WatchNextProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       try {
-        const saved = await AsyncStorage.getItem(PREFERENCES_KEY);
+        await AsyncStorage.removeItem(PREFERENCES_KEY);
+        const saved = await AsyncStorage.getItem(preferenceKey);
         if (saved && active) {
           const parsed = JSON.parse(saved) as Partial<WatchPreferences>;
           const next: WatchPreferences = {
@@ -120,13 +125,13 @@ export function WatchNextProvider({ children }: { children: React.ReactNode }) {
       if (state === 'active') void refresh();
     });
     return () => { active = false; subscription.remove(); };
-  }, [refresh]);
+  }, [refresh, preferenceKey]);
 
   const save = useCallback(async (next: WatchPreferences) => {
     preferencesRef.current = next;
     setPreferences(next);
-    await AsyncStorage.setItem(PREFERENCES_KEY, JSON.stringify(next));
-  }, []);
+    await AsyncStorage.setItem(preferenceKey, JSON.stringify(next));
+  }, [preferenceKey]);
 
   const feature = useCallback(async (item: WatchNextItem) => {
     await save({ ...preferencesRef.current, featuredKey: watchNextKey(item) });

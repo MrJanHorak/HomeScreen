@@ -3,6 +3,7 @@ import * as crypto from "crypto";
 import {google} from "googleapis";
 import {CodeChallengeMethod} from "google-auth-library";
 import type {Response} from "express";
+import {Timestamp} from "firebase-admin/firestore";
 import {
   auth,
   authorizeDeviceWithGoogleTokens,
@@ -13,6 +14,7 @@ import {
   savePhotosTokens,
 } from "./utils/db";
 import {authenticatedUserId} from "./utils/requestAuth";
+import {logSafeError} from "./utils/safeLog";
 
 const STATE_LIFETIME_MS = 10 * 60 * 1000;
 const GOOGLE_SCOPES = [
@@ -32,6 +34,7 @@ interface OAuthState {
   kind?: "device" | "photos" | "meals";
   codeVerifier: string;
   expiresAt: number;
+  deleteAt?: Timestamp;
 }
 
 function requiredSetting(name: string): string {
@@ -66,6 +69,7 @@ async function consumeState(state: string): Promise<OAuthState | null> {
 export const beginGoogleLinkHandler = onRequest(
   {cors: true, maxInstances: 10},
   async (req, res) => {
+    res.set("Cache-Control", "no-store");
     if (req.method === "OPTIONS") {
       res.status(204).send("");
       return;
@@ -107,7 +111,9 @@ export const beginGoogleLinkHandler = onRequest(
         codeVerifier,
         expiresAt: Date.now() + STATE_LIFETIME_MS,
       };
-      await db.collection("oauth_states").doc(hash(state)).create(stateRecord);
+      await db.collection("oauth_states").doc(hash(state)).create({
+        ...stateRecord, deleteAt: Timestamp.fromMillis(stateRecord.expiresAt + 60 * 60 * 1000),
+      });
 
       const oauthClient = new google.auth.OAuth2(
         requiredSetting("GOOGLE_CLIENT_ID"),
@@ -125,7 +131,7 @@ export const beginGoogleLinkHandler = onRequest(
 
       res.status(200).json({authorizationUrl});
     } catch (error) {
-      console.error("Could not begin Google pairing:", error);
+      logSafeError("Could not begin Google pairing", error);
       res.status(500).json({error: "Internal server error"});
     }
   }
@@ -135,6 +141,7 @@ export const beginGoogleLinkHandler = onRequest(
 export const beginGooglePhotosHandler = onRequest(
   {cors: true, maxInstances: 10},
   async (req, res) => {
+    res.set("Cache-Control", "no-store");
     if (req.method === "OPTIONS") {
       res.status(204).send("");
       return;
@@ -156,6 +163,7 @@ export const beginGooglePhotosHandler = onRequest(
       await db.collection("oauth_states").doc(hash(state)).create({
         userId, kind: "photos", codeVerifier,
         expiresAt: Date.now() + STATE_LIFETIME_MS,
+        deleteAt: Timestamp.fromMillis(Date.now() + STATE_LIFETIME_MS + 60 * 60 * 1000),
       } satisfies OAuthState);
       const oauthClient = new google.auth.OAuth2(
         requiredSetting("GOOGLE_CLIENT_ID"), undefined,
@@ -171,7 +179,7 @@ export const beginGooglePhotosHandler = onRequest(
       });
       res.status(200).json({authorizationUrl});
     } catch (error) {
-      console.error("Could not start Photos consent:", error);
+      logSafeError("Could not start Photos consent", error);
       res.status(500).json({error: "Could not start Google Photos connection"});
     }
   }
@@ -181,6 +189,7 @@ export const beginGooglePhotosHandler = onRequest(
 export const beginGoogleMealsHandler = onRequest(
   {cors: true, maxInstances: 10},
   async (req, res) => {
+    res.set("Cache-Control", "no-store");
     if (req.method === "OPTIONS") {
       res.status(204).send("");
       return;
@@ -202,6 +211,7 @@ export const beginGoogleMealsHandler = onRequest(
       await db.collection("oauth_states").doc(hash(state)).create({
         userId, kind: "meals", codeVerifier,
         expiresAt: Date.now() + STATE_LIFETIME_MS,
+        deleteAt: Timestamp.fromMillis(Date.now() + STATE_LIFETIME_MS + 60 * 60 * 1000),
       } satisfies OAuthState);
       const oauthClient = new google.auth.OAuth2(
         requiredSetting("GOOGLE_CLIENT_ID"), undefined,
@@ -217,7 +227,7 @@ export const beginGoogleMealsHandler = onRequest(
       });
       res.status(200).json({authorizationUrl});
     } catch (error) {
-      console.error("Could not start meal Sheet consent:", error);
+      logSafeError("Could not start meal Sheet consent", error);
       res.status(500).json({error: "Could not start meal Sheet connection"});
     }
   }
@@ -233,6 +243,7 @@ export const googleOAuthCallbackHandler = onRequest(
     secrets: ["GOOGLE_CLIENT_SECRET", "TOKEN_ENCRYPTION_KEY"],
   },
   async (req, res) => {
+    res.set("Cache-Control", "no-store");
     let flow: OAuthState["kind"] = "device";
     if (req.method !== "GET") {
       res.status(405).send("Method not allowed");
@@ -333,7 +344,7 @@ export const googleOAuthCallbackHandler = onRequest(
       );
       res.redirect(303, pairingRedirect(paired ? "connected" : "expired"));
     } catch (error) {
-      console.error("Could not finish Google pairing:", error);
+      logSafeError("Could not finish Google pairing", error);
       if (flow === "photos") photosResult(res, "Google Photos could not be connected. Please try again.");
       else if (flow === "meals") res.redirect(303, pairingRedirect("meals_error"));
       else res.redirect(303, pairingRedirect("error"));

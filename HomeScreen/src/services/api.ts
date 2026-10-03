@@ -1,4 +1,6 @@
 import { auth } from './firebase';
+import { signOut as firebaseSignOut } from 'firebase/auth';
+import {clearLocalUserData} from './localUserData';
 import type { DashboardSummaryResponse, DevicePairingResponse, Weather } from '../../../shared/src/types';
 import type { DashboardAppearance } from '../theme/appearance';
 import { Platform } from 'react-native';
@@ -16,11 +18,19 @@ async function authHeaders(): Promise<Record<string, string>> {
   };
 }
 
+async function handleRevokedSession(response: Response): Promise<void> {
+  if (response.status !== 401 || !auth.currentUser) return;
+  const uid = auth.currentUser.uid;
+  await firebaseSignOut(auth);
+  await clearLocalUserData(uid).catch(() => undefined);
+}
+
 async function photosRequest<T>(action: string, method: 'GET' | 'POST' = 'GET'): Promise<T> {
   const response = await fetch(`${DEFAULT_API_URL}/googlePhotosPicker?action=${action}`, {
     method,
     headers: await authHeaders(),
   });
+  await handleRevokedSession(response);
   const body = await response.json();
   if (!response.ok) throw new Error(body.error || `Google Photos request failed (${response.status})`);
   return body as T;
@@ -30,6 +40,7 @@ export async function beginGooglePhotosConnection(): Promise<string> {
   const response = await fetch(`${DEFAULT_API_URL}/beginGooglePhotos`, {
     method: 'POST', headers: await authHeaders(),
   });
+  await handleRevokedSession(response);
   const body = await response.json();
   if (!response.ok) throw new Error(body.error || 'Could not connect Google Photos');
   return body.authorizationUrl;
@@ -70,6 +81,7 @@ export async function getUserAppearance(): Promise<{
   const response = await fetch(`${DEFAULT_API_URL}/userAppearance`, {
     headers: await authHeaders(),
   });
+  await handleRevokedSession(response);
   const body = await response.json();
   if (!response.ok) throw new Error(body.error || 'Could not load appearance settings');
   return body;
@@ -80,6 +92,7 @@ export async function saveUserAppearance(appearance: DashboardAppearance): Promi
     method: 'PUT', headers: await authHeaders(),
     body: JSON.stringify({ appearance, source: Platform.OS === 'web' ? 'web' : 'tv' }),
   });
+  await handleRevokedSession(response);
   if (!response.ok) {
     const body = await response.json();
     throw new Error(body.error || 'Could not save appearance settings');
@@ -98,6 +111,7 @@ export async function fetchDashboardSummary(): Promise<DashboardSummaryResponse>
       'X-Time-Zone': Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
     },
   });
+  await handleRevokedSession(response);
 
   if (!response.ok) {
     throw new Error(`Failed to fetch dashboard: ${response.status} ${response.statusText}`);
@@ -110,6 +124,7 @@ export async function fetchDashboardSummary(): Promise<DashboardSummaryResponse>
 export async function fetchLocationWeather(city: string): Promise<Weather> {
   const url = `${DEFAULT_API_URL}/getLocationWeather?city=${encodeURIComponent(city)}`;
   const response = await fetch(url, { method: 'GET', headers: await authHeaders() });
+  await handleRevokedSession(response);
   if (!response.ok) {
     throw new Error(`Weather lookup failed: ${response.status}`);
   }
@@ -129,6 +144,7 @@ export async function executeTVAction(
     headers: await authHeaders(),
     body: JSON.stringify({ action, payload }),
   });
+  await handleRevokedSession(response);
 
   if (!response.ok) {
     throw new Error(`Action ${action} failed: ${response.status}`);

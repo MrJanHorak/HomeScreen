@@ -3,8 +3,10 @@ import * as crypto from "crypto";
 import {
   saveDeviceCode,
   consumeDeviceToken,
+  recordCodeRequest,
 } from "./utils/db";
 import { DevicePairingCode } from "./types";
+import {logSafeError} from "./utils/safeLog";
 
 /**
  * Generate a friendly alphanumeric 6-character pairing code (e.g., "7K9M2W")
@@ -26,6 +28,7 @@ export const authDeviceHandler = onRequest(
     secrets: ["TOKEN_ENCRYPTION_KEY"],
   },
   async (req, res) => {
+    res.set("Cache-Control", "no-store");
     if (req.method === "OPTIONS") {
       res.status(204).send("");
       return;
@@ -37,20 +40,27 @@ export const authDeviceHandler = onRequest(
       // 1. TV asks for a new pairing code
       if (action === "request-code" && req.method === "POST") {
         if (!process.env.PAIRING_URL) throw new Error("PAIRING_URL is not configured");
-        const code = generatePairingCode();
+        if (!await recordCodeRequest(req.ip || "unknown")) {
+          res.status(429).json({error: "Too many pairing code requests"});
+          return;
+        }
         const pollSecret = crypto.randomBytes(32).toString("hex");
         const now = Date.now();
         const expiresAt = now + 15 * 60 * 1000; // 15 minutes validity
-
-        const codeRecord: DevicePairingCode = {
-          code,
-          status: "pending",
-          createdAt: now,
-          expiresAt,
-          pollSecretHash: crypto.createHash("sha256").update(pollSecret).digest("hex"),
-        };
-
-        await saveDeviceCode(codeRecord);
+        let code = "";
+        for (let attempt = 0; attempt < 5; attempt++) {
+          code = generatePairingCode();
+          const codeRecord: DevicePairingCode = {
+            code, status: "pending", createdAt: now, expiresAt,
+            pollSecretHash: crypto.createHash("sha256").update(pollSecret).digest("hex"),
+          };
+          try {
+            await saveDeviceCode(codeRecord);
+            break;
+          } catch (error) {
+            if ((error as {code?: number}).code !== 6 || attempt === 4) throw error;
+          }
+        }
 
         res.status(200).json({
           code,
@@ -94,7 +104,7 @@ export const authDeviceHandler = onRequest(
 
       res.status(400).json({error: `Unknown action or method: ${action}`});
     } catch (error) {
-      console.error("Error in authDeviceHandler:", error);
+      logSafeError("Error in authDeviceHandler", error);
       res.status(500).json({error: "Internal server error"});
     }
   }

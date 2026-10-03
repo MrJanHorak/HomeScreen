@@ -1,6 +1,6 @@
 # Smart TV Dashboard - Firebase Cloud Functions Backend
 
-This backend provides dashboard data for the Smart TV React Native client, integrating **Google Calendar**, **Google Tasks**, **Google Fit**, **OpenWeatherMap**, and an optional **Google Sheets** dinner plan. The summary endpoint queries upstream services on each request and writes a Firestore snapshot in the background; it does not currently read that cache for the response.
+This backend provides dashboard data for the Smart TV React Native client, integrating **Google Calendar**, **Google Tasks**, **Google Fit**, **OpenWeatherMap**, and an optional **Google Sheets** dinner plan. The summary reads a ten-minute Firestore cache first and awaits cache writes on a miss. Shared weather results also have a ten-minute cache. See [security and retention setup](../SECURITY.md) for rules, TTL, and account controls.
 
 ---
 
@@ -16,6 +16,7 @@ server/functions/src/
 ├── getLocationWeather.ts       # Weather for a selected city
 ├── googlePairing.ts             # Google OAuth flows for TV, Photos, and Meals
 ├── googlePhotosPicker.ts        # Select and save up to eight Google Photos
+├── accountSecurity.ts           # Disconnect data, revoke sessions, delete account
 ├── mealSheetConfig.ts           # Connect or disconnect a meal Sheet
 ├── userAppearance.ts            # Read and save dashboard appearance
 ├── services/
@@ -110,6 +111,7 @@ Requires `Authorization: Bearer <Firebase_ID_Token>` and updates the verified us
 - `GET` and `PUT /userAppearance` read and save the signed-in user's palette, background, layout, card, and ambient settings.
 - `POST /beginGoogleMeals` starts incremental Google Sheets consent. `GET`, `PUT`, and `DELETE /mealSheetConfig` manage the selected Sheet. `PUT` accepts `{ "url": "https://docs.google.com/spreadsheets/d/..." }`, checks access and the Date/meal header, then stores the spreadsheet ID and title with an encrypted meal OAuth token. The dashboard response includes `meals.status` and dated `meals.items`.
 - `POST /beginGooglePhotos` starts Google Photos Picker consent. `GET` and `POST /googlePhotosPicker?action=...` provide connection status, create or poll a picker session, and return saved background or gallery photos. The picker accepts up to eight photos.
+- `POST /accountSecurity` accepts `disconnectPhotos`, `disconnectGoogle`, `signOutEverywhere`, or `deleteAccount` for the signed-in UID. Disconnect actions revoke all Firebase sessions so connected TVs clear old data. Account deletion removes nested Firestore user data and the Firebase Auth user.
 
 These endpoints require a Firebase ID token, except for the public device-code request/poll and the OAuth callback. See the [TV app guide](../../HomeScreen/README.md) for the corresponding settings controls and screenshots and the [pairing site guide](../pairing-web/README.md) for meal setup.
 

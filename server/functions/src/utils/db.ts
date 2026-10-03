@@ -1,6 +1,7 @@
 import { getApps, initializeApp } from "firebase-admin/app";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
+import * as crypto from "crypto";
 import { StoredUserTokens, DashboardSummaryResponse, DevicePairingCode, GoogleTokens } from "../types";
 import { decryptToken, encryptToken } from "./crypto";
 
@@ -154,19 +155,19 @@ export async function saveDashboardCache(
   userId: string,
   summary: DashboardSummaryResponse
 ): Promise<void> {
-  try {
-    await db
-      .collection("users")
-      .doc(userId)
-      .collection("cache")
-      .doc("dashboard")
-      .set({
-        ...summary,
-        cachedAt: FieldValue.serverTimestamp(),
-      });
-  } catch (err) {
-    console.warn("Failed to save dashboard cache to Firestore:", err);
+  if (Buffer.byteLength(JSON.stringify(summary), "utf8") > 750_000) {
+    throw new Error("Dashboard summary exceeds cache size limit");
   }
+  await db
+    .collection("users")
+    .doc(userId)
+    .collection("cache")
+    .doc("dashboard")
+    .set({
+      ...summary,
+      cachedAtMs: Date.now(),
+      deleteAt: Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    });
 }
 
 /**
@@ -174,7 +175,7 @@ export async function saveDashboardCache(
  */
 export async function getDashboardCache(
   userId: string
-): Promise<DashboardSummaryResponse | null> {
+): Promise<{summary: DashboardSummaryResponse; cachedAtMs: number} | null> {
   const cacheDoc = await db
     .collection("users")
     .doc(userId)
@@ -183,14 +184,28 @@ export async function getDashboardCache(
     .get();
 
   if (!cacheDoc.exists) return null;
-  return cacheDoc.data() as DashboardSummaryResponse;
+  const data = cacheDoc.data() as DashboardSummaryResponse & {
+    cachedAtMs?: number; cachedAt?: unknown; deleteAt?: Timestamp;
+  };
+  const summary = {...data};
+  delete summary.cachedAtMs;
+  delete summary.cachedAt;
+  delete summary.deleteAt;
+  return {summary, cachedAtMs: data.cachedAtMs || 0};
+}
+
+export async function invalidateDashboardCache(userId: string): Promise<void> {
+  await db.collection("users").doc(userId).collection("cache").doc("dashboard").delete();
 }
 
 /**
  * Device code pairing persistence for TV authentication
  */
 export async function saveDeviceCode(codeData: DevicePairingCode): Promise<void> {
-  await db.collection("device_codes").doc(codeData.code).set(codeData);
+  await db.collection("device_codes").doc(codeData.code).create({
+    ...codeData,
+    deleteAt: Timestamp.fromMillis(codeData.expiresAt + 60 * 60 * 1000),
+  });
 }
 
 export async function getDeviceCode(code: string): Promise<DevicePairingCode | null> {
@@ -257,6 +272,7 @@ export async function authorizeDeviceWithGoogleTokens(
       userId,
       customToken: encryptToken(customToken),
     });
+    transaction.delete(userRef.collection("cache").doc("dashboard"));
     return true;
   });
 }
@@ -274,7 +290,44 @@ export async function recordPairingAttempt(userId: string): Promise<boolean> {
     transaction.set(ref, {
       count: count + 1,
       expiresAt: inWindow ? data?.expiresAt : now + 15 * 60 * 1000,
+      deleteAt: Timestamp.fromMillis((inWindow ? data?.expiresAt : now + 15 * 60 * 1000) + 60 * 60 * 1000),
     });
+    return true;
+  });
+}
+
+/** Best-effort per-IP limit for the unauthenticated code issuance endpoint. */
+export async function recordCodeRequest(address: string): Promise<boolean> {
+  const id = crypto.createHash("sha256").update(address).digest("hex");
+  const ref = db.collection("code_request_limits").doc(id);
+  const now = Date.now();
+  return db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(ref);
+    const data = snapshot.data();
+    const inWindow = typeof data?.expiresAt === "number" && data.expiresAt > now;
+    const count = inWindow ? Number(data?.count || 0) : 0;
+    if (count >= 60) return false;
+    const expiresAt = inWindow ? data?.expiresAt : now + 15 * 60 * 1000;
+    transaction.set(ref, {count: count + 1, expiresAt,
+      deleteAt: Timestamp.fromMillis(expiresAt + 60 * 60 * 1000)});
+    return true;
+  });
+}
+
+export async function recordUserQuota(
+  userId: string, resource: string, limit: number, windowMs: number
+): Promise<boolean> {
+  const ref = db.collection("user_request_limits").doc(`${userId}_${resource}`);
+  const now = Date.now();
+  return db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(ref);
+    const data = snapshot.data();
+    const inWindow = typeof data?.expiresAt === "number" && data.expiresAt > now;
+    const count = inWindow ? Number(data?.count || 0) : 0;
+    if (count >= limit) return false;
+    const expiresAt = inWindow ? data?.expiresAt : now + windowMs;
+    transaction.set(ref, {count: count + 1, expiresAt,
+      deleteAt: Timestamp.fromMillis(expiresAt + 60 * 60 * 1000)});
     return true;
   });
 }

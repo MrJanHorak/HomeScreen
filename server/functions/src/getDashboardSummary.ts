@@ -1,6 +1,8 @@
 import { onRequest } from "firebase-functions/v2/https";
-import { getStoredUserTokens, saveDashboardCache } from "./utils/db";
+import {getDashboardCache, getStoredUserTokens, saveDashboardCache} from "./utils/db";
 import { authenticatedUserId } from "./utils/requestAuth";
+import {boundSummary} from "./utils/summary";
+import {logSafeError} from "./utils/safeLog";
 import { fetchCalendarEvents } from "./services/googleCalendar";
 import { fetchActiveTasks } from "./services/googleTasks";
 import { fetchHealthData } from "./services/googleFit";
@@ -30,6 +32,13 @@ export const getDashboardSummaryHandler = onRequest(
         res.status(401).json({error: "Valid Firebase ID token required"});
         return;
       }
+      res.set("Cache-Control", "private, no-store");
+
+      const cached = await getDashboardCache(userId);
+      if (cached && Date.now() - cached.cachedAtMs < 10 * 60 * 1000) {
+        res.status(200).json(cached.summary);
+        return;
+      }
 
       // 1. Fetch user credentials & preferences from Firestore
       const userTokens = await getStoredUserTokens(userId);
@@ -48,7 +57,7 @@ export const getDashboardSummaryHandler = onRequest(
         ]);
 
       // 3. Assemble response payload
-      const responsePayload: DashboardSummaryResponse = {
+      const responsePayload: DashboardSummaryResponse = boundSummary({
         schedule:
           calendarResult.status === "fulfilled" ? calendarResult.value.today : [],
         upcomingEvents:
@@ -77,17 +86,19 @@ export const getDashboardSummaryHandler = onRequest(
             : { temp: "--", condition: "Unknown" },
         savedLocations: userTokens.savedLocations,
         updatedAt: new Date().toISOString(),
-      };
+      });
 
 
-      // 4. Save cache asynchronously in background for fast TV bootstrap
-      saveDashboardCache(userId, responsePayload).catch((cacheErr) =>
-        console.warn("Failed to update dashboard cache:", cacheErr)
-      );
+      // Finish the write before returning; post-response work can be terminated.
+      try {
+        await saveDashboardCache(userId, responsePayload);
+      } catch {
+        console.warn("Dashboard cache write failed");
+      }
 
       res.status(200).json(responsePayload);
     } catch (error) {
-      console.error("Error handling getDashboardSummary request:", error);
+      logSafeError("Error handling getDashboardSummary request", error);
       res.status(500).json({error: "Internal server error"});
     }
   }

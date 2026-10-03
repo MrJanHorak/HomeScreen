@@ -54,7 +54,7 @@ appElement.innerHTML = `
       <h1 id="page-title">${mealMode ? 'Connect your dinner plan.' : 'Bring your dashboard to the big screen.'}</h1>
       <p class="intro">${mealMode
     ? 'Sign in with the Google account paired to your TV, then connect the Sheet you update with Gemini.'
-    : 'Sign in on this device, then enter the code shown on your TV. Your account details stay off the TV.'}</p>
+    : 'Sign in on this device, then enter the code shown on your TV. Your Google password stays off the TV.'}</p>
       ${mealMode ? '' : '<a class="mode-link" href="/meals">Setting up a meal Sheet? Open meal setup →</a>'}
 
       ${mealMode ? '' : `<div class="steps" aria-hidden="true">
@@ -96,6 +96,18 @@ appElement.innerHTML = `
         <button id="meal-remove-button" class="button button-text" type="button" hidden>Disconnect meal Sheet</button>
         <p id="meal-status" class="status" role="status" aria-live="polite"></p>
       </section>
+      <section id="account-controls" class="account-controls" aria-labelledby="account-controls-title" hidden>
+        <p class="field-label">ACCOUNT & PRIVACY</p>
+        <h2 id="account-controls-title">Manage saved data</h2>
+        <p class="meal-copy">These controls affect every TV connected to this account.</p>
+        <div class="account-actions">
+          <button id="disconnect-photos-button" class="button button-text" type="button">Remove saved photos and sign out TVs</button>
+          <button id="disconnect-google-button" class="button button-text" type="button">Disconnect Calendar, Tasks and activity; sign out TVs</button>
+          <button id="revoke-button" class="button button-text" type="button">Sign out on every device</button>
+          <button id="delete-account-button" class="button button-text danger" type="button">Delete account and saved data</button>
+        </div>
+        <p id="account-status" class="status" role="status" aria-live="polite"></p>
+      </section>
       <div class="privacy-note"><span class="privacy-icon" aria-hidden="true">✦</span><span>${mealMode
     ? 'Google will ask you to approve Sheets access when you connect a meal plan. You can remove the connection here at any time.'
     : 'Google will ask you to approve Calendar, Tasks, and activity access. You can revoke access in your Google account at any time.'}</span></div>
@@ -118,6 +130,12 @@ const mealUrl = document.querySelector<HTMLInputElement>('#meal-url')!;
 const mealSaveButton = document.querySelector<HTMLButtonElement>('#meal-save-button')!;
 const mealCurrent = document.querySelector<HTMLElement>('#meal-current')!;
 const mealRemoveButton = document.querySelector<HTMLButtonElement>('#meal-remove-button')!;
+const accountControls = document.querySelector<HTMLElement>('#account-controls')!;
+const accountStatus = document.querySelector<HTMLElement>('#account-status')!;
+const disconnectPhotosButton = document.querySelector<HTMLButtonElement>('#disconnect-photos-button')!;
+const disconnectGoogleButton = document.querySelector<HTMLButtonElement>('#disconnect-google-button')!;
+const revokeButton = document.querySelector<HTMLButtonElement>('#revoke-button')!;
+const deleteAccountButton = document.querySelector<HTMLButtonElement>('#delete-account-button')!;
 const prefilledCode = (params.get('code') || '').toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '');
 if (prefilledCode.length === 6) codeInput.value = prefilledCode;
 
@@ -162,6 +180,12 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
   let mealsBusy = false;
   let mealsAuthorized = false;
   let currentSheet: string | null = null;
+  let accountBusy = false;
+
+  function showAccountStatus(message: string, kind: 'error' | 'success' = 'success') {
+    accountStatus.textContent = message;
+    accountStatus.dataset.kind = kind;
+  }
 
   function updateControls() {
     const signedIn = Boolean(auth.currentUser);
@@ -179,6 +203,10 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
     mealCurrent.textContent = currentSheet ? `Connected: ${currentSheet}` : '';
     mealRemoveButton.hidden = !signedIn || !currentSheet;
     mealRemoveButton.disabled = mealsBusy;
+    accountControls.hidden = !signedIn;
+    for (const button of [disconnectPhotosButton, disconnectGoogleButton, revokeButton, deleteAccountButton]) {
+      button.disabled = accountBusy;
+    }
   }
 
   async function mealRequest(path: string, method: 'GET' | 'PUT' | 'DELETE' | 'POST', body?: object) {
@@ -262,6 +290,43 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
     showStatus('Signed out. Choose the Google account you want on your TV.');
     showMealStatus('');
   });
+
+  async function accountAction(
+    action: 'disconnectPhotos' | 'disconnectGoogle' | 'signOutEverywhere' | 'deleteAccount',
+    confirmation: string,
+    success: string,
+  ) {
+    if (!window.confirm(confirmation)) return;
+    accountBusy = true;
+    updateControls();
+    try {
+      await mealRequest('accountSecurity', 'POST', {action});
+      await signOut(auth);
+      showStatus(success, 'success');
+    } catch (error) {
+      showAccountStatus(error instanceof Error ? error.message : 'Account action failed.', 'error');
+    } finally {
+      accountBusy = false;
+      updateControls();
+    }
+  }
+
+  disconnectPhotosButton.addEventListener('click', () => void accountAction(
+    'disconnectPhotos', 'Remove selected photos, disconnect Photos, and sign out all TVs?',
+    'Saved photos and Photos access removed. Sign in again to continue.',
+  ));
+  disconnectGoogleButton.addEventListener('click', () => void accountAction(
+    'disconnectGoogle', 'Disconnect Calendar, Tasks and activity, and sign out all TVs?',
+    'Google dashboard access removed. Pair again to reconnect.',
+  ));
+  revokeButton.addEventListener('click', () => void accountAction(
+    'signOutEverywhere', 'Sign out every TV and browser session for this account?',
+    'All sessions revoked. Sign in again to continue.',
+  ));
+  deleteAccountButton.addEventListener('click', () => void accountAction(
+    'deleteAccount', 'Permanently delete your account, saved settings, photos and dashboard data?',
+    'Account and saved data deleted.',
+  ));
 
   mealAccessButton.addEventListener('click', async () => {
     mealsBusy = true;

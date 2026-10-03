@@ -1,6 +1,7 @@
 import {onRequest} from "firebase-functions/v2/https";
 import {db} from "./utils/db";
 import {authenticatedUserId} from "./utils/requestAuth";
+import {logSafeError} from "./utils/safeLog";
 
 const CARD_IDS = ["weather", "schedule", "activity", "media", "meal", "todo"];
 const LAYOUTS = ["balanced", "agenda", "wellness", "calm", "custom"];
@@ -50,6 +51,7 @@ function validAppearance(value: unknown): boolean {
 }
 
 export const userAppearanceHandler = onRequest({cors: true, maxInstances: 10}, async (req, res) => {
+  res.set("Cache-Control", "private, no-store");
   if (req.method === "OPTIONS") {
     res.status(204).send("");
     return;
@@ -88,7 +90,7 @@ export const userAppearanceHandler = onRequest({cors: true, maxInstances: 10}, a
     }
     res.status(405).json({error: "Method not allowed"});
   } catch (error) {
-    console.error("Could not sync appearance:", error);
+    logSafeError("Could not sync appearance", error);
     res.status(500).json({error: "Could not sync appearance settings"});
   }
 });

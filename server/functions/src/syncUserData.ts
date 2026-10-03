@@ -1,6 +1,8 @@
 import { onRequest } from "firebase-functions/v2/https";
-import { getStoredUserTokens, saveDashboardCache } from "./utils/db";
+import {getStoredUserTokens, recordUserQuota, saveDashboardCache} from "./utils/db";
 import { authenticatedUserId } from "./utils/requestAuth";
+import {boundSummary} from "./utils/summary";
+import {logSafeError} from "./utils/safeLog";
 import { fetchCalendarEvents } from "./services/googleCalendar";
 import { fetchActiveTasks } from "./services/googleTasks";
 import { fetchHealthData } from "./services/googleFit";
@@ -26,7 +28,7 @@ export async function syncUserDashboard(userId: string, timeZone = "UTC"): Promi
       fetchMealPlan(userTokens.mealSheet),
     ]);
 
-  const summary: DashboardSummaryResponse = {
+  const summary: DashboardSummaryResponse = boundSummary({
     schedule: calendarResult.status === "fulfilled" ? calendarResult.value.today : [],
     upcomingEvents: calendarResult.status === "fulfilled" ? calendarResult.value.upcoming : [],
     meals: mealsResult.status === "fulfilled" ? mealsResult.value :
@@ -51,8 +53,9 @@ export async function syncUserDashboard(userId: string, timeZone = "UTC"): Promi
       weatherResult.status === "fulfilled"
         ? weatherResult.value
         : { temp: "--", condition: "Unknown" },
+    savedLocations: userTokens.savedLocations,
     updatedAt: new Date().toISOString(),
-  };
+  });
 
   await saveDashboardCache(userId, summary);
   return summary;
@@ -65,6 +68,7 @@ export const syncUserDataHandler = onRequest(
     secrets: ["OPENWEATHER_API_KEY", "TOKEN_ENCRYPTION_KEY", "GOOGLE_CLIENT_SECRET"],
   },
   async (req, res) => {
+    res.set("Cache-Control", "private, no-store");
     if (req.method === "OPTIONS") {
       res.status(204).send("");
       return;
@@ -80,6 +84,10 @@ export const syncUserDataHandler = onRequest(
         res.status(401).json({error: "Valid Firebase ID token required"});
         return;
       }
+      if (!await recordUserQuota(userId, "sync", 2, 10 * 60 * 1000)) {
+        res.status(429).json({error: "Please wait before synchronizing again"});
+        return;
+      }
 
       const summary = await syncUserDashboard(userId, req.header("X-Time-Zone") || "UTC");
       res.status(200).json({
@@ -88,7 +96,7 @@ export const syncUserDataHandler = onRequest(
         data: summary,
       });
     } catch (error) {
-      console.error("Error in syncUserDataHandler:", error);
+      logSafeError("Error in syncUserDataHandler", error);
       res.status(500).json({error: "Internal server error"});
     }
   }
