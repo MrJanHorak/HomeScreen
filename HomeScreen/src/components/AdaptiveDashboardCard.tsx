@@ -10,6 +10,7 @@ import type { CardId } from '../theme/appearance';
 import WatchPoster from './tv/WatchPoster';
 import TVProgressRing from './activityCard/TVProgressRing';
 import ActivityStats from './activityCard/ActivityStats';
+import ActivityWeeklyCard from './activityCard/ActivityWeeklyCard';
 
 type Icon = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
 const icons: Record<CardId, Icon> = {
@@ -177,15 +178,27 @@ export default function AdaptiveDashboardCard({ id, width, height }: {id: CardId
   }
   const health = data.health;
   if (health?.status !== 'ok') return <Content {...props} title="Activity unavailable" subtitle="Open to check your activity connection" />;
-  const progress = health.stepGoal > 0 ? Math.min(1, Math.max(0, health.steps / health.stepGoal)) : 0;
+  const weekly = health.weekly || [];
   const scale = compact ? 1 : 1.4;
+  if (weekly.length > 0 && (width >= 145 * scale && height >= 245 * scale ||
+    width >= 330 * scale && height >= 175 * scale)) {
+    return <ActivityWeeklyCard health={health} width={width} height={height} />;
+  }
+  const progress = health.stepGoal > 0 ? Math.min(1, Math.max(0, health.steps / health.stepGoal)) : 0;
   const ringSize = height >= 170 * scale && width >= 145 * scale
     ? Math.min(110 * scale, width * 0.34, height * 0.4) : 0;
+  const showWeeklyTotal = weekly.length > 0 && ringSize > 0 && height >= 205 * scale;
+  const weeklyTotal = showWeeklyTotal ? weekly.reduce((sum, day) => sum + day.steps, 0) : 0;
   return <Content {...props} title={`${health.steps.toLocaleString()} steps`} subtitle={`Goal ${health.stepGoal.toLocaleString()}`}
-    reserved={ringSize || 10} extra={ringSize ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 * scale }}>
+    reserved={(ringSize || 10) + (showWeeklyTotal ? 28 * scale : 0)} extra={ringSize ? <View style={{ gap: 10 * scale }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 * scale }}>
       <TVProgressRing progress={progress} size={ringSize} strokeWidth={6 * scale} />
       <View style={{flex: 1, minWidth: 0}}><ActivityStats steps={health.steps} distance={health.distance}
         calories={health.calories} activeMinutes={health.activeMinutes} estimatedRestingCalories={health.estimatedRestingCalories} showSteps={false} /></View>
+      </View>
+      {showWeeklyTotal && <Text numberOfLines={1} style={{ color: theme.colors.textSecondary, fontSize: 11 * scale }}>
+        Last 7 days · {weeklyTotal.toLocaleString()} steps
+      </Text>}
     </View> : height > (compact ? 85 : 120) ? <Progress value={progress} /> : undefined}
     lines={ringSize ? [] : [
       {title: `${health.distance.toFixed(1)} km`, detail: 'Distance', icon: 'map-marker-distance'},
