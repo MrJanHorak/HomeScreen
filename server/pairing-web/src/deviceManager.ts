@@ -6,7 +6,7 @@ export function createDeviceManager(root: HTMLElement, apiUrl: string, getToken:
   root.innerHTML = `<h3>Linked TVs</h3>
     <p class="meal-copy">Name each TV or remove its access. Removing a TV keeps your other TVs and this browser signed in.</p>
     <div class="device-list"></div>
-    <p class="field-hint">TVs paired before device management was added need to be signed out and paired again to appear here.</p>
+    <p class="field-hint">Older TVs appear after the updated TV app opens and connects. If a TV is still missing, keep it online and refresh this list.</p>
     <button class="button button-text device-refresh" type="button">Refresh TV list</button>
     <p class="status device-status" role="status" aria-live="polite"></p>`;
   const list = root.querySelector<HTMLElement>('.device-list')!;
@@ -36,7 +36,7 @@ export function createDeviceManager(root: HTMLElement, apiUrl: string, getToken:
     if (!devices.length) {
       const empty = document.createElement('p');
       empty.className = 'meal-copy';
-      empty.textContent = 'No managed TVs linked yet. Pair a TV to add it here.';
+      empty.textContent = 'No TVs have checked in yet. Open your TV dashboard, then refresh this list.';
       list.append(empty);
     }
     for (const device of devices) {

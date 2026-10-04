@@ -4,6 +4,7 @@ import {clearLocalUserData} from './localUserData';
 import type { DashboardSummaryResponse, DevicePairingResponse, Weather } from '../../../shared/src/types';
 import type { DashboardAppearance } from '../theme/appearance';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Default to Firebase Local Emulator or configured remote URL
 const DEFAULT_API_URL =
@@ -38,6 +39,22 @@ export async function getDeviceConnectionInfo(): Promise<{
 
 export async function getCurrentDevice(): Promise<{name: string; pairedAtMs: number} | null> {
   return (await getDeviceConnectionInfo()).device;
+}
+
+/** Register a pre-device-management TV session without asking the owner to pair again. */
+export async function migrateLegacyDevice(): Promise<string> {
+  const keyName = '@homescreen_device_installation_v1';
+  let installationKey = await AsyncStorage.getItem(keyName);
+  if (!installationKey) {
+    installationKey = `${Date.now().toString(36)}-${Array.from({length: 5}, () => Math.random().toString(36).slice(2, 10)).join('')}`;
+    await AsyncStorage.setItem(keyName, installationKey);
+  }
+  const response = await fetch(`${DEFAULT_API_URL}/linkedDevices?current=1`, {
+    method: 'POST', headers: await authHeaders(), body: JSON.stringify({installationKey}),
+  });
+  const body = await response.json();
+  if (!response.ok || typeof body.customToken !== 'string') throw new Error(body.error || 'Could not register this TV');
+  return body.customToken;
 }
 
 export async function disconnectCurrentDevice(): Promise<void> {

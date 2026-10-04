@@ -10,10 +10,16 @@ const base = {layout: "balanced", palette: "night", background: "photo", customA
 test("per-card surfaces accept transparency and solid color without affecting the existing layout", () => {
   assert.ok(validAppearance({...base, cardStyles: {meal: {backgroundColor: "#fEfEfE", opacity: 1}, schedule: {backgroundColor: "#001122", opacity: 0}}}));
   assert.ok(validCardStyles({}));
+  assert.ok(validCardStyles({meal: {backgroundColor: "#112233", opacity: 0.8, borderWidth: 0, borderRadius: 0}}));
+  assert.ok(validCardStyles({meal: {backgroundColor: "#112233", opacity: 0.8, useThemeSurface: true, borderWidth: 0}}));
+  assert.ok(validCardStyles({meal: {backgroundColor: "#112233", opacity: 0.8, borderWidth: 4, borderRadius: 32}}));
   for (const value of [null, [], {poll: {backgroundColor: "#112233", opacity: 0.8}},
     {meal: {backgroundColor: "red", opacity: 0.5}}, {meal: {backgroundColor: "#112233", opacity: -1}},
     {meal: {backgroundColor: "#112233", opacity: 1.1}}, {meal: {backgroundColor: "#112233", opacity: "0.5"}},
     {meal: {backgroundColor: "#112233", opacity: NaN}}, {meal: {backgroundColor: "#112233", opacity: Infinity}},
+    {meal: {backgroundColor: "#112233", opacity: 0.8, borderWidth: -1}},
+    {meal: {backgroundColor: "#112233", opacity: 0.8, useThemeSurface: "yes"}},
+    {meal: {backgroundColor: "#112233", opacity: 0.8, borderRadius: 33}},
     {meal: {backgroundColor: "#112233", opacity: 0.5, css: "arbitrary"}},
   ]) assert.equal(validCardStyles(value), false);
 });

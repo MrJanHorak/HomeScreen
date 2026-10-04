@@ -34,7 +34,7 @@ export default function TVCard({
   const compact = useCompactTVLayout();
   const [isFocused, setIsFocused] = useState(false);
   const custom = cardId ? appearance.cardStyles[cardId] : undefined;
-  const ink = custom ? cardInk(custom, theme.colors.background, theme.colors.focusRing) : null;
+  const ink = custom && !custom.useThemeSurface ? cardInk(custom, theme.colors.background, theme.colors.focusRing) : null;
   const cardTheme = ink ? { ...theme, colors: { ...theme.colors,
     textPrimary: ink.primary, textFocused: ink.primary, textSecondary: ink.secondary,
     focusRing: ink.accent, accent: ink.accent,
@@ -43,7 +43,7 @@ export default function TVCard({
   } } : theme;
 
   const containerStyle: ViewStyle = {
-    backgroundColor: custom ? cardSurface(custom, isFocused) : Platform.OS === 'web'
+    backgroundColor: custom && !custom.useThemeSurface ? cardSurface(custom, isFocused) : Platform.OS === 'web'
       ? (isFocused ? theme.colors.glassSurfaceFocused : theme.colors.glassSurface)
       : (isFocused ? theme.colors.surfaceFocused : theme.colors.modalSurface),
     borderColor: isFocused ? theme.colors.focusRing : cardTheme.colors.glassBorder,
@@ -74,7 +74,9 @@ export default function TVCard({
       onFocus={() => setIsFocused(true)}
       onBlur={() => setIsFocused(false)}
       onPress={onPress}
-      style={[styles.card, compact && styles.compactCard, containerStyle, style]}
+      style={[styles.card, compact && styles.compactCard, containerStyle, style,
+        custom && {borderWidth: isFocused ? Math.max(2, custom.borderWidth ?? 1.5) : custom.borderWidth ?? 1.5,
+          borderRadius: custom.borderRadius ?? (compact ? 16 : 20)}]}
     >
       {title && !children ? (
         <Text style={[styles.title, { color: isFocused ? cardTheme.colors.textFocused : cardTheme.colors.textPrimary }]}>

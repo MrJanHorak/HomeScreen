@@ -88,6 +88,30 @@ test("a legacy custom-token session cannot list, rename or remove other TVs", as
   }
 });
 
+test("a legacy TV can register its current installation and retry without duplicate records", async (t) => {
+  stubAuth(t, {});
+  let record;
+  let created = 0;
+  let deviceId;
+  const ref = {get: async () => ({exists: Boolean(record), data: () => record})};
+  t.mock.method(db, "collection", () => ({doc: () => ({collection: () => ({doc: (id) => {deviceId = id; return ref;}})})}));
+  t.mock.method(db, "runTransaction", async (callback) => callback({
+    get: () => ref.get(), create: (_ref, value) => {record = value; created++;},
+  }));
+  t.mock.method(auth, "createCustomToken", async (_uid, claims) => {
+    assert.equal(claims.dashboardDeviceId, deviceId);
+    return "upgraded-token";
+  });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = response();
+    await linkedDevicesHandler(request("POST", {installationKey: "stable-installation-key"}, {current: "1"}), res);
+    assert.equal(res.statusCode, 200);
+    assert.equal(res.body.customToken, "upgraded-token");
+  }
+  assert.equal(created, 1);
+  assert.match(deviceId, /^[0-9a-f]{32}$/);
+});
+
 test("owner removal revokes only the selected TV record", async (t) => {
   stubAuth(t, {firebase: {sign_in_provider: "google.com"}});
   const updates = stubDevice(t, {revokedAtMs: 0});

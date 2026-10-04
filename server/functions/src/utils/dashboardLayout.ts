@@ -22,6 +22,15 @@ export function overlaps(a: GridItem, b: GridItem): boolean {
     a.y < b.y + b.height && a.y + a.height > b.y;
 }
 
+/** Exchange two cards' complete footprints so the layout stays valid even when sizes differ. */
+export function swapGridItems(grid: DashboardGridLayout, firstId: DashboardCardId, secondId: DashboardCardId): DashboardGridLayout {
+  const first = grid.items.find((item) => item.id === firstId);
+  const second = grid.items.find((item) => item.id === secondId);
+  if (!first || !second || firstId === secondId) return grid;
+  return {...grid, items: grid.items.map((item) =>
+    item.id === firstId ? {...second, id: firstId} : item.id === secondId ? {...first, id: secondId} : {...item})};
+}
+
 /** Reject unknown versions, invalid geometry and a mismatch with visible cards. */
 export function validGrid(value: unknown, cards: readonly {id: string; visible: boolean}[]): value is DashboardGridLayout {
   if (!value || typeof value !== "object") return false;

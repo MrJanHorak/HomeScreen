@@ -4,6 +4,9 @@ import type {DashboardCardId} from "./dashboardLayout";
 export interface CardStyle {
   backgroundColor: string;
   opacity: number;
+  useThemeSurface?: boolean;
+  borderWidth?: number;
+  borderRadius?: number;
 }
 export type CardStyles = Partial<Record<DashboardCardId, CardStyle>>;
 
@@ -12,9 +15,12 @@ export function validCardStyles(value: unknown): value is CardStyles {
   return Object.entries(value).every(([id, style]) => {
     if (!DASHBOARD_CARD_IDS.includes(id as DashboardCardId) || !style || typeof style !== "object") return false;
     const item = style as CardStyle;
-    return Object.keys(style).every((key) => ["backgroundColor", "opacity"].includes(key)) &&
+    return Object.keys(style).every((key) => ["backgroundColor", "opacity", "useThemeSurface", "borderWidth", "borderRadius"].includes(key)) &&
       typeof item.backgroundColor === "string" && /^#[0-9a-fA-F]{6}$/.test(item.backgroundColor) &&
-      typeof item.opacity === "number" && Number.isFinite(item.opacity) && item.opacity >= 0 && item.opacity <= 1;
+      typeof item.opacity === "number" && Number.isFinite(item.opacity) && item.opacity >= 0 && item.opacity <= 1 &&
+      (item.useThemeSurface === undefined || typeof item.useThemeSurface === "boolean") &&
+      (item.borderWidth === undefined || (typeof item.borderWidth === "number" && Number.isFinite(item.borderWidth) && item.borderWidth >= 0 && item.borderWidth <= 4)) &&
+      (item.borderRadius === undefined || (typeof item.borderRadius === "number" && Number.isInteger(item.borderRadius) && item.borderRadius >= 0 && item.borderRadius <= 32));
   });
 }
 

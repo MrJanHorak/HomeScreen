@@ -11,7 +11,7 @@ export function createCardStyleEditor(root: HTMLElement, onChange: (id: Dashboar
       const row = document.createElement('fieldset'); row.className = 'card-surface-controls'; row.disabled = busy;
       const legend = document.createElement('legend'); legend.textContent = labels[id];
       const themeLabel = document.createElement('label'); themeLabel.className = 'visibility';
-      const useTheme = document.createElement('input'); useTheme.type = 'checkbox'; useTheme.checked = !custom;
+      const useTheme = document.createElement('input'); useTheme.type = 'checkbox'; useTheme.checked = !custom || custom.useThemeSurface === true;
       useTheme.setAttribute('aria-label', `${labels[id]} use theme surface`);
       themeLabel.append(useTheme, document.createTextNode('Use theme surface'));
       const fields = document.createElement('div'); fields.className = 'surface-fields';
@@ -23,15 +23,34 @@ export function createCardStyleEditor(root: HTMLElement, onChange: (id: Dashboar
       range.value = String(Math.round((custom?.opacity ?? 0.88) * 100));
       range.setAttribute('aria-label', `${labels[id]} card opacity`);
       const output = document.createElement('output'); output.textContent = `${range.value}%`;
+      const borderLabel = document.createElement('label'); borderLabel.textContent = 'Border thickness';
+      const border = document.createElement('input'); border.type = 'range'; border.min = '0'; border.max = '4'; border.step = '0.5';
+      border.value = String(custom?.borderWidth ?? 1.5);
+      border.setAttribute('aria-label', `${labels[id]} border thickness`);
+      const borderOutput = document.createElement('output'); borderOutput.textContent = Number(border.value) ? `${border.value}px` : 'None';
+      const radiusLabel = document.createElement('label'); radiusLabel.textContent = 'Corner radius';
+      const radius = document.createElement('input'); radius.type = 'range'; radius.min = '0'; radius.max = '32'; radius.step = '2';
+      radius.value = String(custom?.borderRadius ?? 20);
+      radius.setAttribute('aria-label', `${labels[id]} corner radius`);
+      const radiusOutput = document.createElement('output'); radiusOutput.textContent = Number(radius.value) ? `${radius.value}px` : 'Square';
       const notify = () => {
         color.disabled = range.disabled = busy || useTheme.checked;
+        border.disabled = radius.disabled = busy;
         output.textContent = `${range.value}%`;
-        onChange(id, useTheme.checked ? null : {backgroundColor: color.value.toUpperCase(), opacity: Number(range.value) / 100});
+        borderOutput.textContent = Number(border.value) ? `${border.value}px` : 'None';
+        radiusOutput.textContent = Number(radius.value) ? `${radius.value}px` : 'Square';
+        onChange(id, useTheme.checked && Number(border.value) === 1.5 && Number(radius.value) === 20 ? null :
+          {backgroundColor: color.value.toUpperCase(), opacity: Number(range.value) / 100,
+            useThemeSurface: useTheme.checked, borderWidth: Number(border.value), borderRadius: Number(radius.value)});
       };
       color.disabled = range.disabled = busy || useTheme.checked;
+      border.disabled = radius.disabled = busy;
       useTheme.addEventListener('change', notify);
       color.addEventListener('input', notify); range.addEventListener('input', notify);
-      colorLabel.append(color); opacityLabel.append(range, output); fields.append(colorLabel, opacityLabel);
+      border.addEventListener('input', notify); radius.addEventListener('input', notify);
+      colorLabel.append(color); opacityLabel.append(range, output);
+      borderLabel.append(border, borderOutput); radiusLabel.append(radius, radiusOutput);
+      fields.append(colorLabel, opacityLabel, borderLabel, radiusLabel);
       row.append(legend, themeLabel, fields); root.append(row);
     }
   }

@@ -99,34 +99,45 @@ export function createAppearanceEditor(
     <h2>Make the TV yours</h2>
     <p class="meal-copy">Arrange the cards and choose a look here. Changes appear on a connected TV within about a minute.</p>
     <div id="appearance-content" hidden>
-      <label class="field-label" for="layout-select">STARTING LAYOUT</label>
-      <select id="layout-select"><option value="balanced">Balanced</option><option value="agenda">Agenda</option><option value="wellness">Wellness</option><option value="calm">Calm</option><option value="custom">Custom</option></select>
-      <label class="field-label" for="layout-mode">ARRANGEMENT</label>
-      <select id="layout-mode"><option value="rows">Automatic rows</option><option value="grid">Free layout</option></select>
-      <div id="grid-editor"></div>
-      <div class="editor-columns">
-        <div><label class="field-label" for="palette-select">COLOR SCHEME</label>
-          <select id="palette-select"><option value="night">Night Sky</option><option value="forest">Forest</option><option value="plum">Plum</option><option value="contrast">High Contrast</option><option value="custom">Custom accent</option></select></div>
-        <div><label class="field-label" for="accent-color">ACCENT COLOR</label><input id="accent-color" type="color" aria-label="Accent color" /></div>
+      <div class="studio-workspace">
+        <div class="studio-preview">
+          <div class="studio-preview-heading"><span class="field-label">TV PREVIEW</span><span>Updates as you edit</span></div>
+          <div id="grid-editor"></div>
+          <div id="tv-preview" class="tv-preview" aria-label="Approximate dashboard layout preview"></div>
+        </div>
+        <div class="studio-controls">
+          <details class="studio-section" open><summary>1 · Layout and cards</summary><div class="studio-section-body">
+            <label class="field-label" for="layout-select">STARTING LAYOUT</label>
+            <select id="layout-select"><option value="balanced">Balanced</option><option value="agenda">Agenda</option><option value="wellness">Wellness</option><option value="calm">Calm</option><option value="custom">Custom</option></select>
+            <label class="field-label" for="layout-mode">ARRANGEMENT</label>
+            <select id="layout-mode"><option value="rows">Automatic rows</option><option value="grid">Free layout</option></select>
+            <p id="cards-hint" class="field-hint">Drag to reorder, or use the arrow buttons. Wide cards take twice the row space.</p>
+            <div id="card-list" class="card-list"></div>
+            <div id="grid-position-controls"></div>
+          </div></details>
+          <details class="studio-section"><summary>2 · Colors and background</summary><div class="studio-section-body">
+            <div class="editor-columns">
+              <div><label class="field-label" for="palette-select">COLOR SCHEME</label>
+                <select id="palette-select"><option value="night">Night Sky</option><option value="forest">Forest</option><option value="plum">Plum</option><option value="contrast">High Contrast</option><option value="custom">Custom accent</option></select></div>
+              <div><label class="field-label" for="accent-color">ACCENT COLOR</label><input id="accent-color" type="color" aria-label="Accent color" /></div>
+            </div>
+            <div class="editor-columns">
+              <div><label class="field-label" for="background-select">BACKGROUND</label>
+                <select id="background-select"><option value="photo">Built-in photo</option><option value="solid">Solid color</option><option value="google-photo">Selected Google photo</option></select></div>
+              <div><label class="field-label" for="background-color">SOLID COLOR</label><input id="background-color" type="color" aria-label="Solid background color" /></div>
+            </div>
+            <label class="field-label" for="background-zoom">PHOTO ZOOM <output id="background-zoom-value"></output></label>
+            <input id="background-zoom" type="range" min="100" max="150" step="1" aria-label="Background photo zoom" />
+            <p class="field-hint">Zoom in to crop a saved photo. 100% keeps the full screen fit.</p>
+          </div></details>
+          <details class="studio-section"><summary>3 · Card style</summary><div class="studio-section-body">
+            <p class="field-hint">Set each card's surface, border thickness, and corner radius. Zero removes the border or rounds.</p>
+            <div id="card-style-editor"></div>
+          </div></details>
+        </div>
       </div>
-      <div class="editor-columns">
-        <div><label class="field-label" for="background-select">BACKGROUND</label>
-          <select id="background-select"><option value="photo">Built-in photo</option><option value="solid">Solid color</option><option value="google-photo">Selected Google photo</option></select></div>
-        <div><label class="field-label" for="background-color">SOLID COLOR</label><input id="background-color" type="color" aria-label="Solid background color" /></div>
-      </div>
-      <p class="field-hint">Selected Google photo uses the saved dashboard background shown below.</p>
-      <label class="field-label" for="background-zoom">PHOTO ZOOM <output id="background-zoom-value"></output></label>
-      <input id="background-zoom" type="range" min="100" max="150" step="1" aria-label="Background photo zoom" />
-      <p class="field-hint">Zoom in to crop borders from a photo. 100% keeps the full screen fit; the default 105% applies a slight crop.</p>
-      <div id="photo-gallery"></div>
-      <details class="card-styles-panel"><summary>Personalize each card</summary>
-        <p class="field-hint">Choose a background color and opacity for each card. Text and artwork remain fully visible. Use theme surface restores that card's palette styling.</p>
-        <div id="card-style-editor"></div></details>
-      <div class="editor-heading"><div><span class="field-label">CARDS</span><p id="cards-hint" class="field-hint">Drag to reorder, or use the arrow buttons. Wide cards take twice the row space.</p></div></div>
-      <div id="card-list" class="card-list"></div>
-      <span class="field-label preview-label">TV PREVIEW</span>
-      <div id="tv-preview" class="tv-preview" aria-label="Approximate dashboard layout preview"></div>
       <div class="editor-actions"><button id="appearance-save" class="button button-primary" type="button">Save to TV <span aria-hidden="true">↗</span></button><button id="appearance-reload" class="button button-text" type="button">Discard changes</button></div>
+      <details class="studio-section studio-photos"><summary>Saved photos for your TV</summary><div class="studio-section-body"><div id="photo-gallery"></div></div></details>
     </div>
     <p id="appearance-status" class="status" role="status" aria-live="polite">Sign in to edit your dashboard.</p>
   `;
@@ -146,7 +157,7 @@ export function createAppearanceEditor(
   const reload = $<HTMLButtonElement>('#appearance-reload');
   const gridEditor = createGridEditor($('#grid-editor'), (grid) => {
     appearance.grid = grid; appearance.layout = 'custom'; render();
-  }, (text) => message(text, 'error'));
+  }, (text) => message(text, 'error'), $('#grid-position-controls'));
   const surfaces = createCardStyleEditor($('#card-style-editor'), (id, style) => {
     appearance.cardStyles = {...appearance.cardStyles};
     if (style) appearance.cardStyles[id] = style;
@@ -181,8 +192,10 @@ export function createAppearanceEditor(
     }
     root.querySelectorAll<HTMLElement>('.canvas-tile, .tv-preview-tile').forEach((tile) => {
       const style = appearance.cardStyles[tile.dataset.cardId as CardId];
-      tile.style.backgroundColor = style ? cardSurface(style) : '';
-      const ink = style ? cardInk(style, colors.background, accentColor) : null;
+      tile.style.backgroundColor = style && !style.useThemeSurface ? cardSurface(style) : '';
+      tile.style.borderWidth = style ? `${style.borderWidth ?? 1.5}px` : '';
+      tile.style.borderRadius = style ? `${style.borderRadius ?? 20}px` : '';
+      const ink = style && !style.useThemeSurface ? cardInk(style, colors.background, accentColor) : null;
       tile.style.setProperty('--card-ink', ink?.primary || '#FFFFFF');
       tile.style.color = ink?.primary || '#FFFFFF';
     });
@@ -285,7 +298,6 @@ export function createAppearanceEditor(
     const split = Math.ceil(visible.length / 2);
     preview.replaceChildren();
     preview.hidden = Boolean(appearance.grid);
-    $('.preview-label').hidden = Boolean(appearance.grid);
     for (const cards of [visible.slice(0, split), visible.slice(split)]) {
       if (!cards.length) continue;
       const previewRow = document.createElement('div');

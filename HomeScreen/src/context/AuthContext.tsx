@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { onAuthStateChanged, signInWithCustomToken, signOut as fbSignOut, User } from 'firebase/auth';
 import type { DevicePairingResponse } from '../../../shared/src/types';
 import { auth } from '../services/firebase';
-import { requestDevicePairing, pollDevicePairing, disconnectCurrentDevice } from '../services/api';
+import { requestDevicePairing, pollDevicePairing, disconnectCurrentDevice, migrateLegacyDevice } from '../services/api';
 import {clearLocalUserData} from '../services/localUserData';
 
 const POLL_INTERVAL_MS = 3000;
@@ -24,6 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [pairing, setPairing] = useState<DevicePairingResponse | null>(null);
   const [pairingError, setPairingError] = useState<string | null>(null);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const migrating = useRef(false);
 
   const stopPolling = useCallback(() => {
     if (timer.current) clearInterval(timer.current);
@@ -35,6 +36,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return onAuthStateChanged(auth, (u) => {
       setUser(u);
       setInitializing(false);
+      if (u && !migrating.current) {
+        migrating.current = true;
+        void u.getIdTokenResult().then(async (token) => {
+          if (token.signInProvider !== 'custom' || token.claims.dashboardDeviceId || auth.currentUser !== u) return;
+          const customToken = await migrateLegacyDevice();
+          if (auth.currentUser === u) await signInWithCustomToken(auth, customToken);
+        }).catch(() => undefined).finally(() => { migrating.current = false; });
+      }
     });
   }, []);
 

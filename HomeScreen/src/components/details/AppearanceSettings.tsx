@@ -60,9 +60,10 @@ function LayoutPreview({ cards, large = false }: { cards: CardPreference[]; larg
   const rows = getCardRows(cards);
   const tileColors = (id: CardId) => {
     const custom = appearance.cardStyles[id];
-    const ink = custom ? cardInk(custom, theme.colors.background, theme.colors.focusRing) : null;
-    return { backgroundColor: custom ? cardSurface(custom) : theme.colors.glassSurfaceFocused,
-      borderColor: ink?.border || theme.colors.glassBorderTop, color: ink?.primary || theme.colors.textPrimary };
+    const ink = custom && !custom.useThemeSurface ? cardInk(custom, theme.colors.background, theme.colors.focusRing) : null;
+    return { backgroundColor: custom && !custom.useThemeSurface ? cardSurface(custom) : theme.colors.glassSurfaceFocused,
+      borderColor: ink?.border || theme.colors.glassBorderTop, color: ink?.primary || theme.colors.textPrimary,
+      borderWidth: custom?.borderWidth ?? 1, borderRadius: custom?.borderRadius ?? 5 };
   };
   const image = large && appearance.background === 'photo' ? nightSkyImage
     : large && appearance.background === 'google-photo' && photoDataUrl ? { uri: photoDataUrl } : null;
@@ -74,6 +75,7 @@ function LayoutPreview({ cards, large = false }: { cards: CardPreference[]; larg
           position: 'absolute', left: `${item.x / 12 * 100}%`, top: `${item.y / 6 * 100}%`,
           width: `${item.width / 12 * 100}%`, height: `${item.height / 6 * 100}%`,
           backgroundColor: tileColors(item.id).backgroundColor, borderColor: tileColors(item.id).borderColor,
+          borderWidth: tileColors(item.id).borderWidth, borderRadius: tileColors(item.id).borderRadius,
         }]}><Text numberOfLines={1} style={[styles.previewLabel, { color: tileColors(item.id).color }]}>{CARD_LABELS[item.id]}</Text></View>
       )) : rows.map((row, rowIndex) => (
         <View key={rowIndex} style={[styles.previewRow, { flex: rowIndex === 0 && rows.length > 1 ? 1.2 : 1 }]}>
@@ -84,6 +86,7 @@ function LayoutPreview({ cards, large = false }: { cards: CardPreference[]; larg
                 flex: card.size === 'wide' ? 2 : 1,
                 backgroundColor: tileColors(card.id).backgroundColor,
                 borderColor: tileColors(card.id).borderColor,
+                borderWidth: tileColors(card.id).borderWidth, borderRadius: tileColors(card.id).borderRadius,
               }]}
             >
               <Text numberOfLines={1} style={[styles.previewLabel, large && styles.largePreviewLabel, { color: tileColors(card.id).color }]}>

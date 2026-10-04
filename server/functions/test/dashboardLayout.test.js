@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const {DASHBOARD_CARD_IDS: ids, gridFromCards, validGrid, findGridSpace, gridRect} = require("../lib/utils/dashboardLayout");
+const {DASHBOARD_CARD_IDS: ids, gridFromCards, validGrid, findGridSpace, gridRect, swapGridItems} = require("../lib/utils/dashboardLayout");
 const {validAppearance, handleUserAppearance} = require("../lib/userAppearance");
 const {auth, db} = require("../lib/utils/db");
 const cards = ids.map((id) => ({id, visible: true, size: "standard"}));
@@ -41,6 +41,17 @@ test("adding a hidden card finds empty space without moving other cards, or retu
   const added = findGridSpace(room, "weather");
   assert.deepEqual(added, {id: "weather", x: 0, y: 0, width: 3, height: 2});
   assert.ok(validGrid({...room, items: [...room.items, added]}, cards));
+});
+
+test("swapping differently sized cards exchanges footprints without changing their IDs", () => {
+  const grid = gridFromCards(cards.map((card, index) => index === 1 ? {...card, size: "wide"} : card));
+  const first = grid.items[0];
+  const second = grid.items[1];
+  const swapped = swapGridItems(grid, first.id, second.id);
+  assert.ok(validGrid(swapped, cards));
+  assert.deepEqual(swapped.items.find((item) => item.id === first.id), {...second, id: first.id});
+  assert.deepEqual(swapped.items.find((item) => item.id === second.id), {...first, id: second.id});
+  assert.deepEqual(grid.items[0], first);
 });
 
 test("scaled rectangles remain within both desktop and compact TV bounds", () => {

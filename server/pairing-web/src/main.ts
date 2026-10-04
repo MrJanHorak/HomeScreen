@@ -57,7 +57,7 @@ document.title = dashboardMode ? 'Dashboard studio · HomeScreen' :
   mealMode ? 'Connect your meal Sheet · HomeScreen' : 'Pair your TV · HomeScreen';
 
 appElement.innerHTML = `
-  <main class="layout">
+  <main class="layout ${dashboardMode ? 'dashboard-mode' : ''}">
     <div class="ambient ambient-one" aria-hidden="true"></div>
     <div class="ambient ambient-two" aria-hidden="true"></div>
     <section class="card" aria-labelledby="page-title">
