@@ -1,8 +1,9 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { requireOptionalNativeModule } from 'expo';
 import { useAuth } from '../context/AuthContext';
+import {syncDeviceApps} from '../services/api';
 
 export interface LaunchableApp {
   packageName: string;
@@ -25,6 +26,7 @@ interface FavoriteAppsContextValue {
   favoriteApps: LaunchableApp[];
   visible: boolean;
   status: 'loading' | 'ready' | 'unavailable' | 'error';
+  syncError: string | null;
   setVisible(visible: boolean): void;
   toggleFavorite(packageName: string): void;
   moveFavorite(packageName: string, direction: -1 | 1): void;
@@ -45,6 +47,9 @@ export function FavoriteAppsProvider({ children }: { children: React.ReactNode }
   const [loaded, setLoaded] = useState(false);
   const [availableApps, setAvailableApps] = useState<LaunchableApp[]>([]);
   const [status, setStatus] = useState<FavoriteAppsContextValue['status']>('loading');
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const syncState = useRef({revision: 0, ready: false, busy: false, preferences: EMPTY});
+  const preferencesRef = useRef(preferences); preferencesRef.current = preferences;
 
   const refresh = useCallback(async () => {
     if (!nativeApps || typeof nativeApps.getLaunchableApps !== 'function') {
@@ -100,21 +105,58 @@ export function FavoriteAppsProvider({ children }: { children: React.ReactNode }
     return () => subscription.remove();
   }, [refresh]);
 
-  const setVisible = useCallback((visible: boolean) => {
-    setPreferences((current) => ({ ...current, visible }));
+  useEffect(() => {
+    const state = {revision: 0, ready: false, busy: false, preferences: preferencesRef.current};
+    syncState.current = state;
+    let active = true;
+    if (!loaded || !user || status !== 'ready') return () => { active = false; };
+    const sync = async () => {
+      if (state.busy) return;
+      state.busy = true;
+      try {
+        const remote = await syncDeviceApps(state.ready ? undefined : {
+          apps: availableApps.slice(0,150).map((app) => ({packageName: app.packageName, label: app.label.slice(0,80)})),
+          initialPreferences: {...state.preferences, packages: state.preferences.packages.filter((name) => availableApps.some((app) => app.packageName === name)).slice(0,150)},
+        });
+        if (!active || !remote.preferences) return;
+        state.revision = remote.updatedAtMs; state.preferences = remote.preferences; state.ready = true;
+        setPreferences(remote.preferences); setSyncError(null);
+      } catch (error) { if (active) setSyncError(error instanceof Error ? error.message : 'Could not sync favorite apps.'); }
+      finally { state.busy = false; }
+    };
+    void sync(); const timer = setInterval(() => void sync(), 45000);
+    return () => { active = false; clearInterval(timer); };
+  }, [loaded, user?.uid, availableApps, status]);
+
+  const changePreferences = useCallback(async (change: (current: FavoriteAppPreferences) => FavoriteAppPreferences) => {
+    const state = syncState.current;
+    if (!state.ready || state.busy) { setSyncError('Favorite apps are syncing. Try again shortly.'); return; }
+    const next = change(state.preferences);
+    if (next === state.preferences) return;
+    state.busy = true;
+    try {
+      const result = await syncDeviceApps({preferences: next, expectedUpdatedAtMs: state.revision});
+      if (syncState.current !== state) return;
+      state.revision = result.updatedAtMs; state.preferences = next; setPreferences(next); setSyncError(null);
+    } catch (error) { if (syncState.current === state) setSyncError(error instanceof Error ? error.message : 'Could not save favorite apps.'); }
+    finally { state.busy = false; }
   }, []);
 
+  const setVisible = useCallback((visible: boolean) => {
+    void changePreferences((current) => ({ ...current, visible }));
+  }, [changePreferences]);
+
   const toggleFavorite = useCallback((packageName: string) => {
-    setPreferences((current) => ({
+    void changePreferences((current) => ({
       ...current,
       packages: current.packages.includes(packageName)
         ? current.packages.filter((name) => name !== packageName)
         : [...current.packages, packageName],
     }));
-  }, []);
+  }, [changePreferences]);
 
   const moveFavorite = useCallback((packageName: string, direction: -1 | 1) => {
-    setPreferences((current) => {
+    void changePreferences((current) => {
       const packages = [...current.packages];
       const index = packages.indexOf(packageName);
       const next = index + direction;
@@ -122,7 +164,7 @@ export function FavoriteAppsProvider({ children }: { children: React.ReactNode }
       [packages[index], packages[next]] = [packages[next], packages[index]];
       return { ...current, packages };
     });
-  }, []);
+  }, [changePreferences]);
 
   const launchApp = useCallback(async (packageName: string) => {
     if (!nativeApps || typeof nativeApps.launchApp !== 'function') return false;
@@ -141,9 +183,9 @@ export function FavoriteAppsProvider({ children }: { children: React.ReactNode }
 
   const value = useMemo<FavoriteAppsContextValue>(() => ({
     availableApps, favoriteApps, visible: Platform.OS === 'android' && loaded && preferences.visible,
-    status, setVisible, toggleFavorite, moveFavorite, refresh, launchApp,
+    status, syncError, setVisible, toggleFavorite, moveFavorite, refresh, launchApp,
   }), [availableApps, favoriteApps, loaded, preferences.visible, status,
-    setVisible, toggleFavorite, moveFavorite, refresh, launchApp]);
+    syncError, setVisible, toggleFavorite, moveFavorite, refresh, launchApp]);
 
   return <FavoriteAppsContext.Provider value={value}>{children}</FavoriteAppsContext.Provider>;
 }

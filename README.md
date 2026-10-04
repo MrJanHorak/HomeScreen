@@ -22,6 +22,8 @@ The companion site's `/dashboard` studio supports automatic rows and a free layo
 
 Dashboard photo zoom is adjustable from 100–150% in the companion (105% by default), with a centered crop that preserves the saved image. Medium Activity cards retain the original centered-percentage ring and colored metric icons; Media shows primary and queued artwork with provider-supplied progress; short Tasks cards use compact icon rows. The favorites viewport reaches the screen edges and scrolls to keep the focused app visible.
 
+The companion now includes responsive Weather & goals and TVs & account pages, direct Google Photos selection, full ambient preferences, and per-TV favorite app controls. Weather cities and active/default selections sync to updated TVs; lightweight photo revisions let running TVs receive replacement images. See the [UX review and settings coverage](server/pairing-web/UX_REVIEW.md). These additions require coordinated Functions/Hosting deployment and an updated TV binary.
+
 ![Current HomeScreen dashboard](assets/Screenshot_20261001_174433.png)
 
 The screenshot shows one configured TV on October 1, 2026. See the [TV app README](HomeScreen/README.md#screenshots) for the ambient screen, detail views, and settings screenshots.

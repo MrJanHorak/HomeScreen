@@ -75,6 +75,7 @@ export async function getStoredUserTokens(userId: string): Promise<StoredUserTok
     location: data.location,
     weatherCity: data.weatherCity || data.location?.city || "New York",
     savedLocations: data.savedLocations,
+    activeLocationId: data.activeLocationId,
     stepGoal: data.stepGoal || 10000,
     distanceGoal: data.distanceGoal || 8,
   };
@@ -137,11 +138,18 @@ export async function saveUserTokens(
   if (tokens.savedLocations !== undefined) {
     updateData.savedLocations = tokens.savedLocations;
   }
+  if (tokens.activeLocationId !== undefined) updateData.activeLocationId = tokens.activeLocationId;
   if (tokens.stepGoal !== undefined) {
     updateData.stepGoal = tokens.stepGoal;
   }
   if (tokens.distanceGoal !== undefined) {
     updateData.distanceGoal = tokens.distanceGoal;
+  }
+  if ([tokens.weatherCity, tokens.savedLocations, tokens.activeLocationId, tokens.stepGoal, tokens.distanceGoal, tokens.location].some((value) => value !== undefined)) {
+    updateData.preferencesUpdatedAtMs = Date.now();
+    if (tokens.weatherCity !== undefined && tokens.location === undefined) {
+      updateData.location = {city: tokens.weatherCity, lat: FieldValue.delete(), lon: FieldValue.delete()};
+    }
   }
 
   await db.collection("users").doc(userId).set(updateData, { merge: true });

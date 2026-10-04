@@ -5,7 +5,7 @@ import { useFavoriteApps } from '../../hooks/useFavoriteApps';
 import { useTheme } from '../../theme/ThemeContext';
 
 export default function FavoriteAppsSettings() {
-  const { availableApps, favoriteApps, visible, status, setVisible,
+  const { availableApps, favoriteApps, visible, status, syncError, setVisible,
     toggleFavorite, moveFavorite, refresh } = useFavoriteApps();
   const theme = useTheme();
   const [focused, setFocused] = useState<string | null>(null);
@@ -23,8 +23,9 @@ export default function FavoriteAppsSettings() {
     <View style={styles.container}>
       <Text style={[styles.title, { color: theme.colors.textPrimary }]}>Favorite Apps</Text>
       <Text style={[styles.description, { color: theme.colors.textSecondary }]}>
-        Choose installed TV apps to launch from a row below the dashboard cards. These favorites are saved on this TV.
+        Choose installed TV apps to launch from a row below the dashboard cards. These favorites sync for this TV and can also be managed on the companion site.
       </Text>
+      {syncError && <Text style={[styles.description, {color: theme.colors.textSecondary}]}>{syncError}</Text>}
 
       <View style={styles.toolbar}>
         <Pressable accessibilityRole="switch" accessibilityState={{ checked: visible }}

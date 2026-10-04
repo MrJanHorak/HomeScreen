@@ -5,6 +5,13 @@ export interface SavedLocation {
   isDefault?: boolean;
 }
 
+export interface UserPreferences {
+  savedLocations: SavedLocation[];
+  activeLocationId: string;
+  stepGoal: number;
+  distanceGoal: number;
+}
+
 export interface WeatherForecast {
 
   day: string;

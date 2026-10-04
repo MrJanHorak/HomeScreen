@@ -5,6 +5,8 @@ import { cardInk, cardSurface, validCardStyles } from '../../functions/src/utils
 import type { CardStyles } from '../../functions/src/utils/cardStyle';
 import { createCardStyleEditor } from './cardStyleEditor';
 import { createPhotoGallery } from './photoGallery';
+import {createAmbientEditor, normalizeAmbient} from './ambientEditor';
+import type {Ambient} from './ambientEditor';
 import { DEFAULT_PHOTO_ZOOM, normalizePhotoZoom } from '../../functions/src/utils/photoFraming';
 import type { AppearanceLibrary, PublishedRevision } from '../../functions/src/utils/appearanceLibrary';
 import { emptyLibrary } from '../../functions/src/utils/appearanceLibrary';
@@ -18,7 +20,7 @@ type Appearance = {
   backgroundColor: string;
   backgroundZoom: number;
   cards: Card[];
-  ambient?: unknown;
+  ambient?: Ambient;
   grid: DashboardGridLayout | null;
   cardStyles: CardStyles;
 };
@@ -83,6 +85,7 @@ function normalize(value: unknown): Appearance {
     cards: copyCards(unique),
     grid: validGrid(raw.grid, unique) ? raw.grid : null,
     cardStyles: validCardStyles(raw.cardStyles) ? raw.cardStyles : {},
+    ambient: raw.ambient ? normalizeAmbient(raw.ambient) : undefined,
   };
 }
 
@@ -145,6 +148,7 @@ export function createAppearanceEditor(
             <p class="field-hint">Set each card's surface, border thickness, and corner radius. Zero removes the border or rounds.</p>
             <div id="card-style-editor"></div>
           </div></details>
+          <details class="studio-section"><summary>4 · Ambient mode</summary><div class="studio-section-body" id="ambient-editor"></div></details>
         </div>
       </div>
       <div class="draft-actions"><button id="appearance-undo" class="button button-text" type="button">Undo</button><button id="appearance-redo" class="button button-text" type="button">Redo</button><button id="draft-save" class="button button-secondary" type="button">Save draft</button></div>
@@ -160,7 +164,7 @@ export function createAppearanceEditor(
         <h3>Published history</h3><p class="field-hint">The latest 30 revisions, including TV settings changes.</p>
         <div id="revision-list" class="design-library"></div>
       </div></details>
-      <details class="studio-section studio-photos"><summary>Saved photos for your TV</summary><div class="studio-section-body"><div id="photo-gallery"></div></div></details>
+      <details class="studio-section studio-photos"><summary>Photos · choose images for your TV</summary><div class="studio-section-body"><div id="photo-gallery"></div></div></details>
     </div>
     <p id="appearance-status" class="status" role="status" aria-live="polite">Sign in to edit your dashboard.</p>
   `;
@@ -195,7 +199,12 @@ export function createAppearanceEditor(
   });
   const photos = createPhotoGallery($('#photo-gallery'), apiUrl, getToken, (dataUrl) => {
     savedPhoto = dataUrl; updatePreview();
+  }, (purpose) => {
+    if (purpose === 'background') appearance.background = 'google-photo';
+    else appearance.ambient = {...normalizeAmbient(appearance.ambient), photoSource: 'selected'};
+    render();
   });
+  const ambientEditor = createAmbientEditor($('#ambient-editor'), (ambient) => { appearance.ambient = ambient; render(); });
 
   function message(text: string, kind: 'info' | 'error' | 'success' = 'info') {
     status.textContent = text;
@@ -273,6 +282,7 @@ export function createAppearanceEditor(
     });
   }
   function render() {
+    ambientEditor.render(normalizeAmbient(appearance.ambient), busy);
     content.hidden = !loaded;
     if (!loaded) return;
     layout.value = appearance.layout;

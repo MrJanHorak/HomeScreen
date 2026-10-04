@@ -1,8 +1,10 @@
 type LinkedDevice = {id: string; name: string; pairedAtMs: number; lastSeenAtMs: number};
+import {createDeviceAppsEditor} from './deviceAppsEditor';
 
 export function createDeviceManager(root: HTMLElement, apiUrl: string, getToken: () => Promise<string | null>) {
   let generation = 0;
   let busy = false;
+  let appEditors: ReturnType<typeof createDeviceAppsEditor>[] = [];
   root.innerHTML = `<h3>Linked TVs</h3>
     <p class="meal-copy">Name each TV or remove its access. Removing a TV keeps your other TVs and this browser signed in.</p>
     <div class="device-list"></div>
@@ -29,9 +31,10 @@ export function createDeviceManager(root: HTMLElement, apiUrl: string, getToken:
   }
   function setBusy(value: boolean) {
     busy = value;
-    root.querySelectorAll<HTMLInputElement | HTMLButtonElement>('input, button').forEach((control) => { control.disabled = value; });
+    root.querySelectorAll<HTMLInputElement | HTMLButtonElement>('input, button').forEach((control) => { if (!control.closest('.help-panel')) control.disabled = value; });
   }
   function render(devices: LinkedDevice[]) {
+    appEditors.forEach((editor) => editor.clear()); appEditors = [];
     list.replaceChildren();
     if (!devices.length) {
       const empty = document.createElement('p');
@@ -63,6 +66,13 @@ export function createDeviceManager(root: HTMLElement, apiUrl: string, getToken:
       remove.setAttribute('aria-label', `Remove ${device.name}`);
       actions.append(rename, remove);
       row.append(label, info, actions);
+      const appSettings = document.createElement('details'); appSettings.className = 'help-panel';
+      const summary = document.createElement('summary'); summary.textContent = 'Favorite apps';
+      const appRoot = document.createElement('div'); appSettings.append(summary, appRoot);
+      const appEditor = createDeviceAppsEditor(appRoot, device.id, apiUrl, getToken); appEditors.push(appEditor);
+      let appsLoaded = false;
+      appSettings.addEventListener('toggle', () => { if (appSettings.open && !appsLoaded) { appsLoaded = true; void appEditor.load(); } });
+      row.append(appSettings);
       row.addEventListener('submit', (event) => {
         event.preventDefault();
         if (busy) return;
@@ -70,6 +80,7 @@ export function createDeviceManager(root: HTMLElement, apiUrl: string, getToken:
       });
       remove.addEventListener('click', () => {
         if (busy || !window.confirm(`Remove ${device.name}? It will sign out on its next connection and need to be paired again.`)) return;
+        if (appEditors.some((editor) => editor.hasChanges()) && !window.confirm('Removing a TV refreshes this list and discards unsaved favorite app changes. Continue?')) return;
         void update('DELETE', {id: device.id}, 'TV removed. Its next connection will sign it out.');
       });
       list.append(row);
@@ -92,12 +103,13 @@ export function createDeviceManager(root: HTMLElement, apiUrl: string, getToken:
     try {
       await request(method, body);
       if (current !== generation) return;
+      if (method === 'PUT') { message(success, 'success'); return; }
       await load();
       if (current + 1 === generation) message(success, 'success');
     } catch (error) {
       if (current === generation) message(error instanceof Error ? error.message : 'Could not update TV.', 'error');
     } finally { if (current === generation) setBusy(false); }
   }
-  refresh.addEventListener('click', () => { if (!busy) void load(); });
-  return {load, clear() { generation++; setBusy(false); list.replaceChildren(); message('Sign in to manage linked TVs.'); }};
+  refresh.addEventListener('click', () => { if (!busy && (!appEditors.some((editor) => editor.hasChanges()) || window.confirm('Discard unsaved favorite app changes and refresh the TV list?'))) void load(); });
+  return {load, clear() { generation++; appEditors.forEach((editor) => editor.clear()); appEditors = []; setBusy(false); list.replaceChildren(); message('Sign in to manage linked TVs.'); }};
 }

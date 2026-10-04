@@ -3,6 +3,7 @@ import { signOut as firebaseSignOut } from 'firebase/auth';
 import {clearLocalUserData} from './localUserData';
 import type { DashboardSummaryResponse, DevicePairingResponse, Weather } from '../../../shared/src/types';
 import type { DashboardAppearance } from '../theme/appearance';
+import type {UserPreferences} from '../../../shared/src/types';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -10,6 +11,34 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const DEFAULT_API_URL =
   process.env.EXPO_PUBLIC_API_URL ||
   'http://localhost:5001/tv-homescreen-backend/us-central1';
+
+export async function getUserPreferences(): Promise<{preferences: UserPreferences; updatedAtMs: number; hasSavedLocations: boolean}> {
+  const response = await fetch(`${DEFAULT_API_URL}/userPreferences`, {headers: await authHeaders()});
+  await handleRevokedSession(response);
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || 'Could not load TV settings');
+  return result;
+}
+
+export async function saveUserPreferences(preferences: UserPreferences, expectedUpdatedAtMs: number): Promise<number> {
+  const response = await fetch(`${DEFAULT_API_URL}/userPreferences`, {method: 'PUT', headers: await authHeaders(),
+    body: JSON.stringify({preferences, expectedUpdatedAtMs})});
+  await handleRevokedSession(response);
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || 'Could not save TV settings');
+  return result.updatedAtMs;
+}
+
+export interface FavoritePreferences {visible: boolean; packages: string[]}
+export interface DeviceAppSettings {apps: {packageName: string; label: string}[]; preferences: FavoritePreferences | null; updatedAtMs: number}
+export async function syncDeviceApps(body?: object): Promise<DeviceAppSettings & {updatedAtMs: number}> {
+  const response = await fetch(`${DEFAULT_API_URL}/deviceApps?current=1`, {method: body ? 'PUT' : 'GET', headers: await authHeaders(),
+    ...(body ? {body: JSON.stringify(body)} : {})});
+  await handleRevokedSession(response);
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || 'Could not sync favorite apps');
+  return result;
+}
 
 async function authHeaders(): Promise<Record<string, string>> {
   const token = await auth.currentUser?.getIdToken();
@@ -121,6 +150,7 @@ export async function getSavedGooglePhoto(): Promise<string | null> {
 
 export async function getUserAppearance(): Promise<{
   appearance: DashboardAppearance | null; updatedAtMs: number; seededFromWeb: boolean;
+  photoUpdatedAtMs?: number;
 }> {
   const response = await fetch(`${DEFAULT_API_URL}/userAppearance`, {
     headers: await authHeaders(),

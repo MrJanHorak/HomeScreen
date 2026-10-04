@@ -50,6 +50,8 @@ When signed out, the TV shows a six-character code and QR link. Open the link on
 
 To return to the companion after pairing, open **Settings → Companion site**. Its permanent QR and readable address open Dashboard Studio, where the owner can change appearance and manage linked TVs. The QR contains no sign-in credentials. Newly paired TV sessions can be named and removed individually from the site; older sessions need one re-pair to appear in the managed list. **Settings → Device** displays the saved TV name.
 
+The companion also offers **Weather & goals** for shared weather cities and activity targets, **Dashboard → Ambient mode** and **Photos** for ambient preferences and direct Google Photos selection, and **TVs & account → Favorite apps** for each TV's app row. The updated TV syncs weather/favorites every 45 seconds and fetches changed photos using lightweight revisions. Local cities and favorites seed only an empty cloud configuration. These controls require the updated Functions, Hosting, and TV binary; see the [companion UX review](../server/pairing-web/UX_REVIEW.md).
+
 ### Connect a meal plan
 
 Open **Settings → Meals** on the TV and scan its QR link, or open `/meals` on the pairing site's domain. Grant Sheets read access and provide a Sheet URL that the connected Google account can open. The Sheet needs `Date` and `Meal_Name` (or `Main`, `Meal`, or `Dinner`) headers. See the [pairing site guide](../server/pairing-web/README.md#connect-a-meal-sheet) for accepted columns and date formats.

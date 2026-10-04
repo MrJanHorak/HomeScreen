@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef, ReactNode } from 'react';
 import type { Weather, CalendarEvent, TaskItem, Activity, DashboardSummaryResponse,
   SavedLocation, MealPlanSummary } from '../../../shared/src/types';
+import type {UserPreferences} from '../../../shared/src/types';
 import { fetchDashboardSummary, fetchLocationWeather, executeTVAction } from '../services/api';
+import {getUserPreferences, saveUserPreferences} from '../services/api';
 import { useAuth } from './AuthContext';
 import {
   DEFAULT_LOCATIONS,
@@ -21,6 +23,7 @@ interface DashboardContextValue {
   isLoading: boolean;
   isLive: boolean;
   error: string | null;
+  locationError: string | null;
   refresh: () => Promise<void>;
   completeTask: (taskId: string) => Promise<void>;
 
@@ -29,7 +32,7 @@ interface DashboardContextValue {
   activeLocation: SavedLocation;
   setActiveLocation: (loc: SavedLocation) => void;
   cycleNextLocation: () => void;
-  addLocation: (name: string, query: string) => Promise<void>;
+  addLocation: (name: string, query: string) => Promise<boolean>;
   removeLocation: (id: string) => Promise<void>;
   setDefaultLocation: (id: string) => Promise<void>;
   getWeatherForLoc: (loc: SavedLocation) => ExtendedWeather;
@@ -55,18 +58,74 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isLive, setIsLive] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   // Multi-location state
   const [savedLocations, setSavedLocations] = useState<SavedLocation[]>(DEFAULT_LOCATIONS);
   const [activeLocation, setActiveLocationState] = useState<SavedLocation>(DEFAULT_LOCATIONS[0]);
+  const preferenceState = useRef<{value: UserPreferences; revision: number; busy: boolean; ready: boolean}>({
+    value: {savedLocations: DEFAULT_LOCATIONS, activeLocationId: DEFAULT_LOCATIONS[0].id, stepGoal: 10000, distanceGoal: 8}, revision: 0, busy: false, ready: false,
+  });
 
   // Load persisted locations on mount
   useEffect(() => {
-    loadStoredLocations(uid).then(({ locations, activeId }) => {
-      setSavedLocations(locations);
-      const active = locations.find((l) => l.id === activeId) || locations[0];
-      setActiveLocationState(active);
+    let mounted = true;
+    const state = {value: preferenceState.current.value, revision: 0, busy: false, ready: false};
+    preferenceState.current = state;
+    setSavedLocations(DEFAULT_LOCATIONS); setActiveLocationState(DEFAULT_LOCATIONS[0]);
+    setLocationError(null);
+    if (!uid) return;
+    const local = loadStoredLocations(uid);
+    void local.then(({locations, activeId}) => {
+      if (!mounted || state.ready) return;
+      setSavedLocations(locations); setActiveLocationState(locations.find((loc) => loc.id === activeId) || locations[0]);
     });
+    const sync = async () => {
+      if (state.busy) return;
+      state.busy = true;
+      try {
+        const remote = await getUserPreferences();
+        if (!mounted) return;
+        // Migrate existing on-TV cities once; never replace an account selection.
+        if (!remote.hasSavedLocations && !state.ready) {
+          const stored = await local;
+          if (!mounted) return;
+          if (stored.locations !== DEFAULT_LOCATIONS) {
+            remote.preferences.savedLocations = stored.locations;
+            remote.preferences.activeLocationId = stored.activeId;
+            remote.updatedAtMs = await saveUserPreferences(remote.preferences, remote.updatedAtMs);
+          }
+        }
+        if (!mounted) return;
+        state.value = remote.preferences; state.revision = remote.updatedAtMs; state.ready = true;
+        setLocationError(null);
+        setSavedLocations((previous) => keepIfUnchanged(previous, state.value.savedLocations));
+        const selected = state.value.savedLocations.find((loc) => loc.id === state.value.activeLocationId) || state.value.savedLocations[0];
+        setActiveLocationState((previous) => keepIfUnchanged(previous, selected));
+        void persistLocations(state.value.savedLocations, selected.id, uid);
+      } catch (err) { if (mounted) setLocationError(err instanceof Error ? err.message : 'Could not sync weather settings.'); }
+      finally { state.busy = false; }
+    };
+    void sync();
+    const timer = setInterval(() => void sync(), 45000);
+    return () => { mounted = false; clearInterval(timer); };
+  }, [uid]);
+
+  const saveLocations = useCallback(async (locations: SavedLocation[], activeId: string) => {
+    const state = preferenceState.current;
+    if (!state.ready || state.busy) { setLocationError('Weather settings are syncing. Try again shortly.'); return false; }
+    state.busy = true;
+    try {
+      const value = {...state.value, savedLocations: locations, activeLocationId: activeId};
+      const revision = await saveUserPreferences(value, state.revision);
+      if (preferenceState.current !== state) return false;
+      state.value = value; state.revision = revision;
+      setSavedLocations(locations);
+      setActiveLocationState(locations.find((loc) => loc.id === activeId) || locations[0]);
+      await persistLocations(locations, activeId, uid); setLocationError(null);
+      return true;
+    } catch (err) { if (preferenceState.current === state) setLocationError(err instanceof Error ? err.message : 'Could not save weather settings.'); return false; }
+    finally { state.busy = false; }
   }, [uid]);
 
   const loadData = useCallback(async () => {
@@ -113,19 +172,18 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   // Multi-location actions
   const setActiveLocation = useCallback((loc: SavedLocation) => {
-    setActiveLocationState(loc);
-    void persistLocations(savedLocations, loc.id, uid);
-  }, [savedLocations, uid]);
+    void saveLocations(savedLocations, loc.id);
+  }, [savedLocations, saveLocations]);
 
   const cycleNextLocation = useCallback(() => {
     if (savedLocations.length < 2) return;
     const currentIndex = savedLocations.findIndex((loc) => loc.id === activeLocation.id);
     const nextLoc = savedLocations[(currentIndex + 1) % savedLocations.length];
-    setActiveLocationState(nextLoc);
-    void persistLocations(savedLocations, nextLoc.id, uid);
-  }, [activeLocation.id, savedLocations, uid]);
+    void saveLocations(savedLocations, nextLoc.id);
+  }, [activeLocation.id, savedLocations, saveLocations]);
 
   const addLocation = useCallback(async (name: string, query: string) => {
+    if (savedLocations.length >= 20 || savedLocations.some((loc) => loc.query.toLowerCase() === query.trim().toLowerCase())) return false;
     const newLoc: SavedLocation = {
       id: `loc-${Date.now()}`,
       name: name.trim() || query.trim(),
@@ -133,17 +191,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       isDefault: false,
     };
     const updated = [...savedLocations, newLoc];
-    setSavedLocations(updated);
-    setActiveLocationState(newLoc);
-    await persistLocations(updated, newLoc.id, uid);
-
-    // Sync to Firestore DB
-    const targetDefault = updated.find((l) => l.isDefault) || updated[0];
-    executeTVAction('updatePreferences', {
-      savedLocations: updated,
-      weatherCity: targetDefault.query,
-    }).catch((err) => console.warn('Could not sync locations to backend:', err));
-  }, [savedLocations, uid]);
+    return saveLocations(updated, newLoc.id);
+  }, [savedLocations, saveLocations]);
 
   const removeLocation = useCallback(async (id: string) => {
     if (savedLocations.length <= 1) return; // Keep at least one location
@@ -151,39 +200,19 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     const defaultId = remaining.find((loc) => loc.isDefault)?.id || remaining[0].id;
     const updated = remaining.map((loc) => ({ ...loc, isDefault: loc.id === defaultId }));
     const nextActive = activeLocation.id === id ? updated[0] : activeLocation;
-    setSavedLocations(updated);
-    setActiveLocationState(nextActive);
-    await persistLocations(updated, nextActive.id, uid);
-
-    // Sync to Firestore DB
-    const targetDefault = updated.find((l) => l.isDefault) || updated[0];
-    executeTVAction('updatePreferences', {
-      savedLocations: updated,
-      weatherCity: targetDefault.query,
-    }).catch((err) => console.warn('Could not sync locations to backend:', err));
-  }, [savedLocations, activeLocation, uid]);
+    await saveLocations(updated, nextActive.id);
+  }, [savedLocations, activeLocation, saveLocations]);
 
   const setDefaultLocation = useCallback(async (id: string) => {
     const updated = savedLocations.map((l) => ({
       ...l,
       isDefault: l.id === id,
     }));
-    setSavedLocations(updated);
     const targetLoc = updated.find((l) => l.id === id);
     if (targetLoc) {
-      setActiveLocationState(targetLoc);
-      await persistLocations(updated, targetLoc.id, uid);
-      // Sync default preference and location list with backend
-      try {
-        await executeTVAction('updatePreferences', {
-          savedLocations: updated,
-          weatherCity: targetLoc.query,
-        });
-      } catch (e) {
-        console.warn('Could not sync default location to backend:', e);
-      }
+      await saveLocations(updated, targetLoc.id);
     }
-  }, [savedLocations, uid]);
+  }, [savedLocations, saveLocations]);
 
 
   const getWeatherForLoc = useCallback(
@@ -240,6 +269,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         isLoading,
         isLive,
         error,
+        locationError,
         refresh,
         completeTask,
 

@@ -11,9 +11,13 @@ function boundedText(value: unknown, max: number): value is string {
 /** Reject malformed or oversized preferences before writing a user's document. */
 export function parsePreferences(value: unknown): Partial<StoredUserTokens> | null {
   if (!record(value) || JSON.stringify(value).length > 8_000) return null;
-  const allowed = ["weatherCity", "stepGoal", "distanceGoal", "location", "savedLocations"];
+  const allowed = ["weatherCity", "stepGoal", "distanceGoal", "location", "savedLocations", "activeLocationId"];
   if (Object.keys(value).some((key) => !allowed.includes(key))) return null;
   const result: Partial<StoredUserTokens> = {};
+  if (value.activeLocationId !== undefined) {
+    if (!boundedText(value.activeLocationId, 80)) return null;
+    result.activeLocationId = value.activeLocationId;
+  }
   if (value.weatherCity !== undefined) {
     if (!boundedText(value.weatherCity, 100)) return null;
     result.weatherCity = value.weatherCity.trim();

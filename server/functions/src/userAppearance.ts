@@ -75,12 +75,14 @@ export async function handleUserAppearance(req: Request, res: Response): Promise
   const historyRef = collection.doc("history");
   try {
     if (req.method === "GET") {
-      const snapshot = await ref.get();
+      const [snapshot, photoSnapshot] = await Promise.all([ref.get(), collection.doc("background").get()]);
       const stored = snapshot.data();
+      const photos = photoSnapshot.data();
       res.status(200).json({
         appearance: stored?.appearance || null,
         updatedAtMs: stored?.updatedAtMs || 0,
         seededFromWeb: stored?.seededFromWeb === true,
+        photoUpdatedAtMs: Math.max(photos?.galleryUpdatedAtMs || 0, photos?.backgroundUpdatedAtMs || 0),
       });
       return;
     }

@@ -31,6 +31,7 @@ export default function SettingsDetailView({ onPreviewAmbient = () => {} }: { on
   const { user, signOut } = useAuth();
   const {
     isLive,
+    locationError,
     refresh,
     savedLocations,
     activeLocation,
@@ -73,7 +74,7 @@ export default function SettingsDetailView({ onPreviewAmbient = () => {} }: { on
 
   const handleAddCustom = async () => {
     if (!customQuery.trim()) return;
-    await addLocation(customName.trim() || customQuery.trim(), customQuery.trim());
+    if (!await addLocation(customName.trim() || customQuery.trim(), customQuery.trim())) return;
     setCustomName('');
     setCustomQuery('');
     setShowAddForm(false);
@@ -116,6 +117,7 @@ export default function SettingsDetailView({ onPreviewAmbient = () => {} }: { on
       {section === 'meals' && <MealConnectionSettings />}
       {section === 'apps' && <FavoriteAppsSettings />}
       {section === 'weather' && <>
+      {locationError && <Text accessibilityRole="alert" style={[styles.cardSubtitle, {color: theme.colors.textSecondary}]}>{locationError}</Text>}
       {/* Weather Locations Section */}
       <View style={styles.card}>
         <View style={styles.cardHeaderRow}>

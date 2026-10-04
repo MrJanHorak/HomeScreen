@@ -141,6 +141,19 @@ export const googlePhotosPickerHandler = onRequest(
         return;
       }
 
+      if (action === "choose" && req.method === "POST") {
+        const id = req.body?.photoId;
+        if (typeof id !== "string" || !/^[a-zA-Z0-9-]{1,80}$/.test(id)) {
+          res.status(400).json({error: "Choose a saved photo"}); return;
+        }
+        const selected = (await galleryRef.doc(id).get()).data();
+        if (!selected?.dataUrl) {
+          res.status(404).json({error: "Photo is no longer saved. Refresh photos."}); return;
+        }
+        await photoRef.set({dataUrl: selected.dataUrl, backgroundUpdatedAtMs: Date.now(), updatedAt: FieldValue.serverTimestamp()}, {merge: true});
+        res.status(200).json({success: true}); return;
+      }
+
       const tokens = await getStoredPhotosTokens(userId);
       const connected = Boolean(tokens?.refreshToken && tokens.scope?.split(" ").includes(SCOPE));
       if (action === "status" && req.method === "GET") {
@@ -175,12 +188,15 @@ export const googlePhotosPickerHandler = onRequest(
             ? Date.parse(session.expireTime) : Date.now() + 600_000,
           deleteAt: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000),
         });
-        res.status(200).json({pickerUri: session.pickerUri, pollIntervalMs});
+        res.status(200).json({pickerUri: session.pickerUri, pollIntervalMs, sessionId: session.id});
         return;
       }
 
       if (action === "poll" && req.method === "GET") {
         const active = (await sessionRef.get()).data();
+        if (typeof req.query.sessionId === "string" && req.query.sessionId !== active?.id) {
+          res.status(409).json({error: "A new photo picker was opened on another device. Start again here."}); return;
+        }
         if (!active?.id || Date.now() > active.expiresAt) {
           res.status(410).json({error: "Photo selection expired. Start again."});
           return;
@@ -217,29 +233,38 @@ export const googlePhotosPickerHandler = onRequest(
           pageToken = page.nextPageToken;
         } while (pageToken && picked.length <= MAX_PHOTOS);
         if (!picked.length || picked.length > MAX_PHOTOS || picked.some((item) => item.type !== "PHOTO")) {
-          await sessionRef.delete();
+          await db.runTransaction(async (transaction) => {
+            const current = (await transaction.get(sessionRef)).data();
+            if (current?.id === active.id) transaction.delete(sessionRef);
+          });
           res.status(400).json({error: `Choose 1–${MAX_PHOTOS} photos, without videos`});
           return;
         }
         // Download before replacing the existing selection, so a failed item keeps the old gallery.
         const dataUrls: string[] = [];
         for (const item of picked) dataUrls.push(await downloadPhoto(token, item));
-        const existing = await galleryRef.get();
         const photos: SelectedPhoto[] = dataUrls.map((dataUrl) => ({
           id: galleryRef.doc().id, dataUrl,
         }));
-        const batch = db.batch();
-        for (const doc of existing.docs) batch.delete(doc.ref);
-        for (const [order, photo] of photos.entries()) {
-          batch.set(galleryRef.doc(photo.id), {
-            dataUrl: photo.dataUrl, order, updatedAt: FieldValue.serverTimestamp(),
-          });
+        const saved = await db.runTransaction(async (transaction) => {
+          const current = (await transaction.get(sessionRef)).data();
+          if (current?.id !== active.id) return false;
+          const existing = await transaction.get(galleryRef);
+          for (const doc of existing.docs) transaction.delete(doc.ref);
+          for (const [order, photo] of photos.entries()) {
+            transaction.set(galleryRef.doc(photo.id), {
+              dataUrl: photo.dataUrl, order, updatedAt: FieldValue.serverTimestamp(),
+            });
+          }
+          const photoUpdate = {galleryUpdatedAtMs: Date.now(),
+            ...(active.purpose === "background" ? {dataUrl: photos[0].dataUrl, backgroundUpdatedAtMs: Date.now()} : {}),
+            updatedAt: FieldValue.serverTimestamp()};
+          transaction.set(photoRef, photoUpdate, {merge: true});
+          transaction.delete(sessionRef); return true;
+        });
+        if (!saved) {
+          res.status(409).json({error: "A newer photo selection started. Finish that picker instead."}); return;
         }
-        if (active.purpose === "background") {
-          batch.set(photoRef, {dataUrl: photos[0].dataUrl, updatedAt: FieldValue.serverTimestamp()});
-        }
-        batch.delete(sessionRef);
-        await batch.commit();
         try {
           await apiRequest<unknown>(token, `/sessions/${encodeURIComponent(active.id)}`, "DELETE");
         } catch (error) {

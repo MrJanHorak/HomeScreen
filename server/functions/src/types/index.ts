@@ -26,6 +26,7 @@ export interface StoredUserTokens {
   location?: UserLocation;
   weatherCity?: string;
   savedLocations?: SavedLocation[];
+  activeLocationId?: string;
   stepGoal?: number;
   distanceGoal?: number;
 }

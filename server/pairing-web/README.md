@@ -2,7 +2,15 @@
 
 This small TypeScript/Vite app lives beside the Cloud Functions under `server/` because both deploy to the same Firebase project. Firebase Hosting serves it at `/pair`; the Hosting root redirects there for easier typing. The TV also displays a QR link containing its six-character code, which this page pre-fills for the user. The QR does **not** include the private TV poll secret.
 
-The [TV app README](../../HomeScreen/README.md) shows the current dashboard and settings screenshots. This site handles account pairing, dashboard appearance, and the optional meal Sheet connection; personal photo selection starts from the TV's Background or Ambient settings.
+The [TV app README](../../HomeScreen/README.md) shows the current dashboard and settings screenshots. The companion handles pairing, dashboard appearance, ambient settings, weather cities, Google Photos selection, meal Sheets, and per-TV favorite apps. All five pages adapt from phones to tablets and laptops. See the [UX review and settings coverage](UX_REVIEW.md) for the design assessment and release checks.
+
+## Weather, ambient, and favorite apps
+
+Open **Weather & goals** (`/settings`) to add up to 20 cities, select the active city, make a city the default, remove cities, and adjust activity targets. Keep at least one city. **Save settings to TVs** publishes these account preferences separately from dashboard drafts. The updated TV app syncs the list and active/default selections every 45 seconds. Transactional revision checks reject stale saves while retaining companion edits. Existing local TV cities import only when the account has no stored list.
+
+Under **Dashboard → Ambient mode**, set on/off, idle delay, photo source and timing, plasma presets or individual colors, information visibility, and rotation timing. These edits participate in the existing dashboard draft, undo, design, and publish flow. Use **Save to TV** to apply them. Preview ambient mode on the TV.
+
+Under **TVs & account** (`/account`), open **Favorite apps** for a linked TV to show/hide its app row, select installed apps, and reorder favorites. **Save favorite apps** affects only that TV. The updated Android TV app reports its installed app names and packages, imports its local favorites when no cloud record exists, and checks for changes every 45 seconds. App icons stay on the TV. Keep the TV online and use **Reload TV apps** after installing or removing apps. TV naming, individual access removal, connections, and destructive account actions live on this page too.
 
 ## Design the dashboard from a phone
 
@@ -30,23 +38,18 @@ the image beneath it. Re-enable **Use theme surface** to restore the palette's
 surface for that card. Layout presets keep these styles. Typography, spacing
 controls remain future work.
 
-### View photos saved for the TV
+### Choose photos from the companion
 
 **Photo zoom** adjusts dashboard framing from 100–150%. The default 105% applies a
 slight centered crop; increase it to hide borders embedded in a selected photo,
 or use 100% for the normal screen-covering fit. The preview and TV use the same
 zoom. This does not edit the saved image or change ambient slideshow framing.
 
-The **Saved photos for your TV** panel below the save actions shows the saved dashboard background and
-up to eight selected gallery images. Tap a thumbnail for a larger view; use
-**Refresh saved photos** after making a new TV selection. **Selected Google photo**
-uses the saved background and previews it behind the cards. The site reads only
-the saved account images using authenticated `googlePhotosPicker?action=background`
-and `action=gallery` calls; it does not browse the user's Google Photos library or
-request another OAuth scope. New photo selection still starts from the TV picker.
-Signing out clears the images from the page.
+Open **Photos · choose images for your TV** below the save actions. **Choose dashboard photos** or **Choose ambient photos** starts Google’s picker in a new tab. If Photos access is missing, approve Google consent, return here, and choose photos again. Select up to eight images and press Done in Google. The companion polls and stores the completed selection; if a popup is blocked, use the visible picker link. Expired or failed sessions provide a restart message. Starting another picker replaces the active session, and session checks protect against finishing a different device’s picker.
 
-The signed-in site also shows whether Calendar/Tasks/activity, Sheets, and Photos are connected and explains their access. Account controls can remove connections or revoke sessions. Household invitations and separate per-TV configurations are not implemented yet.
+Dashboard selection uses the first image as the saved background. Ambient selection replaces the shared gallery without replacing the background. Tap a saved gallery photo for a larger view and **Use as dashboard background**. Choosing photos stores media immediately; **Save to TV** publishes the background/ambient source in your design. Existing TVs already using the selected-photo source can receive replacement images even before a new design publish. The updated TV checks lightweight photo revisions with appearance updates, fetching image data only when it changes. The companion receives only selected/saved images; the library stays in Google’s picker. Signing out clears the gallery and stops polling.
+
+**TVs & account** shows whether Calendar/Tasks/activity, Sheets, and Photos are connected and explains their access. Account controls can remove connections or revoke sessions. Household invitations and separate per-TV dashboard designs are not implemented yet; favorite apps already have per-TV settings.
 
 ## Return to the site and manage TVs
 
@@ -77,9 +80,11 @@ Hosting also runs the web build before a Hosting deploy. `../firestore.rules` is
 
 For local UI work, run `npm run dev` from `server/pairing-web`. The full OAuth round trip also needs a registered callback URI and matching `PAIRING_URL` for that environment.
 
-The draft/design/history milestone requires deploying both `appearanceStudio` and the updated `userAppearance` function with Hosting. It keeps the existing TV API and needs no TV rebuild. Data is scoped to the authenticated owner and removed by the existing recursive account deletion. No Firestore rules change or migration is required.
+The draft/design/history milestone requires deploying both `appearanceStudio` and the updated `userAppearance` function with Hosting. It keeps the existing TV API and needs no TV rebuild. Weather/favorites/photo sync additionally requires the new `userPreferences` and `deviceApps` functions, updated `googlePhotosPicker`, `googleOAuthCallback`, and `userAppearance`, Hosting routes, and the updated TV binary. No Firestore rules change is required. Data is scoped to the authenticated owner and removed by the existing recursive account deletion.
 
 Studio browser regression tests use a local Vite fixture with mocked authenticated APIs, without Google sign-in or production writes. With Playwright and its Chromium runtime available, start Vite and run `node --test test/appearanceEditor.test.cjs`. `STUDIO_TEST_URL` can override `http://127.0.0.1:5173`; `NODE_PATH` can point to bundled Playwright packages, and `PLAYWRIGHT_CHROMIUM_EXECUTABLE` can select an installed headless Chromium. The fixture is outside the production bundle. Backend tests run with `npm --prefix ../functions test`.
+
+Run `node --test test/appearanceEditor.test.cjs test/companion.test.cjs` for the full browser suite. Companion tests mock Firebase modules and all APIs, blocking external network calls. They verify all five routes at 320/390/768/1024/1440px, weather conflict handling, ambient publishing, photo purposes/expiry/sign-out, and per-TV favorites. Set `COMPANION_SCREENSHOTS` to an output directory to save phone/tablet/laptop screenshots.
 
 ## Google sign-in returns `auth/invalid-credential`
 
@@ -129,4 +134,4 @@ Open **Settings → Background** or **Settings → Ambient → Google Photos** o
 
 This flow uses the Cloud Functions `beginGooglePhotos`, `googleOAuthCallback`, and `googlePhotosPicker` endpoints. It requires the Google Photos Picker API and the `photospicker.mediaitems.readonly` scope configured for the OAuth client; see the [backend setup](../functions/README.md). Photos are selected in Google's picker, not uploaded through this pairing site's `/pair` page.
 
-The signed-in pairing page also has account controls to remove stored photos, disconnect Calendar/Tasks/activity, sign out all devices, or delete the account and saved data. See [security and retention setup](../SECURITY.md) before enabling these actions in production.
+**TVs & account** has controls to remove stored photos, disconnect Calendar/Tasks/activity, sign out all devices, or delete the account and saved data. See [security and retention setup](../SECURITY.md) before enabling these actions in production.

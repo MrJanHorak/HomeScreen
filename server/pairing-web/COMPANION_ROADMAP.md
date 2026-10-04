@@ -1,6 +1,6 @@
 # Companion site direction
 
-The pairing site is also the signed-in dashboard editor at `/dashboard`. It writes the existing `userAppearance` document and needs no additional Google permission to edit appearance. The TV refreshes that document roughly every 45 seconds. The editor supports the six existing cards in automatic rows or a free layout canvas, plus presets, palette, accent, and background choice. A selected Google photo still originates from the TV's Photos picker.
+The companion supports Dashboard, Weather & goals, Meals, TVs & account, and Pair TV. Appearance edits use `userAppearance`, while `userPreferences` syncs weather and activity targets and `deviceApps` syncs per-TV favorite apps. The updated TV checks settings roughly every 45 seconds. Dashboard includes layouts, card style, ambient controls, and direct Google Photos selection. Each page adapts from phones to tablets and laptops; see [UX review](UX_REVIEW.md).
 
 The owner device-management milestone is implemented: the TV settings include a permanent companion QR/address; the site lists newly paired TVs, lets the owner rename them, and removes an individual TV's access. Managed TV requests are checked against a server-issued device claim and the owner's device record. Legacy TV sessions require one re-pair to join the managed device list. Google connections are listed with permission explanations, and Sheets access can be removed even before choosing a workbook. Deployment and a new TV build are required to use these changes.
 
@@ -10,7 +10,7 @@ The owner device-management milestone is implemented: the TV settings include a 
 
 **Save to TV** is the explicit publish action. The studio now autosaves an account draft after editing pauses, recovers it on return, and offers Save draft, Undo/Redo, up to 20 named designs, and the latest 30 published revisions. Loading a design or restoring a revision changes only the draft until Save to TV. Conditional draft/design writes and publishes reject stale revisions while retaining page edits. A recovered draft retains its original publish revision, so it cannot overwrite newer TV settings. Separate per-TV designs and independent compact layouts remain future options. Deployment and an updated TV app are required to use the canvas.
 
-The TV is React Native, so arbitrary web CSS cannot be applied to it. Palette, accent, background, per-card surface color/opacity, border thickness, and corner radius are implemented. Grid cards now adapt their information to width and height, and the companion displays saved TV Photos with a larger view and background preview. New photos are still chosen through the TV picker. Further typed design tokens remain next-stage work: typography scale, spacing, and selectable widget variants, with range and readability validation. Drafts/designs/history use separate documents; the TV continues reading only published settings.
+The TV is React Native, so arbitrary web CSS cannot be applied to it. Palette, accent, background, per-card surface color/opacity, border thickness, and corner radius are implemented. Grid cards adapt their information to width and height. The companion can choose photos through Google's picker, preview saved images, and choose a saved background. Further typed design tokens remain next-stage work: typography scale, spacing, and selectable widget variants, with range and readability validation. Drafts/designs/history use separate documents; the TV continues reading only published settings.
 
 Adaptive summaries now measure text and row heights. Activity retains its original
 centered-percentage ring and colored metric icons; Media shows primary and next
@@ -34,6 +34,7 @@ Today the Firebase UID is the account boundary. Any TV paired to that account sh
 1. **Implemented:** companion appearance editing, permission explanations, permanent TV QR/address, and owner device management.
 2. **Implemented:** typed grid schema, adaptive TV content, phone canvas, per-card color/opacity, saved photo viewing, Save to TV, and stale-save protection.
 3. **Implemented in code:** saved designs, account drafts with autosave/recovery, session Undo/Redo, restoration to a draft, and bounded published revision history. Deploy Functions and Hosting together; this milestone needs no new TV binary.
+   **Also implemented in code:** shared weather/active cities, ambient editing, direct Photos selection and photo revision sync, per-TV favorite apps, and responsive task pages. This addition requires coordinated Functions/Hosting deployment and a new TV build.
 4. **Next:** owner-created polls and signed-in voting, with a poll summary widget.
 5. **Planned:** quotes, jokes, opt-in Bible verses, and deeper style tokens.
 6. **Optional later:** household roles and per-TV configurations, with source-specific sharing consent.

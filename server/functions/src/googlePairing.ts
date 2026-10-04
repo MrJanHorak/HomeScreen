@@ -234,7 +234,9 @@ export const beginGoogleMealsHandler = onRequest(
 );
 
 function photosResult(res: Response, message: string): void {
-  res.status(200).type("html").send(`<!doctype html><html><meta name="viewport" content="width=device-width"><body style="font:20px system-ui;padding:2rem;background:#0f172a;color:white"><h1>HomeScreen</h1><p>${message}</p><p>You can return to your TV.</p></body></html>`);
+  const url = process.env.PAIRING_URL ? new URL("/dashboard", process.env.PAIRING_URL).toString() : "";
+  const escaped = url.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  res.status(200).type("html").send(`<!doctype html><html lang="en"><meta name="viewport" content="width=device-width"><title>Google Photos · HomeScreen</title><body style="font:20px system-ui;padding:2rem;background:#0f172a;color:white"><h1>HomeScreen</h1><p>${message}</p><p>Return to the companion site or your TV to choose photos.</p>${escaped ? `<a style="color:#bcead8" href="${escaped}">Return to dashboard studio</a>` : ""}</body></html>`);
 }
 
 export const googleOAuthCallbackHandler = onRequest(

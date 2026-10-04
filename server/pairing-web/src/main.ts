@@ -10,6 +10,7 @@ import {
 import './style.css';
 import { createAppearanceEditor } from './appearanceEditor';
 import {createDeviceManager} from './deviceManager';
+import {createWeatherEditor} from './weatherEditor';
 
 const config = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -28,6 +29,13 @@ if (!appElement) throw new Error('Missing app root');
 // Keep meal setup on its own path even if the phone browser drops a query string
 // while returning from Firebase's Google sign-in redirect.
 const initialUrl = new URL(window.location.href);
+try {
+  const returnPath = sessionStorage.getItem('homescreen:signin-path');
+  if (initialUrl.pathname === '/pair' && ['/settings', '/account'].includes(returnPath || '')) {
+    initialUrl.pathname = returnPath!; window.history.replaceState({}, '', initialUrl);
+  }
+  sessionStorage.removeItem('homescreen:signin-path');
+} catch { /* Private browsers may block storage. */ }
 let returningToMeals = false;
 let returningToDashboard = false;
 try {
@@ -53,25 +61,31 @@ if (window.location.pathname === '/dashboard') {
 const params = new URLSearchParams(window.location.search);
 const mealMode = window.location.pathname === '/meals';
 const dashboardMode = window.location.pathname === '/dashboard';
-document.title = dashboardMode ? 'Dashboard studio · HomeScreen' :
+const settingsMode = window.location.pathname === '/settings';
+const accountMode = window.location.pathname === '/account';
+const pairMode = !mealMode && !dashboardMode && !settingsMode && !accountMode;
+document.title = settingsMode ? 'TV settings · HomeScreen' : accountMode ? 'TVs and account · HomeScreen' : dashboardMode ? 'Dashboard studio · HomeScreen' :
   mealMode ? 'Connect your meal Sheet · HomeScreen' : 'Pair your TV · HomeScreen';
 
 appElement.innerHTML = `
-  <main class="layout ${dashboardMode ? 'dashboard-mode' : ''}">
+  <a class="skip-link" href="#page-content">Skip to controls</a>
+  <main class="layout companion-mode ${dashboardMode ? 'dashboard-mode' : ''} ${pairMode ? 'pair-mode' : ''}">
     <div class="ambient ambient-one" aria-hidden="true"></div>
     <div class="ambient ambient-two" aria-hidden="true"></div>
     <section class="card" aria-labelledby="page-title">
       <div class="brand"><span class="brand-mark">H</span><span>HomeScreen</span></div>
-      <p class="eyebrow">${dashboardMode ? 'DASHBOARD STUDIO' : mealMode ? 'MEAL PLAN SETUP' : 'TV SETUP'} <span class="eyebrow-line"></span></p>
-      <h1 id="page-title">${dashboardMode ? 'Shape your home screen.' : mealMode ? 'Connect your dinner plan.' : 'Bring your dashboard to the big screen.'}</h1>
+      <p class="eyebrow">${settingsMode ? 'TV SETTINGS' : accountMode ? 'TVS & ACCOUNT' : dashboardMode ? 'DASHBOARD STUDIO' : mealMode ? 'MEAL PLAN SETUP' : 'TV SETUP'} <span class="eyebrow-line"></span></p>
+      <h1 id="page-title">${settingsMode ? 'Set the right location.' : accountMode ? 'Your TVs and connections.' : dashboardMode ? 'Shape your home screen.' : mealMode ? 'Connect your dinner plan.' : 'Bring your dashboard to the big screen.'}</h1>
       <p class="intro">${dashboardMode
-    ? 'Sign in with the account linked to your TV to arrange its cards, colors, and background from your phone.'
+    ? 'Arrange cards, choose photos, and customize ambient mode. Drafts save privately until you publish to your TVs.'
+    : settingsMode ? 'Manage weather cities and activity goals with the Google account linked to your TVs.'
+    : accountMode ? 'Manage each TV’s name, favorite apps, and access. Review connected services and your saved data.'
     : mealMode
     ? 'Sign in with the Google account paired to your TV, then connect the Sheet you update with Gemini.'
     : 'Sign in on this device, then enter the code shown on your TV. Your Google password stays off the TV.'}</p>
-      <nav class="site-nav" aria-label="Companion site"><a href="/pair" ${!mealMode && !dashboardMode ? 'aria-current="page"' : ''}>Pair TV</a><a href="/dashboard" ${dashboardMode ? 'aria-current="page"' : ''}>Design dashboard</a><a href="/meals" ${mealMode ? 'aria-current="page"' : ''}>Meal Sheet</a></nav>
+      <nav class="site-nav" aria-label="Companion site"><a href="/dashboard" ${dashboardMode ? 'aria-current="page"' : ''}>Dashboard</a><a href="/settings" ${settingsMode ? 'aria-current="page"' : ''}>Weather & goals</a><a href="/meals" ${mealMode ? 'aria-current="page"' : ''}>Meals</a><a href="/account" ${accountMode ? 'aria-current="page"' : ''}>TVs & account</a><a href="/pair" ${pairMode ? 'aria-current="page"' : ''}>Pair TV</a></nav>
 
-      ${mealMode || dashboardMode ? '' : `<div class="steps" aria-hidden="true">
+      ${!pairMode ? '' : `<div class="steps" aria-hidden="true">
         <span class="step active"><span class="step-number">1</span> Sign in</span>
         <span class="step-rule"></span>
         <span class="step"><span class="step-number">2</span> Enter code</span>
@@ -83,7 +97,9 @@ appElement.innerHTML = `
         <button id="signout-button" class="button button-text" type="button" hidden>Switch account</button>
       </div>
 
-      <form id="pair-form" novalidate ${mealMode || dashboardMode ? 'hidden' : ''}>
+      <div id="page-content" tabindex="-1" class="page-workspace">
+      <div class="page-primary">
+      <form id="pair-form" novalidate ${!pairMode ? 'hidden' : ''}>
         <label class="field-label" for="pair-code">CODE ON YOUR TV</label>
         <input id="pair-code" name="code" type="text" inputmode="text" autocomplete="one-time-code"
           autocapitalize="characters" spellcheck="false" maxlength="6" placeholder="A7K9W2" required />
@@ -97,11 +113,12 @@ appElement.innerHTML = `
       <a id="connected-next" class="mode-link" href="/dashboard" hidden>Design your dashboard from this device →</a>
 
       <section id="appearance-editor" class="appearance-editor" aria-label="Dashboard appearance" ${dashboardMode ? '' : 'hidden'}></section>
+      <section id="weather-editor" class="settings-panel" aria-label="Weather and activity settings" ${settingsMode ? '' : 'hidden'}></section>
 
-      <section class="meal-panel" aria-labelledby="meal-title" ${dashboardMode ? 'hidden' : ''}>
-        <p class="field-label">OPTIONAL · MEAL PLAN</p>
+      <section class="meal-panel" aria-labelledby="meal-title" ${mealMode ? '' : 'hidden'}>
+        <p class="field-label">MEAL PLAN</p>
         <h2 id="meal-title">Show dinner on your TV</h2>
-        <p class="meal-copy">Connect the Google Sheet you update with Gemini. Add new weeks to the same Sheet and the TV will refresh automatically. Google will grant read access to your spreadsheets; HomeScreen reads only the link you choose.</p>
+        <p class="meal-copy">Connect a private Google Sheet for your dinner plan. Keep adding weeks to the same Sheet; your TV refreshes automatically.</p>
         <button id="meal-access-button" class="button button-secondary" type="button" disabled>Allow Google Sheets access</button>
         <form id="meal-form" hidden>
           <label class="field-label" for="meal-url">GOOGLE SHEET LINK</label>
@@ -115,22 +132,31 @@ appElement.innerHTML = `
       </section>
       <section id="account-controls" class="account-controls" aria-labelledby="account-controls-title" hidden>
         <p class="field-label">ACCOUNT & PRIVACY</p>
-        <h2 id="account-controls-title">Manage saved data</h2>
-        <p class="meal-copy">Every TV paired to this Google account shares its dashboard design and connections. Household invitations and public sharing are not enabled.</p>
+        <h2 id="account-controls-title">Connected services</h2>
+        <p class="meal-copy">Your linked TVs share dashboard design, weather cities, photos, and Google connections. Favorite apps are specific to each TV.</p>
         <div id="connection-status" class="connection-status" aria-live="polite">Checking connected services…</div>
         <p class="field-hint">Calendar and activity use read access. Tasks access also lets the TV complete tasks. Sheets access is read-only; Google Photos uses only photos you select.</p>
         <a class="mode-link" href="https://myaccount.google.com/connections" target="_blank" rel="noopener noreferrer">Review Google permissions ↗</a>
         <section id="device-manager" class="device-manager" aria-label="Linked TVs"></section>
-        <div class="account-actions">
+        <details class="help-panel account-danger"><summary>Disconnect services or remove account data</summary><p>These actions can sign out linked TVs. You’ll see the exact effect before confirming.</p><div class="account-actions">
           <button id="disconnect-photos-button" class="button button-text" type="button">Remove saved photos and sign out TVs</button>
           <button id="disconnect-google-button" class="button button-text" type="button">Disconnect Calendar, Tasks and activity; sign out TVs</button>
           <button id="revoke-button" class="button button-text" type="button">Sign out on every device</button>
           <button id="delete-account-button" class="button button-text danger" type="button">Delete account and saved data</button>
-        </div>
+        </div></details>
         <p id="account-status" class="status" role="status" aria-live="polite"></p>
       </section>
+      </div>
+      ${dashboardMode || accountMode ? '' : `<aside class="page-guide" aria-label="Help with ${settingsMode ? 'TV settings' : mealMode ? 'meal setup' : 'pairing'}">
+        <p class="field-label">${settingsMode ? 'SETTINGS GUIDE' : mealMode ? 'SHEET CHECKLIST' : 'GET CONNECTED'}</p>
+        <h2>${settingsMode ? 'One account, all your TVs.' : mealMode ? 'A simple dinner table.' : 'Ready in two steps.'}</h2>
+        <p class="meal-copy">${settingsMode ? 'Weather and goals save separately from your dashboard design. Keep the TV online to receive updates within about a minute.' : mealMode ? 'Use a visible tab named Meals, Menu, or Week with these columns:' : 'Open HomeScreen on your TV. Sign in here with Google, then enter the six-character code shown on the TV.'}</p>
+        ${mealMode ? `<div class="sheet-example"><table><caption class="sr-only">Example meal Sheet columns</caption><thead><tr><th>Date</th><th>Meal_Name</th></tr></thead><tbody><tr><td>YYYY-MM-DD</td><td>Vegetable pasta</td></tr></tbody></table></div><details class="help-panel"><summary>Sheet format and permissions</summary><p>Use actual Sheets dates or YYYY-MM-DD text. Optional columns: Servings, Recipe_ID, and Notes/Prep_Style. Past dates are hidden from upcoming meals.</p><p>Google grants read-only access to your spreadsheets. HomeScreen reads only the Sheet you choose; you can disconnect it on this page.</p></details>` : settingsMode ? `<a class="guide-link" href="/dashboard">Edit appearance, photos & ambient →</a><a class="guide-link" href="/account">Manage TVs & favorite apps →</a>` : `<details class="help-panel"><summary>Code expired or TV missing?</summary><p>Codes expire after 15 minutes. Request a new code on your TV, then enter it here. After pairing, your TV appears under TVs & account when it next connects.</p></details><a class="guide-link" href="/dashboard">Already paired? Open your dashboard →</a>`}
+      </aside>`}
+      </div>
       <div class="privacy-note"><span class="privacy-icon" aria-hidden="true">✦</span><span>${dashboardMode
-    ? 'Dashboard design needs no additional Google permission. Only the linked account owner can manage these settings.'
+    ? 'Editing a design needs no additional Google permission. Choosing personal images asks for Google Photos access.'
+    : settingsMode || accountMode ? 'Settings stay private to your linked Google account. Review or remove service connections in TVs & account.'
     : mealMode
     ? 'Google will ask you to approve Sheets access when you connect a meal plan. You can remove the connection here at any time.'
     : 'Google will ask you to approve Calendar, Tasks, and activity access. You can revoke access in your Google account at any time.'}</span></div>
@@ -209,6 +235,10 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
     document.querySelector<HTMLElement>('#device-manager')!, apiUrl,
     async () => auth.currentUser ? auth.currentUser.getIdToken() : null,
   );
+  const weatherEditor = createWeatherEditor(
+    document.querySelector<HTMLElement>('#weather-editor')!, apiUrl,
+    async () => auth.currentUser ? auth.currentUser.getIdToken() : null,
+  );
   let busy = false;
   let mealsBusy = false;
   let mealsAuthorized = false;
@@ -227,6 +257,7 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
     signOutButton.hidden = !signedIn;
     connectButton.disabled = !signedIn || busy;
     codeInput.disabled = busy;
+    document.querySelectorAll<HTMLElement>('.step').forEach((step, index) => step.classList.toggle('active', signedIn ? index === 1 : index === 0));
     mealAccessButton.hidden = !signedIn || mealsAuthorized;
     mealAccessButton.disabled = !signedIn || mealsBusy;
     mealForm.hidden = !signedIn || !mealsAuthorized;
@@ -237,7 +268,7 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
     mealRemoveButton.hidden = !signedIn || !mealsAuthorized;
     mealRemoveButton.textContent = currentSheet ? 'Disconnect meal Sheet' : 'Remove Google Sheets access';
     mealRemoveButton.disabled = mealsBusy;
-    accountControls.hidden = !signedIn;
+    accountControls.hidden = !signedIn || !accountMode;
     for (const button of [disconnectPhotosButton, disconnectGoogleButton, revokeButton, deleteAccountButton]) {
       button.disabled = accountBusy;
     }
@@ -310,17 +341,19 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
 
   onAuthStateChanged(auth, () => {
     updateControls();
-    void loadMealConfig();
-    if (auth.currentUser) void loadConnections();
+    if (mealMode) void loadMealConfig();
+    if (auth.currentUser && accountMode) void loadConnections();
     else connectionStatus.textContent = 'Sign in to see connected services.';
-    if (auth.currentUser) void devices.load();
+    if (auth.currentUser && accountMode) void devices.load();
     else devices.clear();
+    if (auth.currentUser && settingsMode) void weatherEditor.load();
+    else weatherEditor.clear();
     if (dashboardMode) {
       if (auth.currentUser) void editor.load();
       else editor.clear();
     }
     if (auth.currentUser && !params.has('result')) {
-      showStatus(dashboardMode ? 'Signed in. Edit your dashboard below.' : mealMode ? 'Signed in. Connect your meal Sheet below.' :
+      showStatus(settingsMode || accountMode || dashboardMode ? '' : mealMode ? 'Signed in. Connect your meal Sheet below.' :
         'Signed in. Enter the code shown on your TV.');
     }
   }, (error) => {
@@ -330,7 +363,7 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
 
   void getRedirectResult(auth).then((credential) => {
     if (credential && !params.has('result')) {
-      showStatus(dashboardMode ? 'Signed in. Edit your dashboard below.' : mealMode ? 'Signed in. Connect your meal Sheet below.' :
+      showStatus(settingsMode || accountMode || dashboardMode ? '' : mealMode ? 'Signed in. Connect your meal Sheet below.' :
         'Signed in. Enter the code shown on your TV.');
     }
   }).catch((error: unknown) => {
@@ -343,6 +376,7 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
       signInButton.disabled = true;
       showStatus('Redirecting to Google sign-in…');
       try {
+        window.sessionStorage.setItem('homescreen:signin-path', window.location.pathname);
         if (mealMode) window.sessionStorage.setItem('homescreen:meal-signin', '1');
         else window.sessionStorage.removeItem('homescreen:meal-signin');
         if (dashboardMode) window.sessionStorage.setItem('homescreen:dashboard-signin', '1');

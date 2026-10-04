@@ -38,6 +38,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [appearance, setAppearance] = useState<DashboardAppearance>(DEFAULT_APPEARANCE);
   const [photoDataUrl, setPhotoDataUrl] = useState<string | null>(null);
   const [ambientPhotos, setAmbientPhotos] = useState<SelectedPhoto[]>([]);
+  const photoRevision = useRef(-1);
+  const photoSelectionVersion = useRef(0);
   const [hydratedFor, setHydratedFor] = useState<string | null>(null);
   const syncedJson = useRef<string | null>(null);
   const pendingWrites = useRef(0);
@@ -52,6 +54,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setAppearance(DEFAULT_APPEARANCE);
     setPhotoDataUrl(null);
     setAmbientPhotos([]);
+    photoRevision.current = -1;
     syncedJson.current = null;
     if (!uid) return () => { cancelled = true; };
     void (async () => {
@@ -137,7 +140,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const timer = setInterval(() => {
       if (pendingWrites.current) return;
       void getUserAppearance().then((remote) => {
-        if (!remote.appearance || generation.current !== currentGeneration || pendingWrites.current) return;
+        if (generation.current !== currentGeneration || pendingWrites.current) return;
+        if ((remote.photoUpdatedAtMs || 0) !== photoRevision.current) {
+          const selectionVersion = photoSelectionVersion.current;
+          void Promise.all([getSavedGooglePhoto(), getSavedGooglePhotos()]).then(([photo, photos]) => {
+            if (generation.current !== currentGeneration || photoSelectionVersion.current !== selectionVersion) return;
+            photoRevision.current = remote.photoUpdatedAtMs || 0;
+            setPhotoDataUrl(photo); setAmbientPhotos(photos);
+          }).catch((error) => console.warn('Could not refresh shared photos:', error));
+        }
+        if (!remote.appearance) return;
         const normalized = normalizeAppearance(remote.appearance);
         const serialized = JSON.stringify(normalized);
         if (serialized !== syncedJson.current) {
@@ -162,6 +174,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setBackground: (background) => setAppearance((current) => ({ ...current, background })),
     setBackgroundColor: (backgroundColor) => setAppearance((current) => ({ ...current, backgroundColor, background: 'solid' })),
     setGooglePhotos: (photos, useAsBackground) => {
+      photoSelectionVersion.current++;
       if (!photos.length) return;
       setAmbientPhotos(photos);
       if (useAsBackground) setPhotoDataUrl(photos[0].dataUrl);
