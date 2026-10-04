@@ -10,6 +10,7 @@ interface ActivityStatsProps {
   activeMinutes: number | null;
   estimatedRestingCalories?: number;
   showSteps?: boolean;
+  dense?: boolean;
 }
 
 export default function ActivityStats({
@@ -19,22 +20,23 @@ export default function ActivityStats({
   activeMinutes,
   estimatedRestingCalories = 0,
   showSteps = true,
+  dense = false,
 }: ActivityStatsProps) {
   const theme = useTheme();
   const compact = useCompactTVLayout();
 
   const formattedSteps = steps.toLocaleString();
-  const formattedCalories = calories.toLocaleString();
+  const formattedCalories = Math.round(calories).toLocaleString();
 
   return (
-    <View style={[styles.statsGrid, compact && styles.compactGrid]}>
+    <View testID="activity-stats" style={[styles.statsGrid, compact && styles.compactGrid, dense && {gap: compact ? 2 : 4, marginLeft: 0}]}>
       {/* Steps */}
       {showSteps && <View style={styles.statRow}>
         <MaterialCommunityIcons name="walk" size={compact ? 15 : 20} color="#38BDF8" style={[styles.statIcon, compact && styles.compactIcon]} />
         <Text style={[styles.statValue, compact && styles.compactValue, { color: theme.colors.textPrimary }]}>
           {formattedSteps}
         </Text>
-        <Text style={[styles.statUnit, compact && styles.compactUnit, { color: theme.colors.textSecondary }]}>
+        <Text numberOfLines={1} style={[styles.statUnit, compact && styles.compactUnit, { color: theme.colors.textSecondary }]}>
           steps
         </Text>
       </View>}
@@ -43,9 +45,9 @@ export default function ActivityStats({
       <View style={styles.statRow}>
         <MaterialCommunityIcons name="map-marker-distance" size={compact ? 15 : 20} color="#34D399" style={[styles.statIcon, compact && styles.compactIcon]} />
         <Text style={[styles.statValue, compact && styles.compactValue, { color: theme.colors.textPrimary }]}>
-          {distance}
+          {distance.toFixed(1)}
         </Text>
-        <Text style={[styles.statUnit, compact && styles.compactUnit, { color: theme.colors.textSecondary }]}>
+        <Text numberOfLines={1} style={[styles.statUnit, compact && styles.compactUnit, { color: theme.colors.textSecondary }]}>
           km
         </Text>
       </View>
@@ -56,8 +58,8 @@ export default function ActivityStats({
         <Text style={[styles.statValue, compact && styles.compactValue, { color: theme.colors.textPrimary }]}>
           {activeMinutes == null ? '—' : activeMinutes}
         </Text>
-        <Text style={[styles.statUnit, compact && styles.compactUnit, { color: theme.colors.textSecondary }]}>
-          move min
+        <Text numberOfLines={1} style={[styles.statUnit, compact && styles.compactUnit, { color: theme.colors.textSecondary }]}>
+          {dense ? 'min' : 'move min'}
         </Text>
       </View>
 
@@ -67,7 +69,7 @@ export default function ActivityStats({
         <Text style={[styles.statValue, compact && styles.compactValue, { color: theme.colors.textPrimary }]}>
           {formattedCalories}
         </Text>
-        <Text style={[styles.statUnit, compact && styles.compactUnit, { color: theme.colors.textSecondary }]}>
+        <Text numberOfLines={1} style={[styles.statUnit, compact && styles.compactUnit, { color: theme.colors.textSecondary }]}>
           {estimatedRestingCalories > 0 ? 'est. kcal' : 'kcal'}
         </Text>
       </View>
@@ -92,6 +94,7 @@ const styles = StyleSheet.create({
   },
   statValue: {
     fontSize: 16,
+    lineHeight: 22,
     fontWeight: '700',
     fontVariant: ['tabular-nums'],
     marginRight: 4,
@@ -103,7 +106,7 @@ const styles = StyleSheet.create({
   },
   compactGrid: { gap: 2, marginLeft: 2 },
   compactIcon: { width: 18, marginRight: 3 },
-  compactValue: { fontSize: 12 },
+  compactValue: { fontSize: 12, lineHeight: 16 },
   compactUnit: { fontSize: 10 },
 });
 

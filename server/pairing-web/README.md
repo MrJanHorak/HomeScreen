@@ -11,7 +11,11 @@ Open `/dashboard` on the same Hosting domain and sign in with the Google account
 - **Automatic rows:** drag cards to reorder them or use the arrow buttons. Show/hide cards and choose Normal/Wide widths.
 - **Free layout:** drag cards around a 12-by-6 canvas, drop one onto another to swap their positions and sizes, or drag a lower-right corner to resize. Select a card to enter its column, row, width, and height; keyboard arrow keys also move a focused card. Cards snap to whole cells and stay inside the dashboard. Minimum card size is 3 columns by 2 rows. Show/hide controls add cards into available space without moving existing cards. Choosing a starting preset resets the arrangement.
 
-**Save to TV** updates the account's shared appearance settings; a running TV checks for changes about every 45 seconds. Unsaved edits stay in the current page until saved or discarded; there is no persistent draft or design history yet. If another device changed settings since the page loaded, the server rejects the save and leaves the draft visible. **Discard changes** reloads the current saved settings. All TVs paired to that account share these settings.
+**Save to TV** publishes the account's shared appearance settings; a running TV checks for changes about every 45 seconds. Editing autosaves a private account draft after a 1.5-second pause, and **Save draft** saves immediately. Returning to the studio recovers that draft. The draft status reports pending or failed saves; leaving with unpersisted edits prompts the browser's standard warning. All TVs paired to that account share the published settings.
+
+**Undo/Redo** keeps the last 100 edits for the current page session. **Saved designs and published history** stores up to 20 named designs and the latest 30 successful publishes, including TV settings changes. Save as new design, Load, Replace, and Delete manage the library. **Restore to draft** loads a published revision for review; **Save to TV** is still required to publish it. Photos are references to the current saved TV photo selection, not archived copies of images.
+
+If another device changed settings, the server rejects a stale publish and leaves the draft visible. A recovered draft keeps its original base revision. **Discard changes** clears the account draft and loads the latest published settings; it does not delete designs or history. Library changes also use revision checks. After a library conflict, **Refresh designs and history** retains page edits and reloads the library; **Save draft** explicitly keeps those edits, or **Discard changes** returns to the published settings. Undo history resets on reload/sign-out; drafts and designs persist in the account. Signing out clears the editor's account data from the page.
 
 The canvas previews positions and colors, with labels instead of personal widget data or exact TV content. The TV scales the grid to its card area and adapts content to width and height: tall cards show additional events/tasks/meals, while short cards keep the essentials. All cards keep their full detail views. The saved Google background appears in the preview when selected. The header and favorite apps are not movable. Older TV builds show the fallback row arrangement; deploy the updated backend/site and distribute the updated TV app for free placement and card styles. See the [layout contract](DASHBOARD_LAYOUT.md).
 
@@ -24,7 +28,7 @@ the background surface, not the text or artwork. Themed foregrounds adjust to th
 estimated composite color; contrast over a translucent photograph depends on
 the image beneath it. Re-enable **Use theme surface** to restore the palette's
 surface for that card. Layout presets keep these styles. Typography, spacing
-controls, and persistent design history remain future work.
+controls remain future work.
 
 ### View photos saved for the TV
 
@@ -72,6 +76,10 @@ firebase deploy --only functions,hosting
 Hosting also runs the web build before a Hosting deploy. `../firestore.rules` is the deny-all client policy for this repo, which accesses Firestore only through Cloud Functions. Review and merge it with any rules used by other apps on the Firebase project before deploying Firestore rules.
 
 For local UI work, run `npm run dev` from `server/pairing-web`. The full OAuth round trip also needs a registered callback URI and matching `PAIRING_URL` for that environment.
+
+The draft/design/history milestone requires deploying both `appearanceStudio` and the updated `userAppearance` function with Hosting. It keeps the existing TV API and needs no TV rebuild. Data is scoped to the authenticated owner and removed by the existing recursive account deletion. No Firestore rules change or migration is required.
+
+Studio browser regression tests use a local Vite fixture with mocked authenticated APIs, without Google sign-in or production writes. With Playwright and its Chromium runtime available, start Vite and run `node --test test/appearanceEditor.test.cjs`. `STUDIO_TEST_URL` can override `http://127.0.0.1:5173`; `NODE_PATH` can point to bundled Playwright packages, and `PLAYWRIGHT_CHROMIUM_EXECUTABLE` can select an installed headless Chromium. The fixture is outside the production bundle. Backend tests run with `npm --prefix ../functions test`.
 
 ## Google sign-in returns `auth/invalid-credential`
 

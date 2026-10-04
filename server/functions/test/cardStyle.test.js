@@ -60,8 +60,9 @@ test("an older client cannot erase card styles; an explicit empty map restores t
   let stored = {appearance: {...base, cardStyles: styles, backgroundZoom: 1.12}, updatedAtMs: 1};
   t.mock.method(auth, "verifyIdToken", async () => ({uid: "owner-a", firebase: {sign_in_provider: "google.com"}}));
   const ref = {};
-  t.mock.method(db, "collection", () => ({doc: () => ({collection: () => ({doc: () => ref})})}));
-  t.mock.method(db, "runTransaction", async (callback) => callback({get: async () => ({data: () => stored}), set: (_ref, value) => {writes.push(value); stored = value;}}));
+  const historyRef = {};
+  t.mock.method(db, "collection", () => ({doc: () => ({collection: () => ({doc: (id) => id === "history" ? historyRef : ref})})}));
+  t.mock.method(db, "runTransaction", async (callback) => callback({get: async (target) => ({data: () => target === ref ? stored : undefined}), set: (target, value) => {if (target === ref) {writes.push(value); stored = value;}}}));
   const res = {statusCode: 0, set() {}, status(code) {this.statusCode = code; return this;}, json() {}};
   const request = (appearance) => ({method: "PUT", headers: {authorization: "Bearer test"}, body: {appearance}});
   await handleUserAppearance(request({...base, customAccent: "#AABBCC"}), res);

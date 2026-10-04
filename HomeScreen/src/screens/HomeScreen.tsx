@@ -3,12 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import TVText from '../components/tv/TVText';
 import TVCard from '../components/tv/TVCard';
 import HeaderBar from '../components/HeaderBar';
-import WeatherWidget from '../components/weatherWidget/WeatherWidget';
-import ScheduleCard from '../components/ScheduleCard/ScheduleCard';
-import ActivityCard from '../components/activityCard/ActivityCard';
-import MealCard from '../components/MealCard/MealCard';
-import ToDo from '../components/ToDo/ToDo';
-import MediaCard from '../components/tv/MediaCard';
+import MeasuredDashboardCard from '../components/MeasuredDashboardCard';
 import FavoriteAppsCarousel from '../components/FavoriteAppsCarousel';
 import TVDetailModal, { TVDetailModalProps } from '../components/tv/TVDetailModal';
 
@@ -84,15 +79,6 @@ const DETAILS: Record<Topic, DetailDefinition> = {
   },
 };
 
-const CARDS: Record<CardId, React.ComponentType> = {
-  weather: WeatherWidget,
-  schedule: ScheduleCard,
-  activity: ActivityCard,
-  media: MediaCard,
-  meal: MealCard,
-  todo: ToDo,
-};
-
 function HomeScreen() {
   const { error } = useDashboard();
   const { appearance, ambientPhotos } = useAppearance();
@@ -112,7 +98,6 @@ function HomeScreen() {
   };
 
   const renderCard = (card: CardPreference) => {
-    const Content = CARDS[card.id];
     return (
       <TVCard
         key={card.id}
@@ -120,7 +105,7 @@ function HomeScreen() {
         style={{ flex: card.size === 'wide' ? 2 : 1, height: '100%' }}
         onPress={() => setActiveModal(card.id)}
       >
-        <Content />
+        <MeasuredDashboardCard id={card.id} />
       </TVCard>
     );
   };

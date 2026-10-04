@@ -127,3 +127,11 @@ footer{position:relative;z-index:1;margin-top:27px;color:#7f9398;font-size:11px;
   .studio-preview #grid-editor .field-hint{font-size:11px;line-height:1.25;max-height:32px;overflow:hidden}
   .dashboard-mode .editor-actions .button-primary{max-width:none}
 }
+:where(.design-library) { display: grid; gap: .5rem; margin-block: 1rem; }
+.design-library-row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; padding: .6rem; border: 1px solid rgba(255,255,255,.12); border-radius: 12px; }
+.design-library-row > span { flex: 1 1 180px; overflow-wrap: anywhere; }
+.design-library-row .button { width: auto; padding: .5rem .7rem; }
+.appearance-editor #design-name { display: block; width: 100%; min-height: 44px; margin: 8px 0 12px; padding: 10px 12px; border: 1px solid #53646a; border-radius: 9px; background: #101920; color: #f1f7f3; font: inherit; }
+.appearance-editor #design-name:focus-visible { outline: 2px solid #bcead8; outline-offset: 2px; }
+.draft-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 16px; }
+.draft-actions .button { width: auto; }

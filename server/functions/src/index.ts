@@ -21,6 +21,7 @@ import {userAppearanceHandler} from "./userAppearance";
 import {mealSheetConfigHandler} from "./mealSheetConfig";
 import {accountSecurityHandler} from "./accountSecurity";
 import {linkedDevicesHandler} from "./linkedDevices";
+import {appearanceStudioHandler} from "./appearanceStudio";
 
 
 // import {onRequest} from "firebase-functions/https";
@@ -60,3 +61,4 @@ export const mealSheetConfig = mealSheetConfigHandler;
 export const googleOAuthCallback = googleOAuthCallbackHandler;
 export const accountSecurity = accountSecurityHandler;
 export const linkedDevices = linkedDevicesHandler;
+export const appearanceStudio = appearanceStudioHandler;

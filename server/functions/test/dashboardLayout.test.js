@@ -70,8 +70,9 @@ function fixture(t, existing) {
   const writes = [];
   t.mock.method(auth, "verifyIdToken", async () => ({uid: "owner-a", firebase: {sign_in_provider: "google.com"}}));
   const ref = {get: async () => ({data: () => existing})};
-  t.mock.method(db, "collection", () => ({doc: () => ({collection: () => ({doc: () => ref})})}));
-  t.mock.method(db, "runTransaction", async (callback) => callback({get: () => ref.get(), set: (_ref, body) => writes.push(body)}));
+  const historyRef = {get: async () => ({data: () => undefined})};
+  t.mock.method(db, "collection", () => ({doc: () => ({collection: () => ({doc: (id) => id === "history" ? historyRef : ref})})}));
+  t.mock.method(db, "runTransaction", async (callback) => callback({get: (target) => target.get(), set: (target, body) => {if (target === ref) writes.push(body);}}));
   const res = {statusCode: 0, body: null, set() {}, status(code) {this.statusCode = code; return this;}, json(body) {this.body = body;}};
   const invoke = (body) => handleUserAppearance({method: "PUT", headers: {authorization: "Bearer test"}, body}, res);
   return {writes, res, invoke};

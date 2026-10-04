@@ -8,9 +8,9 @@ The owner device-management milestone is implemented: the TV settings include a 
 
 **Implemented in code:** a version-1 12-column by 6-row grid with each card storing `x`, `y`, `width`, and `height`; shared server/client validation; a TV grid renderer; a phone canvas with touch/pointer dragging, corner resizing, numeric controls, and keyboard movement. Validation rejects overlaps, out-of-bounds positions, missing/duplicate cards, and sizes below 3-by-2. Small TV tiles use summaries that open the existing detail views. The same grid scales to compact and full-size TVs, while the existing card list remains the fallback for older TV builds. See the [layout contract](DASHBOARD_LAYOUT.md).
 
-**Save to TV** is the current explicit publish action. Unsaved edits live in the open page, and conditional saves reject changes made against a stale revision while retaining the draft. Next, add saved designs, persistent drafts, undo/restore, and published revision history. Separate per-TV designs and independent compact layouts remain future options. Deployment and an updated TV app are required to use the canvas.
+**Save to TV** is the explicit publish action. The studio now autosaves an account draft after editing pauses, recovers it on return, and offers Save draft, Undo/Redo, up to 20 named designs, and the latest 30 published revisions. Loading a design or restoring a revision changes only the draft until Save to TV. Conditional draft/design writes and publishes reject stale revisions while retaining page edits. A recovered draft retains its original publish revision, so it cannot overwrite newer TV settings. Separate per-TV designs and independent compact layouts remain future options. Deployment and an updated TV app are required to use the canvas.
 
-The TV is React Native, so arbitrary web CSS cannot be applied to it. Palette, accent, background, and per-card surface color/opacity are implemented. Grid cards now adapt their information to width and height, and the companion displays saved TV Photos with a larger view and background preview. New photos are still chosen through the TV picker. Further typed design tokens remain next-stage work: typography scale, corner radius, spacing, and selectable widget variants, with range and readability validation. Future persistent drafts/history should keep the TV reading only the selected published revision.
+The TV is React Native, so arbitrary web CSS cannot be applied to it. Palette, accent, background, per-card surface color/opacity, border thickness, and corner radius are implemented. Grid cards now adapt their information to width and height, and the companion displays saved TV Photos with a larger view and background preview. New photos are still chosen through the TV picker. Further typed design tokens remain next-stage work: typography scale, spacing, and selectable widget variants, with range and readability validation. Drafts/designs/history use separate documents; the TV continues reading only published settings.
 
 Adaptive summaries now measure text and row heights. Activity retains its original
 centered-percentage ring and colored metric icons; Media shows primary and next
@@ -33,8 +33,8 @@ Today the Firebase UID is the account boundary. Any TV paired to that account sh
 
 1. **Implemented:** companion appearance editing, permission explanations, permanent TV QR/address, and owner device management.
 2. **Implemented:** typed grid schema, adaptive TV content, phone canvas, per-card color/opacity, saved photo viewing, Save to TV, and stale-save protection.
-3. **Next:** saved designs, persistent drafts, undo/restore, and published revision history.
-4. **Planned:** owner-created polls and signed-in voting, with a poll summary widget.
+3. **Implemented in code:** saved designs, account drafts with autosave/recovery, session Undo/Redo, restoration to a draft, and bounded published revision history. Deploy Functions and Hosting together; this milestone needs no new TV binary.
+4. **Next:** owner-created polls and signed-in voting, with a poll summary widget.
 5. **Planned:** quotes, jokes, opt-in Bible verses, and deeper style tokens.
 6. **Optional later:** household roles and per-TV configurations, with source-specific sharing consent.
 

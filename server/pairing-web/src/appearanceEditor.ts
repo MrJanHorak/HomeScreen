@@ -6,6 +6,8 @@ import type { CardStyles } from '../../functions/src/utils/cardStyle';
 import { createCardStyleEditor } from './cardStyleEditor';
 import { createPhotoGallery } from './photoGallery';
 import { DEFAULT_PHOTO_ZOOM, normalizePhotoZoom } from '../../functions/src/utils/photoFraming';
+import type { AppearanceLibrary, PublishedRevision } from '../../functions/src/utils/appearanceLibrary';
+import { emptyLibrary } from '../../functions/src/utils/appearanceLibrary';
 type CardId = 'weather' | 'schedule' | 'activity' | 'media' | 'meal' | 'todo';
 type Card = { id: CardId; visible: boolean; size: 'standard' | 'wide' };
 type Appearance = {
@@ -93,11 +95,20 @@ export function createAppearanceEditor(
   let busy = false;
   let generation = 0;
   let revision = 0;
+  let publishedRevision = 0;
   let savedPhoto: string | null = null;
+  let library: AppearanceLibrary = emptyLibrary();
+  let history: PublishedRevision[] = [];
+  let observedJson = '';
+  let draftJson = 'null';
+  let undo: string[] = [];
+  let redo: string[] = [];
+  let draftTimer: ReturnType<typeof setTimeout> | undefined;
+  let draftError = '';
   root.innerHTML = `
     <p class="field-label">DASHBOARD STUDIO</p>
     <h2>Make the TV yours</h2>
-    <p class="meal-copy">Arrange the cards and choose a look here. Changes appear on a connected TV within about a minute.</p>
+    <p class="meal-copy">Arrange the cards and choose a look here. Drafts save to your account; Save to TV publishes them within about a minute.</p>
     <div id="appearance-content" hidden>
       <div class="studio-workspace">
         <div class="studio-preview">
@@ -136,7 +147,19 @@ export function createAppearanceEditor(
           </div></details>
         </div>
       </div>
+      <div class="draft-actions"><button id="appearance-undo" class="button button-text" type="button">Undo</button><button id="appearance-redo" class="button button-text" type="button">Redo</button><button id="draft-save" class="button button-secondary" type="button">Save draft</button></div>
       <div class="editor-actions"><button id="appearance-save" class="button button-primary" type="button">Save to TV <span aria-hidden="true">↗</span></button><button id="appearance-reload" class="button button-text" type="button">Discard changes</button></div>
+      <p id="draft-status" class="field-hint" role="status" aria-live="polite"></p>
+      <details class="studio-section"><summary>Saved designs and published history</summary><div class="studio-section-body">
+        <label class="field-label" for="design-name">DESIGN NAME</label>
+        <input id="design-name" type="text" maxlength="60" placeholder="Evening dashboard" />
+        <button id="design-save" class="button button-secondary" type="button">Save as new design</button>
+        <button id="library-refresh" class="button button-text" type="button">Refresh designs and history</button>
+        <p class="field-hint">Keep up to 20 designs. Loading a design or restoring a revision edits your draft; use Save to TV to publish it.</p>
+        <div id="design-list" class="design-library"></div>
+        <h3>Published history</h3><p class="field-hint">The latest 30 revisions, including TV settings changes.</p>
+        <div id="revision-list" class="design-library"></div>
+      </div></details>
       <details class="studio-section studio-photos"><summary>Saved photos for your TV</summary><div class="studio-section-body"><div id="photo-gallery"></div></div></details>
     </div>
     <p id="appearance-status" class="status" role="status" aria-live="polite">Sign in to edit your dashboard.</p>
@@ -155,6 +178,12 @@ export function createAppearanceEditor(
   const preview = $('#tv-preview');
   const save = $<HTMLButtonElement>('#appearance-save');
   const reload = $<HTMLButtonElement>('#appearance-reload');
+  const undoButton = $<HTMLButtonElement>('#appearance-undo');
+  const redoButton = $<HTMLButtonElement>('#appearance-redo');
+  const draftSave = $<HTMLButtonElement>('#draft-save');
+  const designSave = $<HTMLButtonElement>('#design-save');
+  const designName = $<HTMLInputElement>('#design-name');
+  const libraryRefresh = $<HTMLButtonElement>('#library-refresh');
   const gridEditor = createGridEditor($('#grid-editor'), (grid) => {
     appearance.grid = grid; appearance.layout = 'custom'; render();
   }, (text) => message(text, 'error'), $('#grid-position-controls'));
@@ -173,9 +202,52 @@ export function createAppearanceEditor(
     status.dataset.kind = kind;
   }
   function changed() { return JSON.stringify(appearance) !== savedJson; }
+  function currentDraft() {
+    return changed() ? {appearance, baseUpdatedAtMs: revision} : null;
+  }
+  function draftChanged() { return JSON.stringify(currentDraft()) !== draftJson; }
   function updateActions() {
+    const next = JSON.stringify(appearance);
+    if (loaded && next !== observedJson) {
+      if (observedJson) undo = [...undo.slice(-99), observedJson];
+      redo = []; observedJson = next; draftError = '';
+    }
+    clearTimeout(draftTimer);
+    if (loaded && !busy && draftChanged() && !draftError) {
+      draftTimer = setTimeout(() => void saveDraft(), 1500);
+    }
     save.disabled = busy || !changed(); reload.disabled = busy;
-    if (!busy) message(changed() ? 'Unsaved changes. Save to update your TV.' : 'Your TV settings are up to date.');
+    undoButton.disabled = busy || !undo.length; redoButton.disabled = busy || !redo.length;
+    draftSave.disabled = busy || !draftChanged();
+    designSave.disabled = busy || !designName.value.trim(); designName.disabled = busy;
+    libraryRefresh.disabled = busy;
+    $('#draft-status').textContent = draftError || (draftChanged() ? 'Draft has changes waiting to save.' :
+      changed() ? 'Draft saved to your account. Your TV still shows the published design.' : 'No unpublished draft.');
+    if (!busy) message(changed() ? 'Unpublished changes. Save to TV when ready.' : 'Your TV settings are up to date.');
+  }
+  function renderLibrary() {
+    const designs = $('#design-list'); designs.replaceChildren();
+    const revisions = $('#revision-list'); revisions.replaceChildren();
+    function row(parent: HTMLElement, text: string, actions: [string, () => void][]) {
+      const item = document.createElement('div'); item.className = 'design-library-row';
+      const label = document.createElement('span'); label.textContent = text; item.append(label);
+      for (const [title, action] of actions) {
+        const button = document.createElement('button'); button.type = 'button';
+        button.className = 'button button-text'; button.textContent = title; button.disabled = busy;
+        button.addEventListener('click', action); item.append(button);
+      }
+      parent.append(item);
+    }
+    for (const design of library.designs) row(designs, design.name, [
+      ['Load', () => { appearance = normalize(structuredClone(design.appearance)); render(); }],
+      ['Replace', () => void changeLibrary({action: 'saveDesign', id: design.id, name: design.name, appearance}, 'Design replaced.')],
+      ['Delete', () => void changeLibrary({action: 'deleteDesign', id: design.id}, 'Design deleted.')],
+    ]);
+    if (!library.designs.length) designs.textContent = 'No saved designs yet.';
+    for (const entry of history) row(revisions,
+      `${new Date(entry.updatedAtMs).toLocaleString()} · ${entry.source === 'previous' ? 'Previous settings' : entry.source === 'tv' ? 'TV' : 'Companion'}${entry.updatedAtMs === publishedRevision ? ' · Published' : ''}`,
+      [['Restore to draft', () => { appearance = normalize(structuredClone(entry.appearance)); render(); }]]);
+    if (!history.length) revisions.textContent = 'History starts with your next Save to TV or TV settings change.';
   }
   function updatePreview() {
     const colors = paletteColors[appearance.palette];
@@ -312,7 +384,7 @@ export function createAppearanceEditor(
       }
       preview.append(previewRow);
     }
-    updatePreview(); updateActions();
+    renderLibrary(); updatePreview(); updateActions();
   }
   function move(id: CardId, destination: number) {
     const from = appearance.cards.findIndex((card) => card.id === id);
@@ -322,10 +394,12 @@ export function createAppearanceEditor(
     appearance.layout = 'custom';
     render();
   }
-  async function request(method: 'GET' | 'PUT', body?: object) {
+  async function request(method: 'GET' | 'PUT', body?: object, endpoint = 'userAppearance') {
+    const current = generation;
     const token = await getToken();
+    if (current !== generation) throw new Error('Account changed.');
     if (!token) throw new Error('Sign in to edit your dashboard.');
-    const response = await fetch(`${apiUrl}/userAppearance`, {
+    const response = await fetch(`${apiUrl}/${endpoint}`, {
       method, headers: {'Content-Type': 'application/json', Authorization: `Bearer ${token}`},
       ...(body ? {body: JSON.stringify(body)} : {}),
     });
@@ -335,23 +409,88 @@ export function createAppearanceEditor(
   }
   async function load() {
     const current = ++generation;
+    clearTimeout(draftTimer); draftError = '';
     gridEditor.clear();
     photos.clear();
     loaded = false; busy = true; render(); message('Loading your dashboard settings…');
     try {
-      const result = await request('GET') as {appearance: Appearance | null; updatedAtMs: number};
+      const result = await request('GET', undefined, 'appearanceStudio') as {
+        appearance: Appearance | null; updatedAtMs: number; library: AppearanceLibrary; history: PublishedRevision[];
+      };
       if (current !== generation) return;
       appearance = normalize(result.appearance);
       revision = result.updatedAtMs || 0;
+      publishedRevision = revision;
       savedJson = JSON.stringify(appearance);
+      library = result.library; history = result.history;
+      draftJson = JSON.stringify(library.draft);
+      if (library.draft) {
+        appearance = normalize(structuredClone(library.draft.appearance));
+        // Retain the draft's base so a newer TV publish cannot be overwritten silently.
+        if (JSON.stringify(appearance) !== savedJson) revision = library.draft.baseUpdatedAtMs;
+      }
+      observedJson = JSON.stringify(appearance); undo = []; redo = [];
       loaded = true;
       void photos.load();
     } catch (error) {
       if (current !== generation) return;
       loaded = false; content.hidden = true;
       message(error instanceof Error ? error.message : 'Could not load settings.', 'error');
-    } finally { if (current === generation) { busy = false; render(); } }
+    } finally { if (current === generation) {
+      busy = false; render();
+      if (loaded && library.draft && revision !== publishedRevision) message('Restored a draft based on older TV settings. Discard changes to load the latest published settings before publishing.', 'error');
+      else if (loaded && library.draft && !changed()) message('Draft already matches your TV settings.');
+      else if (loaded && library.draft) message('Restored your saved draft. Discard changes to return to the latest TV settings.');
+    } }
   }
+  async function changeLibrary(body: object, success: string) {
+    if (busy || !loaded) return;
+    const current = generation;
+    busy = true; render();
+    try {
+      const result = await request('PUT', {...body, expectedUpdatedAtMs: library.updatedAtMs}, 'appearanceStudio');
+      if (current !== generation) return;
+      library = result.library; draftJson = JSON.stringify(library.draft); draftError = '';
+      busy = false; render(); message(success, 'success');
+    } catch (error) {
+      if (current !== generation) return;
+      draftError = error instanceof Error ? error.message : 'Could not save your draft.';
+      busy = false; render(); message(draftError, 'error');
+    }
+  }
+  async function saveDraft() {
+    if (!draftChanged()) return;
+    await changeLibrary({action: 'draft', draft: currentDraft()}, 'Draft saved. Use Save to TV when ready.');
+  }
+  designName.addEventListener('input', updateActions);
+  designSave.addEventListener('click', () => void changeLibrary({action: 'saveDesign', name: designName.value.trim(), appearance}, 'Design saved.'));
+  libraryRefresh.addEventListener('click', async () => {
+    if (busy) return;
+    const current = generation;
+    busy = true; render();
+    try {
+      const result = await request('GET', undefined, 'appearanceStudio');
+      if (current !== generation) return;
+      library = result.library; history = result.history; publishedRevision = result.updatedAtMs;
+      draftJson = JSON.stringify(library.draft);
+      draftError = draftChanged() ? 'Library refreshed. Save draft to keep your page edits, or Discard changes to use the published TV settings.' : '';
+      busy = false; render(); message('Designs and history refreshed. Your page edits are still here.');
+    } catch (error) {
+      if (current !== generation) return;
+      busy = false; render(); message(error instanceof Error ? error.message : 'Could not refresh designs.', 'error');
+    }
+  });
+  draftSave.addEventListener('click', () => void saveDraft());
+  for (const [button, from, to] of [[undoButton, () => undo, () => redo], [redoButton, () => redo, () => undo]] as const) {
+    button.addEventListener('click', () => {
+      const snapshot = from().pop(); if (!snapshot || busy) return;
+      to().push(JSON.stringify(appearance)); appearance = normalize(JSON.parse(snapshot));
+      observedJson = JSON.stringify(appearance); draftError = ''; render();
+    });
+  }
+  window.addEventListener('beforeunload', (event) => {
+    if (loaded && draftChanged()) { event.preventDefault(); event.returnValue = ''; }
+  });
   layout.addEventListener('change', () => {
     const selected = layout.value as Appearance['layout'];
     appearance.layout = selected;
@@ -385,16 +524,33 @@ export function createAppearanceEditor(
       if (current !== generation) return;
       savedJson = sentJson;
       revision = result.updatedAtMs;
+      publishedRevision = revision;
       busy = false; render();
       message('Saved. Your TV will pick up the change shortly.', 'success');
+      // Clearing the account draft is separate from publishing; a failed cleanup never undoes a publish.
+      await changeLibrary({action: 'draft', draft: null}, 'Saved to TV. Your draft is clear.');
+      if (current !== generation) return;
+      if (draftError) message('Saved to TV. The account draft could not be cleared; refresh designs and history to retry.', 'info');
     } catch (error) {
       if (current !== generation) return;
       busy = false; render(); message(error instanceof Error ? error.message : 'Could not save settings.', 'error');
     }
+    if (current !== generation || changed()) return;
+    try {
+      const latest = await request('GET', undefined, 'appearanceStudio');
+      if (current !== generation) return;
+      history = latest.history; publishedRevision = latest.updatedAtMs; renderLibrary();
+    } catch {
+      if (current === generation) message('Saved to TV. Use Refresh designs and history to reload the revision list.', 'success');
+    }
   });
-  reload.addEventListener('click', () => void load());
+  reload.addEventListener('click', async () => {
+    const current = generation;
+    await changeLibrary({action: 'draft', draft: null}, 'Draft discarded.');
+    if (current === generation && !draftError) await load();
+  });
   return {
     load,
-    clear() { generation++; gridEditor.clear(); surfaces.clear(); photos.clear(); preview.replaceChildren(); busy = false; loaded = false; revision = 0; appearance = normalize(null); savedJson = ''; content.hidden = true; message('Sign in to edit your dashboard.'); },
+    clear() { generation++; clearTimeout(draftTimer); gridEditor.clear(); surfaces.clear(); photos.clear(); preview.replaceChildren(); busy = false; loaded = false; revision = 0; appearance = normalize(null); savedJson = ''; library = emptyLibrary(); history = []; undo = []; redo = []; observedJson = ''; draftJson = 'null'; draftError = ''; $('#design-list').replaceChildren(); $('#revision-list').replaceChildren(); designName.value = ''; content.hidden = true; message('Sign in to edit your dashboard.'); },
   };
 }

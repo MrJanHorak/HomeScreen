@@ -1,11 +1,12 @@
 import {onRequest, Request} from "firebase-functions/v2/https";
 import {db} from "./utils/db";
-import {authenticatedUserId} from "./utils/requestAuth";
+import {authenticatedIdentity} from "./utils/requestAuth";
 import {logSafeError} from "./utils/safeLog";
 import type {Response} from "express";
 import {validGrid} from "./utils/dashboardLayout";
 import {validCardStyles} from "./utils/cardStyle";
 import {validPhotoZoom} from "./utils/photoFraming";
+import {MAX_REVISIONS, PublishedRevision} from "./utils/appearanceLibrary";
 
 const CARD_IDS = ["weather", "schedule", "activity", "media", "meal", "todo"];
 const LAYOUTS = ["balanced", "agenda", "wellness", "calm", "custom"];
@@ -64,12 +65,14 @@ export async function handleUserAppearance(req: Request, res: Response): Promise
     res.status(204).send("");
     return;
   }
-  const userId = await authenticatedUserId(req);
-  if (!userId) {
+  const identity = await authenticatedIdentity(req);
+  if (!identity) {
     res.status(401).json({error: "Valid Firebase ID token required"});
     return;
   }
-  const ref = db.collection("users").doc(userId).collection("appearance").doc("settings");
+  const collection = db.collection("users").doc(identity.userId).collection("appearance");
+  const ref = collection.doc("settings");
+  const historyRef = collection.doc("history");
   try {
     if (req.method === "GET") {
       const snapshot = await ref.get();
@@ -82,7 +85,7 @@ export async function handleUserAppearance(req: Request, res: Response): Promise
       return;
     }
     if (req.method === "PUT") {
-      if (JSON.stringify(req.body || {}).length > 10_000 || !validAppearance(req.body?.appearance)) {
+      if (Buffer.byteLength(JSON.stringify(req.body || {}), "utf8") > 10_000 || !validAppearance(req.body?.appearance)) {
         res.status(400).json({error: "Invalid appearance settings"});
         return;
       }
@@ -108,11 +111,24 @@ export async function handleUserAppearance(req: Request, res: Response): Promise
           appearance.layout = "custom";
         }
         if (!validAppearance(appearance)) return {invalid: true};
+        if (Buffer.byteLength(JSON.stringify(appearance), "utf8") > 10_000) return {invalid: true};
+        const history = await transaction.get(historyRef);
+        const revisions: PublishedRevision[] = history.data()?.revisions || [];
+        // Preserve the pre-history configuration on the first new publish.
+        if (!revisions.length && existing?.appearance && validAppearance(existing.appearance) &&
+          Buffer.byteLength(JSON.stringify(existing.appearance), "utf8") <= 10_000) {
+          revisions.push({appearance: existing.appearance, updatedAtMs: existing.updatedAtMs || 0,
+            changedBy: identity.userId, source: "previous"});
+        }
         const updatedAtMs = Math.max(Date.now(), (existing?.updatedAtMs || 0) + 1);
         transaction.set(ref, {
           appearance, updatedAtMs,
           seededFromWeb: existing?.seededFromWeb === true || req.body.source === "web",
         });
+        transaction.set(historyRef, {revisions: [
+          {appearance, updatedAtMs, changedBy: identity.userId, source: identity.owner ? "web" : "tv"},
+          ...revisions,
+        ].slice(0, MAX_REVISIONS)});
         return {updatedAtMs};
       });
       if (result.conflict) res.status(409).json({error: "Settings changed on another device. Your draft is still here; reload the saved settings before trying again."});

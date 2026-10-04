@@ -72,6 +72,19 @@ On Android TV, the Watch section reads unfinished titles published to the system
 
 Press a title to move it to **Up Next**. Hold a title to hide it; **Hidden titles** restores hidden series. Those choices are stored on this TV. This feature uses the local `modules/tv-watch-next` Expo module, so native changes need a new Android build.
 
+## Card content across sizes
+
+Card content now shares one fitter across automatic rows and the free canvas.
+It uses the measured inner size to fit readable content. Meals shows a few dated
+dinners in one column, and Media uses larger posters with spacious queue previews.
+Schedule, Tasks and Weather can use compact rows and extra columns. Medium Activity
+retains its ring, all four daily metrics and a weekly summary whenever space permits,
+before adding a chart. Wider/taller cards add entries and weekly/forecast information
+when supplied. All six cards and all
+50 supported footprints are checked at compact and full TV dimensions. See
+[card content breakpoints](CARD_CONTENT_BREAKPOINTS.md) for thresholds, content
+priorities and verification commands.
+
 ## Android TV artwork
 
 The app includes `assets/tv-banner.png` for the launcher tile, `assets/icon.png` for the square icon, and `assets/homescreen-splash.png` for the startup mark. Edit and run `scripts/generate-brand-assets.ps1`, or replace the PNGs. Keep the banner at 16:9 with readable text. After changing artwork, run `npx expo prebuild --platform android`, then build and reinstall the app; a Metro reload cannot update native assets.
