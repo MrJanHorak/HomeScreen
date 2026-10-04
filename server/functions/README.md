@@ -19,6 +19,7 @@ server/functions/src/
 ├── accountSecurity.ts           # Disconnect data, revoke sessions, delete account
 ├── mealSheetConfig.ts           # Connect or disconnect a meal Sheet
 ├── userAppearance.ts            # Read and save dashboard appearance
+├── linkedDevices.ts             # Owner TV list/name/revocation and TV self-disconnect
 ├── services/
 │   ├── googleAuth.ts            # OAuth2Client setup & token refresh handling
 │   ├── googleCalendar.ts        # Google Calendar API (events for today)
@@ -28,6 +29,8 @@ server/functions/src/
 │   └── weatherService.ts        # OpenWeatherMap API (current weather + forecast)
 ├── utils/
 │   ├── crypto.ts                # AES-256-GCM encryption/decryption for OAuth refresh tokens
+│   ├── dashboardLayout.ts       # Pure shared grid contract and geometry
+│   ├── cardStyle.ts             # Pure per-card surface validation and contrast helpers
 │   └── db.ts                    # Firestore database helpers (users, cache, device codes)
 └── types/
     └── index.ts                 # Strongly-typed TypeScript interfaces
@@ -108,12 +111,26 @@ Requires `Authorization: Bearer <Firebase_ID_Token>` and updates the verified us
 ### 6. Weather, appearance, meals, and photos
 
 - `GET /getLocationWeather?city=...` returns live weather for a saved city.
-- `GET` and `PUT /userAppearance` read and save the signed-in user's palette, background, layout, card, and ambient settings.
+- `GET` and `PUT /userAppearance` read and save the signed-in user's palette, background, layout, card, ambient settings, and optional version-1 free layout grid. `GET` returns `{appearance, updatedAtMs, seededFromWeb}`. `PUT` accepts `{appearance, source?, expectedUpdatedAtMs?}` and returns `{updatedAtMs}`; a stale revision returns `409` without writing. Saves use a Firestore transaction and a monotonically increasing revision. The server validates the 12-by-6 grid, visible-card membership, minimum 3-by-2 sizes, bounds, and overlaps. `grid: null` selects automatic rows. A legacy client omitting `grid` preserves an existing grid, and incompatible visibility edits return `400`. The full card list remains the fallback for older TVs. See the [layout contract](../pairing-web/DASHBOARD_LAYOUT.md).
 - `POST /beginGoogleMeals` starts incremental Google Sheets consent. `GET`, `PUT`, and `DELETE /mealSheetConfig` manage the selected Sheet. `PUT` accepts `{ "url": "https://docs.google.com/spreadsheets/d/..." }`, checks access and the Date/meal header, then stores the spreadsheet ID and title with an encrypted meal OAuth token. The dashboard response includes `meals.status` and dated `meals.items`.
 - `POST /beginGooglePhotos` starts Google Photos Picker consent. `GET` and `POST /googlePhotosPicker?action=...` provide connection status, create or poll a picker session, and return saved background or gallery photos. The picker accepts up to eight photos.
-- `POST /accountSecurity` accepts `disconnectPhotos`, `disconnectGoogle`, `signOutEverywhere`, or `deleteAccount` for the signed-in UID. Disconnect actions revoke all Firebase sessions so connected TVs clear old data. Account deletion removes nested Firestore user data and the Firebase Auth user.
+- `GET /accountSecurity` returns connection flags without exposing Google credentials. `POST /accountSecurity` accepts `disconnectPhotos`, `disconnectGoogle`, `signOutEverywhere`, or `deleteAccount`. Both require the owner's Google browser sign-in; TV custom-token sessions cannot manage the account. Disconnect actions revoke all Firebase sessions and managed TV records so connected TVs clear old data. Account deletion removes nested Firestore user data and the Firebase Auth user.
+- `GET /linkedDevices` lists the owner's managed TVs. `PUT` accepts `{id, name}` to rename one; `DELETE` accepts `{id}` to remove its access without revoking other sessions. These operations require Google browser sign-in. `GET /linkedDevices?current=1` returns the calling TV's name and canonical companion URL; `DELETE /linkedDevices?current=1` lets a TV remove its own session. IDs are server-issued custom-token claims, never client-supplied identity. Older TV tokens require re-pairing to gain individual device management.
 
 These endpoints require a Firebase ID token, except for the public device-code request/poll and the OAuth callback. See the [TV app guide](../../HomeScreen/README.md) for the corresponding settings controls and screenshots and the [pairing site guide](../pairing-web/README.md) for meal setup.
+
+Appearance also accepts optional `cardStyles`, a map keyed by the six existing
+card IDs: `{meal: {backgroundColor: "#EFE5CE", opacity: 0.9}}`. Colors must be
+six-digit hex values and opacity a finite number in `[0,1]`. Unknown card IDs or
+style fields are rejected. Missing entries use the palette surface. An older
+client omitting the map preserves stored styles; an explicit `{}` restores theme
+surfaces. The TV applies surface opacity separately from content and chooses
+themed foreground colors for the estimated composite. The companion reuses
+authenticated Photos `background`/`gallery` reads to display saved images; no
+additional scopes are needed for those reads. Optional `backgroundZoom` accepts
+finite values in `[1,1.5]`; legacy saves preserve an existing zoom. Both clients
+default missing zoom to `1.05` using the pure `utils/photoFraming.ts` contract.
+No public image URL is introduced.
 
 ---
 

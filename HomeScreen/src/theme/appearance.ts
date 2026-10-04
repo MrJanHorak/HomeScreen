@@ -1,5 +1,10 @@
 import type { PaletteChoice } from './tvTheme';
 import { normalizeHexColor } from './tvTheme';
+import { validGrid } from '../../../server/functions/src/utils/dashboardLayout';
+import type { DashboardGridLayout } from '../../../server/functions/src/utils/dashboardLayout';
+import { validCardStyles } from '../../../server/functions/src/utils/cardStyle';
+import type { CardStyles } from '../../../server/functions/src/utils/cardStyle';
+import { DEFAULT_PHOTO_ZOOM, normalizePhotoZoom } from '../../../server/functions/src/utils/photoFraming';
 
 export const CARD_IDS = ['weather', 'schedule', 'activity', 'media', 'meal', 'todo'] as const;
 export type CardId = typeof CARD_IDS[number];
@@ -18,7 +23,10 @@ export interface DashboardAppearance {
   customAccent: string;
   background: 'photo' | 'solid' | 'google-photo';
   backgroundColor: string;
+  backgroundZoom: number;
   cards: CardPreference[];
+  grid: DashboardGridLayout | null;
+  cardStyles: CardStyles;
   ambient: AmbientPreference;
 }
 
@@ -103,8 +111,10 @@ export const LAYOUTS: Record<Exclude<LayoutId, 'custom'>, { label: string; descr
 
 export const DEFAULT_APPEARANCE: DashboardAppearance = {
   layout: 'balanced', palette: 'night', customAccent: '#38BDF8',
-  background: 'photo', backgroundColor: '#0F172A',
+  background: 'photo', backgroundColor: '#0F172A', backgroundZoom: DEFAULT_PHOTO_ZOOM,
   cards: LAYOUTS.balanced.cards,
+  grid: null,
+  cardStyles: {},
   ambient: DEFAULT_AMBIENT,
 };
 
@@ -164,5 +174,7 @@ export function normalizeAppearance(value: unknown): DashboardAppearance {
     plasmaColors: plasmaColors.length === 3 && plasmaColors.every(Boolean)
       ? plasmaColors as [string, string, string] : PLASMA_PRESETS.Aurora,
   };
-  return { layout, palette, customAccent, background, backgroundColor, cards, ambient };
+  const grid = validGrid(raw.grid, cards) ? raw.grid : null;
+  const cardStyles = validCardStyles(raw.cardStyles) ? raw.cardStyles : {};
+  return { layout: grid ? 'custom' : layout, palette, customAccent, background, backgroundColor, backgroundZoom: normalizePhotoZoom(raw.backgroundZoom), cards, ambient, grid, cardStyles };
 }

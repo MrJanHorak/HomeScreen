@@ -60,7 +60,7 @@ function ThemedScreen() {
   return (
     <>
       <StatusBar hidden />
-      <TVScreenWrapper backgroundImage={selectedBackground}>
+      <TVScreenWrapper backgroundImage={selectedBackground} backgroundZoom={appearance.backgroundZoom}>
         <Root />
       </TVScreenWrapper>
       {Platform.OS === 'android' && (

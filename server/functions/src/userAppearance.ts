@@ -1,7 +1,11 @@
-import {onRequest} from "firebase-functions/v2/https";
+import {onRequest, Request} from "firebase-functions/v2/https";
 import {db} from "./utils/db";
 import {authenticatedUserId} from "./utils/requestAuth";
 import {logSafeError} from "./utils/safeLog";
+import type {Response} from "express";
+import {validGrid} from "./utils/dashboardLayout";
+import {validCardStyles} from "./utils/cardStyle";
+import {validPhotoZoom} from "./utils/photoFraming";
 
 const CARD_IDS = ["weather", "schedule", "activity", "media", "meal", "todo"];
 const LAYOUTS = ["balanced", "agenda", "wellness", "calm", "custom"];
@@ -9,9 +13,11 @@ const PALETTES = ["night", "forest", "plum", "contrast", "custom"];
 const BACKGROUNDS = ["photo", "solid", "google-photo"];
 const AMBIENT_INFO_IDS = ["weather", "calendar", "activity", "tasks", "meals"];
 
-function validAppearance(value: unknown): boolean {
+export function validAppearance(value: unknown): boolean {
   if (!value || typeof value !== "object") return false;
   const appearance = value as Record<string, unknown>;
+  if (appearance.cardStyles !== undefined && !validCardStyles(appearance.cardStyles)) return false;
+  if (appearance.backgroundZoom !== undefined && !validPhotoZoom(appearance.backgroundZoom)) return false;
   const ambient = appearance.ambient;
   if (ambient !== undefined) {
     if (!ambient || typeof ambient !== "object") return false;
@@ -47,10 +53,12 @@ function validAppearance(value: unknown): boolean {
       !["standard", "wide"].includes(card.size)) return false;
     seen.add(card.id);
   }
-  return appearance.cards.some((card) => card.visible);
+  return appearance.cards.some((card) => card.visible) &&
+    (appearance.grid === undefined || appearance.grid === null ||
+      (appearance.layout === "custom" && validGrid(appearance.grid, appearance.cards)));
 }
 
-export const userAppearanceHandler = onRequest({cors: true, maxInstances: 10}, async (req, res) => {
+export async function handleUserAppearance(req: Request, res: Response): Promise<void> {
   res.set("Cache-Control", "private, no-store");
   if (req.method === "OPTIONS") {
     res.status(204).send("");
@@ -78,14 +86,38 @@ export const userAppearanceHandler = onRequest({cors: true, maxInstances: 10}, a
         res.status(400).json({error: "Invalid appearance settings"});
         return;
       }
-      const updatedAtMs = Date.now();
-      const existing = await ref.get();
-      await ref.set({
-        appearance: req.body.appearance,
-        updatedAtMs,
-        seededFromWeb: existing.data()?.seededFromWeb === true || req.body.source === "web",
+      const expected = req.body.expectedUpdatedAtMs;
+      if (expected !== undefined && (!Number.isSafeInteger(expected) || expected < 0)) {
+        res.status(400).json({error: "Invalid appearance revision"});
+        return;
+      }
+      const result = await db.runTransaction(async (transaction) => {
+        const snapshot = await transaction.get(ref);
+        const existing = snapshot.data();
+        if (expected !== undefined && expected !== (existing?.updatedAtMs || 0)) return {conflict: true};
+        const appearance = {...req.body.appearance};
+        if (appearance.backgroundZoom === undefined && existing?.appearance?.backgroundZoom !== undefined) {
+          appearance.backgroundZoom = existing.appearance.backgroundZoom;
+        }
+        if (appearance.cardStyles === undefined && existing?.appearance?.cardStyles) {
+          appearance.cardStyles = existing.appearance.cardStyles;
+        }
+        // Older TVs must not erase a canvas when changing a color or ambient setting.
+        if (appearance.grid === undefined && existing?.appearance?.grid) {
+          appearance.grid = existing.appearance.grid;
+          appearance.layout = "custom";
+        }
+        if (!validAppearance(appearance)) return {invalid: true};
+        const updatedAtMs = Math.max(Date.now(), (existing?.updatedAtMs || 0) + 1);
+        transaction.set(ref, {
+          appearance, updatedAtMs,
+          seededFromWeb: existing?.seededFromWeb === true || req.body.source === "web",
+        });
+        return {updatedAtMs};
       });
-      res.status(200).json({updatedAtMs});
+      if (result.conflict) res.status(409).json({error: "Settings changed on another device. Your draft is still here; reload the saved settings before trying again."});
+      else if (result.invalid) res.status(400).json({error: "This TV cannot change the saved free layout. Use the companion site or update the TV app."});
+      else res.status(200).json({updatedAtMs: result.updatedAtMs});
       return;
     }
     res.status(405).json({error: "Method not allowed"});
@@ -93,4 +125,6 @@ export const userAppearanceHandler = onRequest({cors: true, maxInstances: 10}, a
     logSafeError("Could not sync appearance", error);
     res.status(500).json({error: "Could not sync appearance settings"});
   }
-});
+}
+
+export const userAppearanceHandler = onRequest({cors: true, maxInstances: 10}, handleUserAppearance);

@@ -18,6 +18,10 @@ The goal is to create a calm, customizable dashboard that provides useful househ
 
 The repository now contains a working Android TV client, Firebase Cloud Functions, and a browser-based pairing site. The TV dashboard has schedule, tasks, activity, weather, meals, and Continue Watching cards; remote-selectable detail views; favorite apps; appearance and card controls; and an idle ambient mode. Google Calendar, Tasks, Fit, OpenWeatherMap, and an optional Google Sheet provide live data after account pairing. Continue Watching uses Android TV's Play Next row when installed apps publish titles to it. Some media in the web preview is sample data.
 
+The companion site's `/dashboard` studio supports automatic rows and a free layout canvas: drag cards to position them, resize their corners, or enter their position and dimensions. Grid cards adapt their content to width and height: tall cards show timelines, task lists, meal details, forecasts, or activity information; small tiles keep the essentials. The companion shows saved TV photos and offers background color/opacity controls for each card. Settings → Companion site includes a permanent QR/address for returning to the editor. The linked account owner can also manage TV sessions and Google connections. All TVs on an account share one appearance configuration. These repository changes require deployment of Functions/Hosting and an updated TV app to become available to users.
+
+Dashboard photo zoom is adjustable from 100–150% in the companion (105% by default), with a centered crop that preserves the saved image. Medium Activity cards retain the original centered-percentage ring and colored metric icons; Media shows primary and queued artwork with provider-supplied progress; short Tasks cards use compact icon rows. The favorites viewport reaches the screen edges and scrolls to keep the focused app visible.
+
 ![Current HomeScreen dashboard](assets/Screenshot_20261001_174433.png)
 
 The screenshot shows one configured TV on October 1, 2026. See the [TV app README](HomeScreen/README.md#screenshots) for the ambient screen, detail views, and settings screenshots.
@@ -181,7 +185,7 @@ Current and possible future customization options include:
 - Customize media sections
 - Select ambient / screensaver modes
 
-The current controls are available on the TV. A broader companion web or mobile interface could make configuration easier later.
+The signed-in companion site's `/dashboard` editor offers layout presets, automatic card order/visibility/width, free positioning and resizing on a bounded grid, palettes, accent, background choice, and per-card surface color/opacity. Saved TV Photos can be viewed there, including a larger image view and background preview. Save to TV applies appearance changes; stale saves are rejected if another device changed the settings. Cards adapt the amount of information they show and still open their detail view. Saved design history, additional widgets, typography/spacing controls, and further design tokens remain future work. See the [companion roadmap](server/pairing-web/COMPANION_ROADMAP.md) and [layout contract](server/pairing-web/DASHBOARD_LAYOUT.md).
 
 ---
 
@@ -483,9 +487,9 @@ Possible future integrations include:
 - Cameras
 - Home Assistant
 
-### Companion App
+### Companion Site
 
-A web or mobile companion could make it easier to:
+The pairing site now includes a phone-friendly layout canvas, appearance controls, account connection status, and linked TV management. Future companion features could make it easier to:
 
 - Configure dashboards
 - Reorder widgets

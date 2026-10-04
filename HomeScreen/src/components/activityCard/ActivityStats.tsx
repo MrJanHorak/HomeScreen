@@ -9,6 +9,7 @@ interface ActivityStatsProps {
   distance: number;
   activeMinutes: number | null;
   estimatedRestingCalories?: number;
+  showSteps?: boolean;
 }
 
 export default function ActivityStats({
@@ -17,6 +18,7 @@ export default function ActivityStats({
   distance,
   activeMinutes,
   estimatedRestingCalories = 0,
+  showSteps = true,
 }: ActivityStatsProps) {
   const theme = useTheme();
   const compact = useCompactTVLayout();
@@ -27,7 +29,7 @@ export default function ActivityStats({
   return (
     <View style={[styles.statsGrid, compact && styles.compactGrid]}>
       {/* Steps */}
-      <View style={styles.statRow}>
+      {showSteps && <View style={styles.statRow}>
         <MaterialCommunityIcons name="walk" size={compact ? 15 : 20} color="#38BDF8" style={[styles.statIcon, compact && styles.compactIcon]} />
         <Text style={[styles.statValue, compact && styles.compactValue, { color: theme.colors.textPrimary }]}>
           {formattedSteps}
@@ -35,7 +37,7 @@ export default function ActivityStats({
         <Text style={[styles.statUnit, compact && styles.compactUnit, { color: theme.colors.textSecondary }]}>
           steps
         </Text>
-      </View>
+      </View>}
 
       {/* Distance */}
       <View style={styles.statRow}>
@@ -95,6 +97,7 @@ const styles = StyleSheet.create({
     marginRight: 4,
   },
   statUnit: {
+    flexShrink: 1,
     fontSize: 13,
     fontWeight: '500',
   },

@@ -248,7 +248,8 @@ export async function authorizeDeviceWithGoogleTokens(
   code: string,
   userId: string,
   customToken: string,
-  googleTokens: StoredUserTokens["google"]
+  googleTokens: StoredUserTokens["google"],
+  deviceId: string
 ): Promise<boolean> {
   const codeRef = db.collection("device_codes").doc(code);
   const userRef = db.collection("users").doc(userId);
@@ -271,6 +272,12 @@ export async function authorizeDeviceWithGoogleTokens(
       status: "authorized",
       userId,
       customToken: encryptToken(customToken),
+    });
+    transaction.create(userRef.collection("devices").doc(deviceId), {
+      name: "HomeScreen TV",
+      pairedAtMs: Date.now(),
+      lastSeenAtMs: 0,
+      revokedAtMs: 0,
     });
     transaction.delete(userRef.collection("cache").doc("dashboard"));
     return true;

@@ -2,7 +2,55 @@
 
 This small TypeScript/Vite app lives beside the Cloud Functions under `server/` because both deploy to the same Firebase project. Firebase Hosting serves it at `/pair`; the Hosting root redirects there for easier typing. The TV also displays a QR link containing its six-character code, which this page pre-fills for the user. The QR does **not** include the private TV poll secret.
 
-The [TV app README](../../HomeScreen/README.md) shows the current dashboard and settings screenshots. This site handles account pairing and the optional meal Sheet connection; personal photo selection starts from the TV's Background or Ambient settings.
+The [TV app README](../../HomeScreen/README.md) shows the current dashboard and settings screenshots. This site handles account pairing, dashboard appearance, and the optional meal Sheet connection; personal photo selection starts from the TV's Background or Ambient settings.
+
+## Design the dashboard from a phone
+
+Open `/dashboard` on the same Hosting domain and sign in with the Google account paired to the TV. Choose a layout and palette, set an accent or solid background color, and select an arrangement:
+
+- **Automatic rows:** drag cards to reorder them or use the arrow buttons. Show/hide cards and choose Normal/Wide widths.
+- **Free layout:** drag cards around a 12-by-6 canvas and drag a lower-right corner to resize. Select a card to enter its column, row, width, and height; keyboard arrow keys also move a focused card. Cards snap to whole cells, stay inside the dashboard, and cannot overlap. Minimum card size is 3 columns by 2 rows. Show/hide controls add cards into available space without moving existing cards. If the canvas is full, shrink or move a card first. Choosing a starting preset resets the arrangement.
+
+**Save to TV** updates the account's shared appearance settings; a running TV checks for changes about every 45 seconds. Unsaved edits stay in the current page until saved or discarded; there is no persistent draft or design history yet. If another device changed settings since the page loaded, the server rejects the save and leaves the draft visible. **Discard changes** reloads the current saved settings. All TVs paired to that account share these settings.
+
+The canvas previews positions and colors, with labels instead of personal widget data or exact TV content. The TV scales the grid to its card area and adapts content to width and height: tall cards show additional events/tasks/meals, while short cards keep the essentials. All cards keep their full detail views. The saved Google background appears in the preview when selected. The header and favorite apps are not movable. Older TV builds show the fallback row arrangement; deploy the updated backend/site and distribute the updated TV app for free placement and card styles. See the [layout contract](DASHBOARD_LAYOUT.md).
+
+### Personalize each card
+
+Open **Personalize each card** and disable **Use theme surface** for a card to
+choose its background color and opacity (0–100%). The preview changes immediately;
+**Save to TV** applies the settings to both row and grid layouts. Opacity affects
+the background surface, not the text or artwork. Themed foregrounds adjust to the
+estimated composite color; contrast over a translucent photograph depends on
+the image beneath it. Re-enable **Use theme surface** to restore the palette's
+surface for that card. Layout presets keep these styles. Typography, radius,
+spacing controls, and persistent design history remain future work.
+
+### View photos saved for the TV
+
+**Photo zoom** adjusts dashboard framing from 100–150%. The default 105% applies a
+slight centered crop; increase it to hide borders embedded in a selected photo,
+or use 100% for the normal screen-covering fit. The preview and TV use the same
+zoom. This does not edit the saved image or change ambient slideshow framing.
+
+The **Photos saved for your TV** panel shows the saved dashboard background and
+up to eight selected gallery images. Tap a thumbnail for a larger view; use
+**Refresh saved photos** after making a new TV selection. **Selected Google photo**
+uses the saved background and previews it behind the cards. The site reads only
+the saved account images using authenticated `googlePhotosPicker?action=background`
+and `action=gallery` calls; it does not browse the user's Google Photos library or
+request another OAuth scope. New photo selection still starts from the TV picker.
+Signing out clears the images from the page.
+
+The signed-in site also shows whether Calendar/Tasks/activity, Sheets, and Photos are connected and explains their access. Account controls can remove connections or revoke sessions. Household invitations and separate per-TV configurations are not implemented yet.
+
+## Return to the site and manage TVs
+
+On the TV, open **Settings → Companion site** and scan the permanent QR code, or type the displayed address on a phone or computer. The code opens `/dashboard` without a pairing code or credentials and still requires Google sign-in. Its canonical address comes from the backend's `PAIRING_URL`; the TV's configured public site is the fallback.
+
+Under **Linked TVs**, rename a TV (up to 40 characters) or remove its access. A running TV normally signs out on its next appearance refresh, within about a minute; an offline TV is blocked when it reconnects. Removing one managed TV preserves the owner's browser session and other TVs. TVs paired before this feature was deployed need to sign out and pair again once to appear in this list. **Sign out on every device** still covers older sessions.
+
+For the next layout, sharing, and widget milestones, see [companion roadmap](COMPANION_ROADMAP.md).
 
 ## Setup
 

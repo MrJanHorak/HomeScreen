@@ -330,7 +330,8 @@ export const googleOAuthCallbackHandler = onRequest(
 
       if (!record.deviceCode) throw new Error("Missing TV pairing code");
 
-      const customToken = await auth.createCustomToken(record.userId);
+      const deviceId = crypto.randomBytes(16).toString("hex");
+      const customToken = await auth.createCustomToken(record.userId, {dashboardDeviceId: deviceId});
       const paired = await authorizeDeviceWithGoogleTokens(
         record.deviceCode,
         record.userId,
@@ -340,7 +341,8 @@ export const googleOAuthCallbackHandler = onRequest(
           refreshToken: tokens.refresh_token,
           expiryDate: tokens.expiry_date ?? undefined,
           scope: tokens.scope,
-        }
+        },
+        deviceId
       );
       res.redirect(303, pairingRedirect(paired ? "connected" : "expired"));
     } catch (error) {

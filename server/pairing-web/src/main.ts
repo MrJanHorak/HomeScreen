@@ -8,6 +8,8 @@ import {
   signOut,
 } from 'firebase/auth';
 import './style.css';
+import { createAppearanceEditor } from './appearanceEditor';
+import {createDeviceManager} from './deviceManager';
 
 const config = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -27,10 +29,15 @@ if (!appElement) throw new Error('Missing app root');
 // while returning from Firebase's Google sign-in redirect.
 const initialUrl = new URL(window.location.href);
 let returningToMeals = false;
+let returningToDashboard = false;
 try {
   returningToMeals = window.sessionStorage.getItem('homescreen:meal-signin') === '1';
+  returningToDashboard = window.sessionStorage.getItem('homescreen:dashboard-signin') === '1';
 } catch { /* Storage can be unavailable in some private browsers. */ }
-if (initialUrl.pathname !== '/meals' &&
+if (initialUrl.pathname !== '/dashboard' && returningToDashboard && initialUrl.pathname === '/pair') {
+  initialUrl.pathname = '/dashboard';
+  window.history.replaceState({}, '', initialUrl);
+} else if (initialUrl.pathname !== '/meals' &&
     (initialUrl.searchParams.get('mode') === 'meals' ||
       (initialUrl.pathname === '/pair' && returningToMeals))) {
   initialUrl.pathname = '/meals';
@@ -40,9 +47,14 @@ if (initialUrl.pathname !== '/meals' &&
 if (window.location.pathname === '/meals') {
   try { window.sessionStorage.removeItem('homescreen:meal-signin'); } catch { /* Ignore. */ }
 }
+if (window.location.pathname === '/dashboard') {
+  try { window.sessionStorage.removeItem('homescreen:dashboard-signin'); } catch { /* Ignore. */ }
+}
 const params = new URLSearchParams(window.location.search);
 const mealMode = window.location.pathname === '/meals';
-document.title = mealMode ? 'Connect your meal Sheet · HomeScreen' : 'Pair your TV · HomeScreen';
+const dashboardMode = window.location.pathname === '/dashboard';
+document.title = dashboardMode ? 'Dashboard studio · HomeScreen' :
+  mealMode ? 'Connect your meal Sheet · HomeScreen' : 'Pair your TV · HomeScreen';
 
 appElement.innerHTML = `
   <main class="layout">
@@ -50,14 +62,16 @@ appElement.innerHTML = `
     <div class="ambient ambient-two" aria-hidden="true"></div>
     <section class="card" aria-labelledby="page-title">
       <div class="brand"><span class="brand-mark">H</span><span>HomeScreen</span></div>
-      <p class="eyebrow">${mealMode ? 'MEAL PLAN SETUP' : 'TV SETUP'} <span class="eyebrow-line"></span></p>
-      <h1 id="page-title">${mealMode ? 'Connect your dinner plan.' : 'Bring your dashboard to the big screen.'}</h1>
-      <p class="intro">${mealMode
+      <p class="eyebrow">${dashboardMode ? 'DASHBOARD STUDIO' : mealMode ? 'MEAL PLAN SETUP' : 'TV SETUP'} <span class="eyebrow-line"></span></p>
+      <h1 id="page-title">${dashboardMode ? 'Shape your home screen.' : mealMode ? 'Connect your dinner plan.' : 'Bring your dashboard to the big screen.'}</h1>
+      <p class="intro">${dashboardMode
+    ? 'Sign in with the account linked to your TV to arrange its cards, colors, and background from your phone.'
+    : mealMode
     ? 'Sign in with the Google account paired to your TV, then connect the Sheet you update with Gemini.'
     : 'Sign in on this device, then enter the code shown on your TV. Your Google password stays off the TV.'}</p>
-      ${mealMode ? '' : '<a class="mode-link" href="/meals">Setting up a meal Sheet? Open meal setup →</a>'}
+      <nav class="site-nav" aria-label="Companion site"><a href="/pair" ${!mealMode && !dashboardMode ? 'aria-current="page"' : ''}>Pair TV</a><a href="/dashboard" ${dashboardMode ? 'aria-current="page"' : ''}>Design dashboard</a><a href="/meals" ${mealMode ? 'aria-current="page"' : ''}>Meal Sheet</a></nav>
 
-      ${mealMode ? '' : `<div class="steps" aria-hidden="true">
+      ${mealMode || dashboardMode ? '' : `<div class="steps" aria-hidden="true">
         <span class="step active"><span class="step-number">1</span> Sign in</span>
         <span class="step-rule"></span>
         <span class="step"><span class="step-number">2</span> Enter code</span>
@@ -69,7 +83,7 @@ appElement.innerHTML = `
         <button id="signout-button" class="button button-text" type="button" hidden>Switch account</button>
       </div>
 
-      <form id="pair-form" novalidate ${mealMode ? 'hidden' : ''}>
+      <form id="pair-form" novalidate ${mealMode || dashboardMode ? 'hidden' : ''}>
         <label class="field-label" for="pair-code">CODE ON YOUR TV</label>
         <input id="pair-code" name="code" type="text" inputmode="text" autocomplete="one-time-code"
           autocapitalize="characters" spellcheck="false" maxlength="6" placeholder="A7K9W2" required />
@@ -80,8 +94,11 @@ appElement.innerHTML = `
       </form>
 
       <p id="status" class="status" role="status" aria-live="polite"></p>
+      <a id="connected-next" class="mode-link" href="/dashboard" hidden>Design your dashboard from this device →</a>
 
-      <section class="meal-panel" aria-labelledby="meal-title">
+      <section id="appearance-editor" class="appearance-editor" aria-label="Dashboard appearance" ${dashboardMode ? '' : 'hidden'}></section>
+
+      <section class="meal-panel" aria-labelledby="meal-title" ${dashboardMode ? 'hidden' : ''}>
         <p class="field-label">OPTIONAL · MEAL PLAN</p>
         <h2 id="meal-title">Show dinner on your TV</h2>
         <p class="meal-copy">Connect the Google Sheet you update with Gemini. Add new weeks to the same Sheet and the TV will refresh automatically. Google will grant read access to your spreadsheets; HomeScreen reads only the link you choose.</p>
@@ -99,7 +116,11 @@ appElement.innerHTML = `
       <section id="account-controls" class="account-controls" aria-labelledby="account-controls-title" hidden>
         <p class="field-label">ACCOUNT & PRIVACY</p>
         <h2 id="account-controls-title">Manage saved data</h2>
-        <p class="meal-copy">These controls affect every TV connected to this account.</p>
+        <p class="meal-copy">Every TV paired to this Google account shares its dashboard design and connections. Household invitations and public sharing are not enabled.</p>
+        <div id="connection-status" class="connection-status" aria-live="polite">Checking connected services…</div>
+        <p class="field-hint">Calendar and activity use read access. Tasks access also lets the TV complete tasks. Sheets access is read-only; Google Photos uses only photos you select.</p>
+        <a class="mode-link" href="https://myaccount.google.com/connections" target="_blank" rel="noopener noreferrer">Review Google permissions ↗</a>
+        <section id="device-manager" class="device-manager" aria-label="Linked TVs"></section>
         <div class="account-actions">
           <button id="disconnect-photos-button" class="button button-text" type="button">Remove saved photos and sign out TVs</button>
           <button id="disconnect-google-button" class="button button-text" type="button">Disconnect Calendar, Tasks and activity; sign out TVs</button>
@@ -108,7 +129,9 @@ appElement.innerHTML = `
         </div>
         <p id="account-status" class="status" role="status" aria-live="polite"></p>
       </section>
-      <div class="privacy-note"><span class="privacy-icon" aria-hidden="true">✦</span><span>${mealMode
+      <div class="privacy-note"><span class="privacy-icon" aria-hidden="true">✦</span><span>${dashboardMode
+    ? 'Dashboard design needs no additional Google permission. Only the linked account owner can manage these settings.'
+    : mealMode
     ? 'Google will ask you to approve Sheets access when you connect a meal plan. You can remove the connection here at any time.'
     : 'Google will ask you to approve Calendar, Tasks, and activity access. You can revoke access in your Google account at any time.'}</span></div>
     </section>
@@ -123,6 +146,7 @@ const connectButton = document.querySelector<HTMLButtonElement>('#connect-button
 const codeInput = document.querySelector<HTMLInputElement>('#pair-code')!;
 const pairForm = document.querySelector<HTMLFormElement>('#pair-form')!;
 const status = document.querySelector<HTMLElement>('#status')!;
+const connectedNext = document.querySelector<HTMLAnchorElement>('#connected-next')!;
 const mealStatus = document.querySelector<HTMLElement>('#meal-status')!;
 const mealAccessButton = document.querySelector<HTMLButtonElement>('#meal-access-button')!;
 const mealForm = document.querySelector<HTMLFormElement>('#meal-form')!;
@@ -132,6 +156,7 @@ const mealCurrent = document.querySelector<HTMLElement>('#meal-current')!;
 const mealRemoveButton = document.querySelector<HTMLButtonElement>('#meal-remove-button')!;
 const accountControls = document.querySelector<HTMLElement>('#account-controls')!;
 const accountStatus = document.querySelector<HTMLElement>('#account-status')!;
+const connectionStatus = document.querySelector<HTMLElement>('#connection-status')!;
 const disconnectPhotosButton = document.querySelector<HTMLButtonElement>('#disconnect-photos-button')!;
 const disconnectGoogleButton = document.querySelector<HTMLButtonElement>('#disconnect-google-button')!;
 const revokeButton = document.querySelector<HTMLButtonElement>('#revoke-button')!;
@@ -176,6 +201,14 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
 } else {
   const auth = getAuth(initializeApp(config));
   const provider = new GoogleAuthProvider();
+  const editor = createAppearanceEditor(
+    document.querySelector<HTMLElement>('#appearance-editor')!, apiUrl,
+    async () => auth.currentUser ? auth.currentUser.getIdToken() : null,
+  );
+  const devices = createDeviceManager(
+    document.querySelector<HTMLElement>('#device-manager')!, apiUrl,
+    async () => auth.currentUser ? auth.currentUser.getIdToken() : null,
+  );
   let busy = false;
   let mealsBusy = false;
   let mealsAuthorized = false;
@@ -201,7 +234,8 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
     mealSaveButton.disabled = mealsBusy;
     mealCurrent.hidden = !signedIn || !currentSheet;
     mealCurrent.textContent = currentSheet ? `Connected: ${currentSheet}` : '';
-    mealRemoveButton.hidden = !signedIn || !currentSheet;
+    mealRemoveButton.hidden = !signedIn || !mealsAuthorized;
+    mealRemoveButton.textContent = currentSheet ? 'Disconnect meal Sheet' : 'Remove Google Sheets access';
     mealRemoveButton.disabled = mealsBusy;
     accountControls.hidden = !signedIn;
     for (const button of [disconnectPhotosButton, disconnectGoogleButton, revokeButton, deleteAccountButton]) {
@@ -247,11 +281,46 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
     }
   }
 
+  async function loadConnections() {
+    if (!auth.currentUser) return;
+    try {
+      const result = await mealRequest('accountSecurity', 'GET') as {
+        connections: {dashboardGoogle: boolean; mealSheet: boolean; photos: boolean};
+      };
+      const entries = [
+        ['Calendar, Tasks & activity', result.connections.dashboardGoogle],
+        ['Google Sheets', result.connections.mealSheet],
+        ['Google Photos', result.connections.photos],
+      ] as const;
+      connectionStatus.replaceChildren(...entries.map(([name, connected]) => {
+        const item = document.createElement('div');
+        item.className = 'connection-item';
+        const title = document.createElement('span');
+        title.textContent = name;
+        const state = document.createElement('strong');
+        state.textContent = connected ? 'Connected' : 'Not connected';
+        state.dataset.connected = String(connected);
+        item.append(title, state);
+        return item;
+      }));
+    } catch {
+      connectionStatus.textContent = 'Connection status is temporarily unavailable.';
+    }
+  }
+
   onAuthStateChanged(auth, () => {
     updateControls();
     void loadMealConfig();
+    if (auth.currentUser) void loadConnections();
+    else connectionStatus.textContent = 'Sign in to see connected services.';
+    if (auth.currentUser) void devices.load();
+    else devices.clear();
+    if (dashboardMode) {
+      if (auth.currentUser) void editor.load();
+      else editor.clear();
+    }
     if (auth.currentUser && !params.has('result')) {
-      showStatus(mealMode ? 'Signed in. Connect your meal Sheet below.' :
+      showStatus(dashboardMode ? 'Signed in. Edit your dashboard below.' : mealMode ? 'Signed in. Connect your meal Sheet below.' :
         'Signed in. Enter the code shown on your TV.');
     }
   }, (error) => {
@@ -261,7 +330,7 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
 
   void getRedirectResult(auth).then((credential) => {
     if (credential && !params.has('result')) {
-      showStatus(mealMode ? 'Signed in. Connect your meal Sheet below.' :
+      showStatus(dashboardMode ? 'Signed in. Edit your dashboard below.' : mealMode ? 'Signed in. Connect your meal Sheet below.' :
         'Signed in. Enter the code shown on your TV.');
     }
   }).catch((error: unknown) => {
@@ -276,6 +345,8 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
       try {
         if (mealMode) window.sessionStorage.setItem('homescreen:meal-signin', '1');
         else window.sessionStorage.removeItem('homescreen:meal-signin');
+        if (dashboardMode) window.sessionStorage.setItem('homescreen:dashboard-signin', '1');
+        else window.sessionStorage.removeItem('homescreen:dashboard-signin');
       } catch { /* The /meals path still identifies the flow. */ }
       await signInWithRedirect(auth, provider);
     } catch (error) {
@@ -356,6 +427,7 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
       };
       currentSheet = result.spreadsheetTitle;
       mealUrl.value = '';
+      void loadConnections();
       showMealStatus(`Connected ${result.mealCount} dated dinners. Your TV will refresh automatically.`, 'success');
     } catch (error) {
       showMealStatus(error instanceof Error ? error.message : 'Could not connect this Sheet.', 'error');
@@ -372,6 +444,7 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
       await mealRequest('mealSheetConfig', 'DELETE');
       currentSheet = null;
       mealsAuthorized = false;
+      void loadConnections();
       showMealStatus('Meal Sheet disconnected and its stored access removed.', 'success');
     } catch (error) {
       showMealStatus(error instanceof Error ? error.message : 'Could not remove the Sheet.', 'error');
@@ -437,7 +510,10 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
   });
 
   const result = params.get('result');
-  if (result === 'connected') showStatus('TV connected. You can return to your TV now.', 'success');
+  if (result === 'connected') {
+    showStatus('TV connected. You can return to your TV now.', 'success');
+    connectedNext.hidden = false;
+  }
   if (result === 'denied') showStatus('Google access was not approved. You can try again.', 'error');
   if (result === 'expired') showStatus('The TV code expired. Request a new one on your TV.', 'error');
   if (result === 'error') showStatus('Pairing could not finish. Please request a new TV code.', 'error');

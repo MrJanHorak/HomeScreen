@@ -25,6 +25,33 @@ async function handleRevokedSession(response: Response): Promise<void> {
   await clearLocalUserData(uid).catch(() => undefined);
 }
 
+export async function getDeviceConnectionInfo(): Promise<{
+  device: {name: string; pairedAtMs: number} | null;
+  companionUrl: string | null;
+}> {
+  const response = await fetch(`${DEFAULT_API_URL}/linkedDevices?current=1`, {headers: await authHeaders()});
+  await handleRevokedSession(response);
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error || 'Could not load this TV');
+  return body;
+}
+
+export async function getCurrentDevice(): Promise<{name: string; pairedAtMs: number} | null> {
+  return (await getDeviceConnectionInfo()).device;
+}
+
+export async function disconnectCurrentDevice(): Promise<void> {
+  const headers = await authHeaders();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5000);
+  try {
+    const response = await fetch(`${DEFAULT_API_URL}/linkedDevices?current=1`, {
+      method: 'DELETE', headers, signal: controller.signal,
+    });
+    if (!response.ok) throw new Error('Could not remove this TV session');
+  } finally { clearTimeout(timer); }
+}
+
 async function photosRequest<T>(action: string, method: 'GET' | 'POST' = 'GET'): Promise<T> {
   const response = await fetch(`${DEFAULT_API_URL}/googlePhotosPicker?action=${action}`, {
     method,

@@ -28,6 +28,7 @@
     ],
     "rewrites": [
       { "source": "/pair", "destination": "/index.html" },
+      { "source": "/dashboard", "destination": "/index.html" },
       { "source": "/meals", "destination": "/index.html" }
     ],
     "predeploy": ["npm --prefix pairing-web run build"]

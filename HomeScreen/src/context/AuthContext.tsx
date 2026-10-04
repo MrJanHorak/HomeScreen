@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useRef, useSt
 import { onAuthStateChanged, signInWithCustomToken, signOut as fbSignOut, User } from 'firebase/auth';
 import type { DevicePairingResponse } from '../../../shared/src/types';
 import { auth } from '../services/firebase';
-import { requestDevicePairing, pollDevicePairing } from '../services/api';
+import { requestDevicePairing, pollDevicePairing, disconnectCurrentDevice } from '../services/api';
 import {clearLocalUserData} from '../services/localUserData';
 
 const POLL_INTERVAL_MS = 3000;
@@ -77,6 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     const uid = auth.currentUser?.uid;
+    if (uid) await disconnectCurrentDevice().catch(() => undefined);
     await fbSignOut(auth);
     if (uid) await clearLocalUserData(uid).catch(() => undefined);
   }, []);

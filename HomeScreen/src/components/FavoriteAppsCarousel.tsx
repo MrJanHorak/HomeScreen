@@ -12,10 +12,14 @@ export default function FavoriteAppsCarousel() {
   const scrollRef = useRef<ScrollView>(null);
   const [focused, setFocused] = useState<string | null>(null);
   const [failedApp, setFailedApp] = useState<string | null>(null);
+  const viewportWidth = useRef(0);
+  const contentWidth = useRef(0);
+  const scrollOffset = useRef(0);
 
   if (!visible) return null;
 
   const tileWidth = compact ? 108 : 138;
+  const edgeInset = (compact ? 30 : theme.spacing.safeHorizontal) + 4;
   const emptyMessage = status === 'unavailable'
     ? 'Rebuild the Android app to browse installed apps.'
     : status === 'error'
@@ -41,7 +45,11 @@ export default function FavoriteAppsCarousel() {
         <Text style={[styles.empty, { color: theme.colors.textSecondary }]}>{emptyMessage}</Text>
       ) : (
         <ScrollView ref={scrollRef} horizontal showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tiles}>
+          style={{marginHorizontal: -edgeInset}}
+          onLayout={({nativeEvent: {layout}}) => { viewportWidth.current = layout.width; }}
+          onContentSizeChange={(width) => { contentWidth.current = width; }}
+          onScroll={({nativeEvent}) => { scrollOffset.current = nativeEvent.contentOffset.x; }} scrollEventThrottle={16}
+          contentContainerStyle={[styles.tiles, {paddingHorizontal: edgeInset}]}>
           {favoriteApps.map((app, index) => (
             <Pressable
               key={app.packageName}
@@ -49,7 +57,13 @@ export default function FavoriteAppsCarousel() {
               accessibilityLabel={`Open ${app.label}`}
               onFocus={() => {
                 setFocused(app.packageName);
-                scrollRef.current?.scrollTo({ x: Math.max(0, index * (tileWidth + 10) - tileWidth), animated: true });
+                const left = edgeInset + index * (tileWidth + 10) - 6;
+                const right = left + tileWidth + 12;
+                let target = scrollOffset.current;
+                if (left < target) target = left;
+                else if (right > target + viewportWidth.current) target = right - viewportWidth.current;
+                target = Math.max(0, Math.min(target, contentWidth.current - viewportWidth.current));
+                scrollRef.current?.scrollTo({ x: target, animated: true });
               }}
               onBlur={() => setFocused(null)}
               onPress={async () => {

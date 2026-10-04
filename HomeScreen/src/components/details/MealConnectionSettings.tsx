@@ -4,11 +4,9 @@ import {MaterialCommunityIcons} from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import {useDashboard} from '../../context/DashboardContext';
 import {useTheme} from '../../theme/ThemeContext';
+import {companionSiteUrl} from '../../services/companionSite';
 
-const projectId = process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID;
-const pairingUrl = process.env.EXPO_PUBLIC_PAIRING_URL ||
-  (projectId ? `https://${projectId}.firebaseapp.com/pair` : null);
-const mealSetupUrl = pairingUrl ? new URL('/meals', pairingUrl).toString() : null;
+const mealSetupUrl = companionSiteUrl('/meals');
 
 export default function MealConnectionSettings() {
   const theme = useTheme();

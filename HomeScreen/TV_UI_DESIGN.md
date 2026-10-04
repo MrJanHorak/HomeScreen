@@ -1,6 +1,17 @@
 # TV Dashboard UI Design Specification
 
+## Implementation status (October 3, 2026)
+
+This document is the broader design specification; proposals below are not a list of shipped features. The implemented dashboard has six cards, remote detail panels, favorite apps, appearance presets, and ambient mode. The companion site supports a validated 12-by-6 free layout canvas, card moving/resizing, palettes, per-card background color/opacity, saved-TV-photo viewing, Google connection controls, and owner-managed TV sessions. Grid cards adapt their content to width and height, adding data rows or visuals as space permits, and open their existing details. A permanent QR in Settings → Companion site returns to the editor. All TVs on the linked account share one appearance configuration. Polls, new daily-content widgets, household profiles/roles, typography/spacing controls, and saved design history remain future work. Consult [the TV README](README.md), [companion guide](../server/pairing-web/README.md), and [roadmap](../server/pairing-web/COMPANION_ROADMAP.md) for the current code and next milestones.
+
 ## Project Vision
+
+Current adaptive cards measure summary and row heights. Activity retains its
+centered-percentage ring and colored metric icons; Media shows primary/next
+artwork and available playback progress; short Tasks uses compact icon rows.
+The companion also provides dashboard photo zoom from 100–150% (default 105%)
+to crop embedded image borders. The favorites viewport extends to screen edges
+and scrolls to keep the selected tile visible.
 
 This application is a **personal, ad-free household information and entertainment dashboard designed specifically for a 10-foot TV experience**.
 

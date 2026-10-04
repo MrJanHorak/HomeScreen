@@ -75,7 +75,7 @@ export default function TVProgressRing({
             height: size,
             borderRadius: size / 2,
             borderWidth: strokeWidth,
-            borderColor: 'rgba(255, 255, 255, 0.12)',
+            borderColor: theme.colors.glassChip,
           },
         ]}
       />
@@ -175,7 +175,7 @@ export default function TVProgressRing({
             width: innerSize,
             height: innerSize,
             borderRadius: innerSize / 2,
-            backgroundColor: 'rgba(15, 23, 42, 0.45)',
+            backgroundColor: theme.colors.glassSubtle,
           },
         ]}
       >
@@ -183,7 +183,7 @@ export default function TVProgressRing({
           text={`${percentage}%`}
           typography="body"
           color="textPrimary"
-          style={compact ? { fontSize: 17, lineHeight: 22 } : undefined}
+          style={{ fontSize: Math.min(compact ? 17 : 24, innerSize * 0.38), lineHeight: Math.min(compact ? 22 : 32, innerSize * 0.5) }}
         />
       </View>
     </View>

@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, Text, ScrollView, Pressable, TextInput, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
@@ -9,9 +9,12 @@ import AppearanceSettings, { AppearanceSection } from './AppearanceSettings';
 import MealConnectionSettings from './MealConnectionSettings';
 import FavoriteAppsSettings from './FavoriteAppsSettings';
 import AmbientSettings from './AmbientSettings';
+import CompanionSiteSettings from './CompanionSiteSettings';
+import {getCurrentDevice} from '../../services/api';
 
-type SettingsSection = AppearanceSection | 'weather' | 'meals' | 'apps' | 'device' | 'ambient';
+type SettingsSection = AppearanceSection | 'weather' | 'meals' | 'apps' | 'device' | 'ambient' | 'companion';
 const SECTIONS: { id: SettingsSection; label: string; icon: keyof typeof MaterialCommunityIcons.glyphMap }[] = [
+  { id: 'companion', label: 'Companion site', icon: 'qrcode-scan' },
   { id: 'colors', label: 'Colors', icon: 'palette-outline' },
   { id: 'background', label: 'Background', icon: 'image-outline' },
   { id: 'ambient', label: 'Ambient', icon: 'weather-night' },
@@ -43,8 +46,17 @@ export default function SettingsDetailView({ onPreviewAmbient = () => {} }: { on
   const [showAddForm, setShowAddForm] = useState(false);
   const [section, setSection] = useState<SettingsSection>('colors');
   const [focusedControl, setFocusedControl] = useState<string | null>(null);
+  const [deviceName, setDeviceName] = useState('HomeScreen TV');
   const scrollRef = useRef<ScrollView>(null);
   const cityInputRef = useRef<TextInput>(null);
+  useEffect(() => {
+    if (section !== 'device') return;
+    let cancelled = false;
+    void getCurrentDevice().then((device) => {
+      if (!cancelled && device) setDeviceName(device.name);
+    }).catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [section]);
 
   const changeSection = (next: SettingsSection) => {
     setSection(next);
@@ -100,6 +112,7 @@ export default function SettingsDetailView({ onPreviewAmbient = () => {} }: { on
       {(section === 'colors' || section === 'background' || section === 'layout' || section === 'cards') &&
         <AppearanceSettings section={section} />}
       {section === 'ambient' && <AmbientSettings onPreview={onPreviewAmbient} />}
+      {section === 'companion' && <CompanionSiteSettings />}
       {section === 'meals' && <MealConnectionSettings />}
       {section === 'apps' && <FavoriteAppsSettings />}
       {section === 'weather' && <>
@@ -337,7 +350,7 @@ export default function SettingsDetailView({ onPreviewAmbient = () => {} }: { on
             <MaterialCommunityIcons name="television" size={20} color={theme.colors.focusRing} />
             <Text style={[styles.infoLabel, { color: theme.colors.textSecondary }]}>Device Name</Text>
           </View>
-          <Text style={[styles.infoValue, { color: theme.colors.textPrimary }]}>Living Room Smart TV</Text>
+          <Text style={[styles.infoValue, { color: theme.colors.textPrimary }]}>{deviceName}</Text>
         </View>
 
         <View style={styles.infoRow}>

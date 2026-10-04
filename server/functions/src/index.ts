@@ -20,6 +20,7 @@ import {googlePhotosPickerHandler} from "./googlePhotosPicker";
 import {userAppearanceHandler} from "./userAppearance";
 import {mealSheetConfigHandler} from "./mealSheetConfig";
 import {accountSecurityHandler} from "./accountSecurity";
+import {linkedDevicesHandler} from "./linkedDevices";
 
 
 // import {onRequest} from "firebase-functions/https";
@@ -58,3 +59,4 @@ export const userAppearance = userAppearanceHandler;
 export const mealSheetConfig = mealSheetConfigHandler;
 export const googleOAuthCallback = googleOAuthCallbackHandler;
 export const accountSecurity = accountSecurityHandler;
+export const linkedDevices = linkedDevicesHandler;

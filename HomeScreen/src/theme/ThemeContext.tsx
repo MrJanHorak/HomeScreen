@@ -155,7 +155,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     photoDataUrl,
     ambientPhotos,
     selectLayout: (layout) => setAppearance((current) => ({
-      ...current, layout, cards: LAYOUTS[layout].cards.map((card) => ({ ...card })),
+      ...current, layout, grid: null, cards: LAYOUTS[layout].cards.map((card) => ({ ...card })),
     })),
     selectPalette: (palette) => setAppearance((current) => ({ ...current, palette })),
     setCustomAccent: (customAccent) => setAppearance((current) => ({ ...current, customAccent, palette: 'custom' })),
@@ -179,18 +179,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const next = index + direction;
       if (index < 0 || next < 0 || next >= cards.length) return current;
       [cards[index], cards[next]] = [cards[next], cards[index]];
-      return { ...current, layout: 'custom', cards };
+      return { ...current, layout: 'custom', grid: null, cards };
     }),
     toggleCard: (id) => setAppearance((current) => {
       const card = current.cards.find((item) => item.id === id);
       if (!card || (card.visible && current.cards.filter((item) => item.visible).length === 1)) return current;
       return {
-        ...current, layout: 'custom',
+        ...current, layout: 'custom', grid: null,
         cards: current.cards.map((item) => item.id === id ? { ...item, visible: !item.visible } : item),
       };
     }),
     toggleCardSize: (id) => setAppearance((current) => ({
-      ...current, layout: 'custom',
+      ...current, layout: 'custom', grid: null,
       cards: current.cards.map((item) => item.id === id
         ? { ...item, size: item.size === 'wide' ? 'standard' : 'wide' } : item),
     })),
@@ -208,6 +208,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function useTheme(): TVThemeType { return useContext(ThemeContext); }
+
+/** Scope custom card colors to that card's content, leaving the page theme intact. */
+export function CardThemeProvider({ theme, children }: { theme: TVThemeType; children: React.ReactNode }) {
+  return <ThemeContext.Provider value={theme}>{children}</ThemeContext.Provider>;
+}
 
 export function useAppearance(): AppearanceContextValue {
   const context = useContext(AppearanceContext);

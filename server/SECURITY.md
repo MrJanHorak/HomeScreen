@@ -73,7 +73,46 @@ deleted. Users can also revoke HomeScreen in their Google Account's third-party
 connections. A local TV sign-out removes that TV's local preferences but does not
 disconnect all other devices.
 
+## Individual TV sessions
+
+New pairing callbacks issue a random `dashboardDeviceId` custom-token claim and
+create `users/{uid}/devices/{id}` in the same transaction that releases the paired
+token. Every authenticated TV API request checks that this record exists and has
+not been revoked, in addition to Firebase's account-level revocation check. The
+device's last connection is updated at most every five minutes. Removing one TV
+sets its revocation timestamp; the record stays in Firestore so that a valid but
+revoked Firebase token cannot regain API access. Revoked records and all user
+subcollections are removed on account deletion.
+
+Only Google browser sessions may list, rename, or remove other TVs and use the
+account security controls. A TV may read its own name and remove its own session.
+All devices remain inside the owner's UID boundary. TVs paired before the device
+claim was introduced are still supported but require one sign-out and re-pair to
+join the managed list. Sign-out-everywhere continues to revoke those legacy
+sessions. Test per-device denial and new pairing on the Firebase emulators before
+deploying the backend; the unit suite also covers owner isolation and revocation.
+
 ## Operational follow-up
+
+Appearance documents accept a versioned 12-by-6 grid containing only the six
+supported card IDs, with exactly one item per visible card. Bounds, integer
+coordinates, minimum sizes, and overlaps are checked server-side. No arbitrary
+CSS, HTML, or scripts are interpreted. The companion supplies `expectedUpdatedAtMs`
+and a Firestore transaction rejects stale saves with `409`. This revision protects
+against lost edits; the verified UID and device checks remain the authorization
+boundary. Appearance is account-wide, with no household roles or public edit links.
+
+Per-card surfaces are limited to the six supported IDs, six-digit hex colors,
+and finite opacity in `[0,1]`; unknown style fields are rejected. Legacy saves
+omitting `cardStyles` preserve existing styles. The companion photo viewer reads
+only the account's stored background/gallery through authenticated endpoints,
+limits image MIME types to JPEG/PNG/WebP, and clears thumbnails and enlarged images
+on sign-out. It exposes no public photo links and requests no additional Google
+Photos permission. Translucent surfaces use an estimated backdrop for text
+contrast; actual contrast can vary with the selected photograph.
+Dashboard photo framing accepts only a finite `backgroundZoom` in `[1,1.5]`;
+older clients preserve the saved value when omitting it. Zoom changes rendering
+without editing stored image data.
 
 The public code endpoint has a per-IP best-effort quota, and signed-in weather
 and forced-sync endpoints have per-user quotas. For public deployment, add an

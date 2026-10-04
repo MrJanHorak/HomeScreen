@@ -7,7 +7,9 @@ import {
   TextStyle,
   Platform,
 } from 'react-native';
-import { useTheme } from '../../theme/ThemeContext';
+import { CardThemeProvider, useAppearance, useTheme } from '../../theme/ThemeContext';
+import type { CardId } from '../../theme/appearance';
+import { cardInk, cardSurface } from '../../../../server/functions/src/utils/cardStyle';
 import useCompactTVLayout from '../../hooks/useCompactTVLayout';
 
 interface TVCardProps {
@@ -15,6 +17,8 @@ interface TVCardProps {
   onPress?: () => void;
   children?: ReactNode;
   style?: ViewStyle;
+  accessibilityLabel?: string;
+  cardId?: CardId;
 }
 
 export default function TVCard({
@@ -22,16 +26,27 @@ export default function TVCard({
   onPress,
   children,
   style,
+  accessibilityLabel,
+  cardId,
 }: TVCardProps) {
   const theme = useTheme();
+  const { appearance } = useAppearance();
   const compact = useCompactTVLayout();
   const [isFocused, setIsFocused] = useState(false);
+  const custom = cardId ? appearance.cardStyles[cardId] : undefined;
+  const ink = custom ? cardInk(custom, theme.colors.background, theme.colors.focusRing) : null;
+  const cardTheme = ink ? { ...theme, colors: { ...theme.colors,
+    textPrimary: ink.primary, textFocused: ink.primary, textSecondary: ink.secondary,
+    focusRing: ink.accent, accent: ink.accent,
+    glassBorder: ink.border, glassBorderTop: ink.border, glassSubtle: ink.subtle,
+    glassHighlight: ink.subtle, glassChip: ink.subtle,
+  } } : theme;
 
   const containerStyle: ViewStyle = {
-    backgroundColor: Platform.OS === 'web'
+    backgroundColor: custom ? cardSurface(custom, isFocused) : Platform.OS === 'web'
       ? (isFocused ? theme.colors.glassSurfaceFocused : theme.colors.glassSurface)
       : (isFocused ? theme.colors.surfaceFocused : theme.colors.modalSurface),
-    borderColor: isFocused ? theme.colors.focusRing : theme.colors.glassBorder,
+    borderColor: isFocused ? theme.colors.focusRing : cardTheme.colors.glassBorder,
     transform: [{ scale: isFocused ? theme.tvAnimation.focusScale : 1.0 }],
     shadowColor: isFocused ? theme.colors.focusRing : '#000',
     shadowOpacity: isFocused ? 0.5 : 0.35,
@@ -54,17 +69,19 @@ export default function TVCard({
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       onFocus={() => setIsFocused(true)}
       onBlur={() => setIsFocused(false)}
       onPress={onPress}
       style={[styles.card, compact && styles.compactCard, containerStyle, style]}
     >
       {title && !children ? (
-        <Text style={[styles.title, { color: isFocused ? theme.colors.textFocused : theme.colors.textPrimary }]}>
+        <Text style={[styles.title, { color: isFocused ? cardTheme.colors.textFocused : cardTheme.colors.textPrimary }]}>
           {title}
         </Text>
       ) : (
-        children
+        <CardThemeProvider theme={cardTheme}>{children}</CardThemeProvider>
       )}
     </Pressable>
   );

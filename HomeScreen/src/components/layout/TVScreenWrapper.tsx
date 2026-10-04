@@ -1,42 +1,50 @@
 import {
   View,
   StyleSheet,
-  ImageBackground,
+  Image,
   ImageSourcePropType,
   ViewStyle,
   Platform,
 } from 'react-native';
+import { useState } from 'react';
 import { TVTheme } from '../../theme/tvTheme';
 import { useTheme } from '../../theme/ThemeContext';
 import useCompactTVLayout from '../../hooks/useCompactTVLayout';
+import { DEFAULT_PHOTO_ZOOM, normalizePhotoZoom } from '../../../../server/functions/src/utils/photoFraming';
 
 interface TVScreenWrapperProps {
   children: React.ReactNode;
   backgroundImage?: ImageSourcePropType;
+  backgroundZoom?: number;
   style?: ViewStyle;
 }
 
 export default function TVScreenWrapper({
   children,
   backgroundImage,
+  backgroundZoom = DEFAULT_PHOTO_ZOOM,
   style,
 }: TVScreenWrapperProps) {
   const theme = useTheme();
   const compact = useCompactTVLayout();
+  const [size, setSize] = useState({width: 0, height: 0});
   const content = <View style={[styles.container, compact && styles.compactContainer, style]}>{children}</View>;
 
   // This is the functional core of the UI layout
   const renderInnerContent = () => {
     if (backgroundImage) {
       return (
-        <ImageBackground
-          source={backgroundImage}
+        <View
+          onLayout={({nativeEvent: {layout}}) => setSize((current) =>
+            current.width === layout.width && current.height === layout.height ? current : {width: layout.width, height: layout.height})}
           style={[styles.background, { backgroundColor: theme.colors.background }]}
-          imageStyle={styles.backgroundImageStyle} 
-          resizeMode='cover'
         >
+          {size.width > 0 && size.height > 0 && <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+            <Image source={backgroundImage} resizeMode="cover" accessible={false}
+              style={{width: size.width, height: size.height, transform: [{scale: normalizePhotoZoom(backgroundZoom)}]}} />
+          </View>}
           <View style={[styles.overlay, { backgroundColor: theme.colors.backgroundOverlay }]}>{content}</View>
-        </ImageBackground>
+        </View>
       );
     }
     return <View style={[styles.background, { backgroundColor: theme.colors.background }]}>{content}</View>;
@@ -85,13 +93,10 @@ const styles = StyleSheet.create({
   },
   background: {
     flex: 1,
+    overflow: 'hidden',
     backgroundColor: TVTheme.colors.background,
     height: '100%',
     width: '100%',
-  },
-  backgroundImageStyle: {
-    width: '100%',
-    height: '100%',
   },
   overlay: {
     flex: 1,

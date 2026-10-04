@@ -7,6 +7,8 @@ import { normalizeHexColor, PALETTES } from '../../theme/tvTheme';
 import GooglePhotosBackgroundPicker from './GooglePhotosBackgroundPicker';
 import RemoteColorPicker from './RemoteColorPicker';
 import nightSkyImage from '../../../assets/media/wp8860764-nasa-4k-wallpapers.jpg';
+import { cardInk, cardSurface } from '../../../../server/functions/src/utils/cardStyle';
+import type { CardId } from '../../theme/appearance';
 
 interface OptionProps {
   label: string;
@@ -56,23 +58,35 @@ function LayoutPreview({ cards, large = false }: { cards: CardPreference[]; larg
   const theme = useTheme();
   const { appearance, photoDataUrl } = useAppearance();
   const rows = getCardRows(cards);
+  const tileColors = (id: CardId) => {
+    const custom = appearance.cardStyles[id];
+    const ink = custom ? cardInk(custom, theme.colors.background, theme.colors.focusRing) : null;
+    return { backgroundColor: custom ? cardSurface(custom) : theme.colors.glassSurfaceFocused,
+      borderColor: ink?.border || theme.colors.glassBorderTop, color: ink?.primary || theme.colors.textPrimary };
+  };
   const image = large && appearance.background === 'photo' ? nightSkyImage
     : large && appearance.background === 'google-photo' && photoDataUrl ? { uri: photoDataUrl } : null;
   return (
     <View style={[styles.preview, large && styles.largePreview, { backgroundColor: theme.colors.background }]} accessible={false}>
       {image && <Image source={image} resizeMode="cover" style={styles.previewImage} />}
-      {rows.map((row, rowIndex) => (
+      {large && appearance.grid ? appearance.grid.items.map((item) => (
+        <View key={item.id} style={[styles.previewTile, {
+          position: 'absolute', left: `${item.x / 12 * 100}%`, top: `${item.y / 6 * 100}%`,
+          width: `${item.width / 12 * 100}%`, height: `${item.height / 6 * 100}%`,
+          backgroundColor: tileColors(item.id).backgroundColor, borderColor: tileColors(item.id).borderColor,
+        }]}><Text numberOfLines={1} style={[styles.previewLabel, { color: tileColors(item.id).color }]}>{CARD_LABELS[item.id]}</Text></View>
+      )) : rows.map((row, rowIndex) => (
         <View key={rowIndex} style={[styles.previewRow, { flex: rowIndex === 0 && rows.length > 1 ? 1.2 : 1 }]}>
           {row.map((card) => (
             <View
               key={card.id}
               style={[styles.previewTile, {
                 flex: card.size === 'wide' ? 2 : 1,
-                backgroundColor: theme.colors.glassSurfaceFocused,
-                borderColor: theme.colors.glassBorderTop,
+                backgroundColor: tileColors(card.id).backgroundColor,
+                borderColor: tileColors(card.id).borderColor,
               }]}
             >
-              <Text numberOfLines={1} style={[styles.previewLabel, large && styles.largePreviewLabel, { color: theme.colors.textPrimary }]}>
+              <Text numberOfLines={1} style={[styles.previewLabel, large && styles.largePreviewLabel, { color: tileColors(card.id).color }]}>
                 {CARD_LABELS[card.id]}
               </Text>
             </View>
@@ -114,13 +128,13 @@ export default function AppearanceSettings({ section = 'colors' }: { section?: A
             {index + 1}. {CARD_LABELS[card.id]}
           </Text>
           <View style={styles.cardActions}>
-            <Option label="Up" accessibilityLabel={`Move ${CARD_LABELS[card.id]} up`} disabled={!ready || index === 0} onPress={() => moveCard(card.id, -1)} />
-            <Option label="Down" accessibilityLabel={`Move ${CARD_LABELS[card.id]} down`} disabled={!ready || index === appearance.cards.length - 1}
+            <Option label="Up" accessibilityLabel={`Move ${CARD_LABELS[card.id]} up`} disabled={!ready || Boolean(appearance.grid) || index === 0} onPress={() => moveCard(card.id, -1)} />
+            <Option label="Down" accessibilityLabel={`Move ${CARD_LABELS[card.id]} down`} disabled={!ready || Boolean(appearance.grid) || index === appearance.cards.length - 1}
               onPress={() => moveCard(card.id, 1)} />
             <Option label={card.visible ? 'Shown' : 'Hidden'} selected={card.visible}
               accessibilityLabel={`${CARD_LABELS[card.id]} ${card.visible ? 'shown' : 'hidden'}`}
-              disabled={!ready || (card.visible && visibleCount === 1)} onPress={() => toggleCard(card.id)} />
-            <Option label={card.size === 'wide' ? 'Wide' : 'Standard'} accessibilityLabel={`${CARD_LABELS[card.id]} ${card.size} size`} disabled={!ready}
+              disabled={!ready || Boolean(appearance.grid) || (card.visible && visibleCount === 1)} onPress={() => toggleCard(card.id)} />
+            <Option label={card.size === 'wide' ? 'Wide' : 'Standard'} accessibilityLabel={`${CARD_LABELS[card.id]} ${card.size} size`} disabled={!ready || Boolean(appearance.grid)}
               onPress={() => toggleCardSize(card.id)} />
           </View>
         </View>
@@ -145,7 +159,7 @@ export default function AppearanceSettings({ section = 'colors' }: { section?: A
         </Text>
       )}
       <Text style={[styles.livePreviewHint, { color: theme.colors.textSecondary }]}>
-        Move, show, or resize a card to see the layout update here.
+        {appearance.grid ? 'Free layout is active. Edit positions and sizes on the companion site.' : 'Move, show, or resize a card to see the layout update here.'}
       </Text>
     </View>
   );
@@ -233,6 +247,7 @@ export default function AppearanceSettings({ section = 'colors' }: { section?: A
       </>}
 
       {section === 'layout' && <>
+      {appearance.grid && <Text style={[styles.description, { color: theme.colors.textSecondary }]}>Your companion free layout is active. Selecting a preset replaces it with automatic rows.</Text>}
       <View style={styles.options}>
         {(Object.keys(LAYOUTS) as Array<keyof typeof LAYOUTS>).map((id) => (
           <Option
@@ -250,7 +265,7 @@ export default function AppearanceSettings({ section = 'colors' }: { section?: A
 
       {section === 'cards' && <>
       <Text style={[styles.description, { color: theme.colors.textSecondary }]}>
-        Change card order, visibility, and size. The preview updates as you go.
+        {appearance.grid ? 'Use Settings → Companion site to edit this free layout. Choose a preset in Layout to use the TV card controls again.' : 'Change card order, visibility, and size. The preview updates as you go.'}
       </Text>
       <View style={[styles.cardEditor, { flexDirection: sideBySide ? 'row' : 'column' }]}>
         {sideBySide ? <>{cardControls}{livePreview}</> : <>{livePreview}{cardControls}</>}

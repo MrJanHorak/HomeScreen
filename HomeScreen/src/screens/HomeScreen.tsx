@@ -28,6 +28,7 @@ import type { CardId, CardPreference } from '../theme/appearance';
 import useCompactTVLayout from '../hooks/useCompactTVLayout';
 import useAmbientMode from '../hooks/useAmbientMode';
 import AmbientScreen from '../components/ambient/AmbientScreen';
+import DashboardGrid from '../components/DashboardGrid';
 
 type DetailTopic =
   | 'weather'
@@ -115,6 +116,7 @@ function HomeScreen() {
     return (
       <TVCard
         key={card.id}
+        cardId={card.id}
         style={{ flex: card.size === 'wide' ? 2 : 1, height: '100%' }}
         onPress={() => setActiveModal(card.id)}
       >
@@ -154,7 +156,7 @@ function HomeScreen() {
       )}
 
       <View style={[styles.cardRows, compact && styles.compactCardRows]}>
-        {rows.map((row, index) => (
+        {appearance.grid ? <DashboardGrid grid={appearance.grid} onOpen={setActiveModal} /> : rows.map((row, index) => (
           <View key={index} style={[styles.cardRow, compact && styles.compactCardRow,
             { flex: index === 0 && rows.length > 1 ? 1.2 : 1 }]}>
             {row.map(renderCard)}
