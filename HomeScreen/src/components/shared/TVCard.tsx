@@ -83,8 +83,18 @@ export default function TVCard({
     shadowOpacity: isFocused ? 0.5 : 0.35,
     shadowRadius: isFocused ? 24 : 16,
     shadowOffset: { width: 0, height: isFocused ? 12 : 8 },
-    elevation: isFocused ? 14 : 6,
     ...Platform.select({
+      android: {
+        // Elevation shadows bleed through translucent surfaces on Android TV.
+        // Outset box shadows exclude the card interior; zIndex preserves focus stacking.
+        elevation: 0,
+        zIndex: isFocused ? 1 : 0,
+        ...(Number(Platform.Version) >= 28 && {
+          boxShadow: isFocused
+            ? `0 0 30px ${theme.colors.focusGlow}, 0 20px 40px rgba(0, 0, 0, 0.5)`
+            : '0 12px 32px rgba(0, 0, 0, 0.35)',
+        }),
+      },
       web: {
         backdropFilter: 'blur(24px)',
         WebkitBackdropFilter: 'blur(24px)',
