@@ -1,5 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {STORAGE_KEY_ACTIVE_LOC, STORAGE_KEY_LOCATIONS} from './weatherLocationService';
+import {
+  STORAGE_KEY_ACTIVE_LOC,
+  STORAGE_KEY_LOCATIONS,
+} from './weatherLocationService';
 
 /** Remove TV-local preferences when an account is signed out or revoked. */
 export async function clearLocalUserData(uid: string): Promise<void> {

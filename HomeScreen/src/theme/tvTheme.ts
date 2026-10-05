@@ -28,7 +28,6 @@ export const colors = {
   glassChip: 'rgba(255, 255, 255, 0.1)',
 } as const;
 
-
 export const spacing = {
   xs: 8,
   sm: 16,
@@ -86,39 +85,53 @@ export const PALETTES = {
   forest: {
     label: 'Forest',
     colors: {
-      background: '#0C1E1A', backgroundOverlay: 'rgba(7, 32, 26, 0.72)',
-      surface: '#18382F', surfaceFocused: '#265244',
+      background: '#0C1E1A',
+      backgroundOverlay: 'rgba(7, 32, 26, 0.72)',
+      surface: '#18382F',
+      surfaceFocused: '#265244',
       glassSurface: 'rgba(10, 40, 32, 0.74)',
       modalSurface: 'rgba(10, 40, 32, 0.93)',
       glassSurfaceFocused: 'rgba(25, 75, 58, 0.82)',
-      focusRing: '#86E3BB', focusGlow: 'rgba(134, 227, 187, 0.42)',
-      accent: '#F5CC83', textSecondary: '#BED9CF',
+      focusRing: '#86E3BB',
+      focusGlow: 'rgba(134, 227, 187, 0.42)',
+      accent: '#F5CC83',
+      textSecondary: '#BED9CF',
     },
   },
   plum: {
     label: 'Plum',
     colors: {
-      background: '#20152E', backgroundOverlay: 'rgba(31, 18, 47, 0.74)',
-      surface: '#352443', surfaceFocused: '#503460',
+      background: '#20152E',
+      backgroundOverlay: 'rgba(31, 18, 47, 0.74)',
+      surface: '#352443',
+      surfaceFocused: '#503460',
       glassSurface: 'rgba(44, 24, 59, 0.76)',
       modalSurface: 'rgba(44, 24, 59, 0.93)',
       glassSurfaceFocused: 'rgba(72, 43, 90, 0.82)',
-      focusRing: '#E3B5FF', focusGlow: 'rgba(227, 181, 255, 0.42)',
-      accent: '#FFD39C', textSecondary: '#D7C5DF',
+      focusRing: '#E3B5FF',
+      focusGlow: 'rgba(227, 181, 255, 0.42)',
+      accent: '#FFD39C',
+      textSecondary: '#D7C5DF',
     },
   },
   contrast: {
     label: 'High Contrast',
     colors: {
-      background: '#050505', backgroundOverlay: 'rgba(0, 0, 0, 0.88)',
-      surface: '#111111', surfaceFocused: '#292929',
+      background: '#050505',
+      backgroundOverlay: 'rgba(0, 0, 0, 0.88)',
+      surface: '#111111',
+      surfaceFocused: '#292929',
       glassSurface: 'rgba(0, 0, 0, 0.94)',
       modalSurface: '#000000',
       glassSurfaceFocused: 'rgba(22, 22, 22, 0.98)',
-      glassBorder: '#FFFFFF', glassBorderTop: '#FFFFFF',
-      focusRing: '#FDE047', focusGlow: 'rgba(253, 224, 71, 0.5)',
-      accent: '#FDE047', textPrimary: '#FFFFFF',
-      textSecondary: '#E5E5E5', textFocused: '#FFFFFF',
+      glassBorder: '#FFFFFF',
+      glassBorderTop: '#FFFFFF',
+      focusRing: '#FDE047',
+      focusGlow: 'rgba(253, 224, 71, 0.5)',
+      accent: '#FDE047',
+      textPrimary: '#FFFFFF',
+      textSecondary: '#E5E5E5',
+      textFocused: '#FFFFFF',
     },
   },
 } as const;
@@ -133,7 +146,9 @@ export function normalizeHexColor(value: string): string | null {
 }
 
 function rgb(hex: string): [number, number, number] {
-  return [1, 3, 5].map((offset) => parseInt(hex.slice(offset, offset + 2), 16)) as [number, number, number];
+  return [1, 3, 5].map((offset) =>
+    parseInt(hex.slice(offset, offset + 2), 16),
+  ) as [number, number, number];
 }
 
 function colorFromRgb(channels: number[]): string {
@@ -143,7 +158,9 @@ function colorFromRgb(channels: number[]): string {
 function blend(color: string, target: string, amount: number): string {
   const start = rgb(color);
   const end = rgb(target);
-  return colorFromRgb(start.map((channel, index) => channel * (1 - amount) + end[index] * amount));
+  return colorFromRgb(
+    start.map((channel, index) => channel * (1 - amount) + end[index] * amount),
+  );
 }
 
 function luminance(hex: string): number {
@@ -157,7 +174,11 @@ function luminance(hex: string): number {
 export function displayAccentColor(hex: string): string {
   let result = hex;
   const backdrop = luminance('#0F172A');
-  for (let step = 0; step < 10 && (luminance(result) + 0.05) / (backdrop + 0.05) < 4.5; step++) {
+  for (
+    let step = 0;
+    step < 10 && (luminance(result) + 0.05) / (backdrop + 0.05) < 4.5;
+    step++
+  ) {
     result = blend(result, '#FFFFFF', 0.15);
   }
   return result;
@@ -175,12 +196,14 @@ export function themeForPalette(
   palette: PaletteChoice,
   customAccent = '#38BDF8',
   backgroundColor = '#0F172A',
-  backgroundMode: 'photo' | 'solid' | 'google-photo' = 'photo'
+  backgroundMode: 'photo' | 'solid' | 'google-photo' = 'photo',
 ): TVThemeType {
   const paletteColors = palette === 'custom' ? {} : PALETTES[palette].colors;
   const result: TVThemeType['colors'] = { ...colors, ...paletteColors };
   if (palette === 'custom') {
-    const accent = displayAccentColor(normalizeHexColor(customAccent) || '#38BDF8');
+    const accent = displayAccentColor(
+      normalizeHexColor(customAccent) || '#38BDF8',
+    );
     const [red, green, blue] = rgb(accent);
     result.focusRing = accent;
     result.accent = accent;

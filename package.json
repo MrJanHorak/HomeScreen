@@ -1,5 +1,9 @@
 {
   "dependencies": {
     "@expo/vector-icons": "^15.1.1"
+  },
+  "scripts": {
+    "typecheck": "npm --prefix HomeScreen run typecheck && npm --prefix server/pairing-web run typecheck && npm --prefix server/functions run build",
+    "test": "npm --prefix HomeScreen test && npm --prefix server/functions test"
   }
 }

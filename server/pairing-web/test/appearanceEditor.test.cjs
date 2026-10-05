@@ -150,3 +150,158 @@ test('library conflicts retain page edits and refresh permits an explicit draft 
   assert.equal(await page.locator('#appearance-content').isVisible(), false);
   assert.equal(await page.locator('#design-list').textContent(), '');
 });
+
+test('card controls preserve preview order, width and the last visible card', async (t) => {
+  const {page} = await setup(t);
+  await page.getByRole('button', {name: 'Move Weather down', exact: true}).click();
+  assert.equal(await page.locator('#card-list .card-editor-row').first().getAttribute('data-card-id'), 'schedule');
+  assert.equal(await page.locator('.tv-preview-tile').first().textContent(), 'Schedule');
+  await page.getByRole('combobox', {name: 'Weather width', exact: true}).selectOption('wide');
+  assert.equal(await page.locator('.tv-preview-tile[data-card-id=weather]').evaluate((tile) => tile.style.flexGrow), '2');
+  for (const id of ['schedule', 'activity', 'media', 'meal', 'todo']) {
+    await page.locator(`.card-editor-row[data-card-id=${id}] input`).uncheck();
+  }
+  await page.locator('.card-editor-row[data-card-id=weather] input').click();
+  assert.equal(await page.locator('.card-editor-row[data-card-id=weather] input').isChecked(), true);
+  assert.match(await page.locator('#appearance-status').textContent(), /Keep at least one card visible/);
+  assert.equal(await page.locator('.tv-preview-tile').count(), 1);
+});
+
+async function beginWeatherDrag(page) {
+  await page.locator('#card-list').scrollIntoViewIfNeeded();
+  const handle = await page.getByRole('button', {name: 'Drag Weather to reorder', exact: true}).boundingBox();
+  await page.mouse.move(handle.x + handle.width / 2, handle.y + handle.height / 2);
+  await page.mouse.down();
+}
+
+async function moveOverCard(page, id) {
+  const target = await page.locator(`.card-editor-row[data-card-id=${id}]`).boundingBox();
+  await page.mouse.move(target.x + target.width / 2, target.y + target.height / 2);
+}
+
+const cardOrder = (page) => page.locator('#card-list .card-editor-row').evaluateAll((rows) => rows.map((row) => row.dataset.cardId));
+
+test('canceled row dragging leaves the draft unchanged; completed drops can be undone', async (t) => {
+  const {page, state, waitIdle} = await setup(t);
+  const original = await cardOrder(page);
+  await beginWeatherDrag(page);
+  await page.mouse.up();
+  assert.equal(await page.locator('#draft-status').textContent(), 'No unpublished draft.');
+  await beginWeatherDrag(page);
+  await moveOverCard(page, 'schedule');
+  await page.evaluate(() => window.dispatchEvent(new PointerEvent('pointercancel', {pointerId: 1})));
+  await page.mouse.up();
+  assert.deepEqual(await cardOrder(page), original);
+  assert.equal(await page.locator('#draft-status').textContent(), 'No unpublished draft.');
+  await beginWeatherDrag(page);
+  await moveOverCard(page, 'schedule');
+  await page.mouse.up();
+  assert.deepEqual((await cardOrder(page)).slice(0, 2), ['schedule', 'weather']);
+  await page.locator('#appearance-undo').click();
+  assert.deepEqual(await cardOrder(page), original);
+  await page.locator('#appearance-redo').click();
+  await page.locator('#draft-save').click();
+  await waitIdle();
+  assert.deepEqual(state.library.draft.appearance.cards.slice(0, 2).map((card) => card.id), ['schedule', 'weather']);
+  assert.equal(state.publishes, 0);
+});
+
+test('clearing the editor during a drag prevents the old gesture from changing a new account', async (t) => {
+  const {page, state} = await setup(t);
+  await beginWeatherDrag(page);
+  await page.evaluate(() => window.editor.clear());
+  state.appearance = {...base, palette: 'plum', cards: structuredClone(base.cards).reverse()};
+  await page.evaluate(() => window.editor.load());
+  const loadedOrder = await cardOrder(page);
+  await page.locator('#card-list').scrollIntoViewIfNeeded();
+  await moveOverCard(page, 'activity');
+  await page.mouse.up();
+  assert.deepEqual(await cardOrder(page), loadedOrder);
+  assert.equal(await page.locator('#draft-status').textContent(), 'No unpublished draft.');
+  assert.equal(state.library.draft, null);
+  assert.equal(state.publishes, 0);
+});
+
+test('malformed appearance fields fall back to usable controls and are not saved as unknown fields', async (t) => {
+  const {page, state, waitIdle} = await setup(t, {appearance: {...base, palette: 'invalid',
+    extraField: 'unrecognized', ambient: {idleMinutes: -1, plasmaColors: 42, info: {weather: 'false'}}}});
+  assert.equal(await page.locator('#palette-select').inputValue(), 'night');
+  await page.getByText('4 · Ambient mode', {exact: true}).click();
+  assert.equal(await page.locator('#ambient-idle').inputValue(), '10');
+  assert.equal(await page.locator('[data-info=weather]').isChecked(), true);
+  await page.getByText('Saved designs and published history', {exact: true}).click();
+  await page.locator('#design-name').fill('Recovered');
+  await page.locator('#design-save').click();
+  await waitIdle();
+  const saved = state.library.designs[0].appearance;
+  assert.equal(saved.extraField, undefined);
+  assert.equal(saved.ambient.idleMinutes, 10);
+  assert.equal(saved.ambient.plasmaColors.length, 3);
+});
+
+test('invalid studio metadata reports an error and never enables publishing', async (t) => {
+  const {page, state} = await setup(t);
+  for (const invalid of [{...state, library: null}, {...state, updatedAtMs: -1}, {...state, history: [{}]}]) {
+    await page.route('**/__fixture-api/appearanceStudio', (route) => route.fulfill({json: invalid}));
+    await page.evaluate(() => window.editor.load());
+    assert.equal(await page.locator('#appearance-content').isVisible(), false);
+    assert.match(await page.locator('#appearance-status').textContent(), /invalid dashboard settings/);
+    assert.equal(state.publishes, 0);
+    await page.unroute('**/__fixture-api/appearanceStudio');
+  }
+});
+
+test('a studio response arriving after clear cannot restore private editor data', async (t) => {
+  const {page, state} = await setup(t);
+  let release;
+  let received;
+  const gate = new Promise((resolve) => {release = resolve;});
+  const requestReceived = new Promise((resolve) => {received = resolve;});
+  await page.route('**/__fixture-api/appearanceStudio', async (route) => {
+    received();
+    await gate;
+    await route.fulfill({json: {...state, library: {updatedAtMs: 1, draft: null,
+      designs: [{id: 'private', name: 'Private design', appearance: base, updatedAtMs: 1}]}}});
+  });
+  await page.evaluate(() => {window.pendingLoad = window.editor.load();});
+  await requestReceived;
+  await page.evaluate(() => window.editor.clear());
+  release();
+  await page.evaluate(() => window.pendingLoad);
+  assert.equal(await page.locator('#appearance-content').isVisible(), false);
+  assert.equal(await page.locator('#design-list').textContent(), '');
+  assert.equal(await page.locator('#appearance-status').textContent(), 'Sign in to edit your dashboard.');
+  assert.equal(state.publishes, 0);
+});
+
+test('normalization preserves its input and produces independent default settings', async (t) => {
+  const {page} = await setup(t);
+  const result = await page.evaluate(async () => {
+    const {normalizeAppearance} = await import('/src/features/dashboard/appearanceModel.ts');
+    const original = {cards: [{id: 'weather', visible: false, size: 'standard'}]};
+    const before = JSON.stringify(original);
+    const normalized = normalizeAppearance(original);
+    normalized.cards[0].size = 'wide';
+    const allHidden = {cards: ['weather', 'schedule', 'activity', 'media', 'meal', 'todo']
+      .map((id) => ({id, visible: false, size: 'standard'}))};
+    const repaired = normalizeAppearance(allHidden);
+    const firstDefault = normalizeAppearance(null);
+    firstDefault.cards[0].visible = false;
+    firstDefault.cardStyles.weather = {opacity: 0.5};
+    const secondDefault = normalizeAppearance(null);
+    return {
+      originalUnchanged: JSON.stringify(original) === before,
+      hiddenInputUnchanged: allHidden.cards.every((card) => !card.visible),
+      repairedHasVisibleCard: repaired.cards.some((card) => card.visible),
+      independentCards: secondDefault.cards[0].visible,
+      independentStyles: Object.keys(secondDefault.cardStyles).length === 0,
+    };
+  });
+  assert.deepEqual(result, {
+    originalUnchanged: true,
+    hiddenInputUnchanged: true,
+    repairedHasVisibleCard: true,
+    independentCards: true,
+    independentStyles: true,
+  });
+});

@@ -61,6 +61,15 @@ Under **Linked TVs**, rename a TV (up to 40 characters) or remove its access. A 
 
 For the next layout, sharing, and widget milestones, see [companion roadmap](COMPANION_ROADMAP.md).
 
+## Source organization
+
+Editors live under `src/features` with their private views, models, templates,
+and helpers. The dashboard groups cards, grid editing, preview, library, ambient,
+and photos; weather and device management have their own feature folders.
+Common request and DOM utilities live in `src/shared`, page markup in `src/app`,
+and the app-wide stylesheet in `src/styles`. See the
+[source folder guide](src/README.md) for the complete map and placement rules.
+
 ## Setup
 
 1. Copy `env.example` to `.env.local` and use the Firebase **web app** config from Project settings. `VITE_API_URL` is the Cloud Functions base URL without a trailing function name. These `VITE_` values are public and bundled into the site. Never put `GOOGLE_CLIENT_SECRET` or `TOKEN_ENCRYPTION_KEY` here.

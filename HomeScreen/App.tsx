@@ -8,7 +8,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import PairingScreen from './src/screens/PairingScreen';
 import { WatchNextProvider } from './src/hooks/useWatchNext';
 import { FavoriteAppsProvider } from './src/hooks/useFavoriteApps';
-import ExitConfirmationModal from './src/components/ExitConfirmationModal';
+import ExitConfirmationModal from './src/components/layout/ExitConfirmationModal';
 
 import backgroundImage from './assets/media/wp8860764-nasa-4k-wallpapers.jpg';
 

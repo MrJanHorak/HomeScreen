@@ -8,7 +8,7 @@ function load(path) {
   new Function('module', 'exports', code)(result, result.exports);
   return result.exports;
 }
-const {planCardContent, activityLayout, activitySummaryHeight, lineKey} = load('src/helpers/cardContentLayout.ts');
+const {planCardContent, activityLayout, activitySummaryHeight, lineKey} = load('src/components/dashboard/shared/cardContentLayout.ts');
 const {gridRect} = load('../server/functions/src/utils/dashboardLayout.ts');
 const sizes = [[900, 340, 8, 12, 1], [1800, 740, 12, 20, 1.4]];
 const lines = Array.from({length: 30}, (_, i) => ({title: `Upcoming dinner ${i + 1}`, detail: '10-05 · Serves 6'}));

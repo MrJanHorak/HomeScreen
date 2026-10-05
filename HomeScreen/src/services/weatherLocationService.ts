@@ -6,7 +6,12 @@ export const STORAGE_KEY_ACTIVE_LOC = '@tv_weather_active_loc_v1';
 const userKey = (base: string, uid: string) => `${base}:${uid}`;
 
 export const DEFAULT_LOCATIONS: SavedLocation[] = [
-  { id: 'loc-new-york', name: 'New York', query: 'New York, US', isDefault: true },
+  {
+    id: 'loc-new-york',
+    name: 'New York',
+    query: 'New York, US',
+    isDefault: true,
+  },
 ];
 
 export const PRESET_CITIES = [
@@ -24,7 +29,10 @@ export const PRESET_CITIES = [
 export type ExtendedWeather = Weather;
 
 /** Keep the selected location's label alongside its live weather. */
-export function getWeatherForLocation(location: SavedLocation, weather?: Weather | null): ExtendedWeather {
+export function getWeatherForLocation(
+  location: SavedLocation,
+  weather?: Weather | null,
+): ExtendedWeather {
   return {
     ...(weather || { temp: '--', condition: 'Loading weather' }),
     location: `${location.name} (${location.query})`,
@@ -36,19 +44,32 @@ export async function loadStoredLocations(uid: string): Promise<{
   activeId: string;
 }> {
   try {
-    await AsyncStorage.multiRemove([STORAGE_KEY_LOCATIONS, STORAGE_KEY_ACTIVE_LOC]);
+    await AsyncStorage.multiRemove([
+      STORAGE_KEY_LOCATIONS,
+      STORAGE_KEY_ACTIVE_LOC,
+    ]);
     const [rawLocs, rawActive] = await Promise.all([
       AsyncStorage.getItem(userKey(STORAGE_KEY_LOCATIONS, uid)),
       AsyncStorage.getItem(userKey(STORAGE_KEY_ACTIVE_LOC, uid)),
     ]);
     const parsed: unknown = rawLocs ? JSON.parse(rawLocs) : DEFAULT_LOCATIONS;
-    const locations = Array.isArray(parsed) && parsed.length > 0 && parsed.every((loc) =>
-      loc && typeof loc.id === 'string' && typeof loc.name === 'string' &&
-      typeof loc.query === 'string'
-    ) ? parsed as SavedLocation[] : DEFAULT_LOCATIONS;
+    const locations =
+      Array.isArray(parsed) &&
+      parsed.length > 0 &&
+      parsed.every(
+        (loc) =>
+          loc &&
+          typeof loc.id === 'string' &&
+          typeof loc.name === 'string' &&
+          typeof loc.query === 'string',
+      )
+        ? (parsed as SavedLocation[])
+        : DEFAULT_LOCATIONS;
     const defaultLoc = locations.find((loc) => loc.isDefault) || locations[0];
-    const activeId = rawActive && locations.some((loc) => loc.id === rawActive)
-      ? rawActive : defaultLoc.id;
+    const activeId =
+      rawActive && locations.some((loc) => loc.id === rawActive)
+        ? rawActive
+        : defaultLoc.id;
     return { locations, activeId };
   } catch (error) {
     console.warn('Failed to load stored locations:', error);
@@ -56,10 +77,17 @@ export async function loadStoredLocations(uid: string): Promise<{
   }
 }
 
-export async function persistLocations(locations: SavedLocation[], activeId: string, uid: string): Promise<void> {
+export async function persistLocations(
+  locations: SavedLocation[],
+  activeId: string,
+  uid: string,
+): Promise<void> {
   try {
     await Promise.all([
-      AsyncStorage.setItem(userKey(STORAGE_KEY_LOCATIONS, uid), JSON.stringify(locations)),
+      AsyncStorage.setItem(
+        userKey(STORAGE_KEY_LOCATIONS, uid),
+        JSON.stringify(locations),
+      ),
       AsyncStorage.setItem(userKey(STORAGE_KEY_ACTIVE_LOC, uid), activeId),
     ]);
   } catch (error) {

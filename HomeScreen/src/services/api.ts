@@ -4,6 +4,7 @@ import {clearLocalUserData} from './localUserData';
 import type { DashboardSummaryResponse, DevicePairingResponse, Weather } from '../../../shared/src/types';
 import type { DashboardAppearance } from '../theme/appearance';
 import type {UserPreferences} from '../../../shared/src/types';
+import {readJsonResponse} from '../../../shared/src/http';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -12,32 +13,34 @@ const DEFAULT_API_URL =
   process.env.EXPO_PUBLIC_API_URL ||
   'http://localhost:5001/tv-homescreen-backend/us-central1';
 
-export async function getUserPreferences(): Promise<{preferences: UserPreferences; updatedAtMs: number; hasSavedLocations: boolean}> {
-  const response = await fetch(`${DEFAULT_API_URL}/userPreferences`, {headers: await authHeaders()});
+/** Apply authentication and revoked-session cleanup consistently to JSON endpoints. */
+async function authenticatedRequest<T>(path: string, errorMessage: string, options: Omit<RequestInit, 'headers'> & {headers?: Record<string, string>} = {}): Promise<T> {
+  const response = await fetch(`${DEFAULT_API_URL}/${path}`, {
+    ...options,
+    headers: {...await authHeaders(), ...options.headers},
+  });
   await handleRevokedSession(response);
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error || 'Could not load TV settings');
-  return result;
+  return readJsonResponse<T>(response, errorMessage);
+}
+
+export async function getUserPreferences(): Promise<{preferences: UserPreferences; updatedAtMs: number; hasSavedLocations: boolean}> {
+  return authenticatedRequest('userPreferences', 'Could not load TV settings');
 }
 
 export async function saveUserPreferences(preferences: UserPreferences, expectedUpdatedAtMs: number): Promise<number> {
-  const response = await fetch(`${DEFAULT_API_URL}/userPreferences`, {method: 'PUT', headers: await authHeaders(),
-    body: JSON.stringify({preferences, expectedUpdatedAtMs})});
-  await handleRevokedSession(response);
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error || 'Could not save TV settings');
+  const result = await authenticatedRequest<{updatedAtMs: number}>('userPreferences', 'Could not save TV settings', {
+    method: 'PUT', body: JSON.stringify({preferences, expectedUpdatedAtMs}),
+  });
   return result.updatedAtMs;
 }
 
 export interface FavoritePreferences {visible: boolean; packages: string[]}
 export interface DeviceAppSettings {apps: {packageName: string; label: string}[]; preferences: FavoritePreferences | null; updatedAtMs: number}
-export async function syncDeviceApps(body?: object): Promise<DeviceAppSettings & {updatedAtMs: number}> {
-  const response = await fetch(`${DEFAULT_API_URL}/deviceApps?current=1`, {method: body ? 'PUT' : 'GET', headers: await authHeaders(),
-    ...(body ? {body: JSON.stringify(body)} : {})});
-  await handleRevokedSession(response);
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error || 'Could not sync favorite apps');
-  return result;
+export async function syncDeviceApps(body?: object): Promise<DeviceAppSettings> {
+  return authenticatedRequest('deviceApps?current=1', 'Could not sync favorite apps', {
+    method: body ? 'PUT' : 'GET',
+    ...(body ? {body: JSON.stringify(body)} : {}),
+  });
 }
 
 async function authHeaders(): Promise<Record<string, string>> {
@@ -59,11 +62,7 @@ export async function getDeviceConnectionInfo(): Promise<{
   device: {name: string; pairedAtMs: number} | null;
   companionUrl: string | null;
 }> {
-  const response = await fetch(`${DEFAULT_API_URL}/linkedDevices?current=1`, {headers: await authHeaders()});
-  await handleRevokedSession(response);
-  const body = await response.json();
-  if (!response.ok) throw new Error(body.error || 'Could not load this TV');
-  return body;
+  return authenticatedRequest('linkedDevices?current=1', 'Could not load this TV');
 }
 
 export async function getCurrentDevice(): Promise<{name: string; pairedAtMs: number} | null> {
@@ -99,24 +98,12 @@ export async function disconnectCurrentDevice(): Promise<void> {
 }
 
 async function photosRequest<T>(action: string, method: 'GET' | 'POST' = 'GET'): Promise<T> {
-  const response = await fetch(`${DEFAULT_API_URL}/googlePhotosPicker?action=${action}`, {
-    method,
-    headers: await authHeaders(),
-  });
-  await handleRevokedSession(response);
-  const body = await response.json();
-  if (!response.ok) throw new Error(body.error || `Google Photos request failed (${response.status})`);
-  return body as T;
+  return authenticatedRequest(`googlePhotosPicker?action=${action}`, 'Google Photos request failed', {method});
 }
 
 export async function beginGooglePhotosConnection(): Promise<string> {
-  const response = await fetch(`${DEFAULT_API_URL}/beginGooglePhotos`, {
-    method: 'POST', headers: await authHeaders(),
-  });
-  await handleRevokedSession(response);
-  const body = await response.json();
-  if (!response.ok) throw new Error(body.error || 'Could not connect Google Photos');
-  return body.authorizationUrl;
+  const result = await authenticatedRequest<{authorizationUrl: string}>('beginGooglePhotos', 'Could not connect Google Photos', {method: 'POST'});
+  return result.authorizationUrl;
 }
 
 export async function getGooglePhotosStatus(): Promise<boolean> {
@@ -152,57 +139,28 @@ export async function getUserAppearance(): Promise<{
   appearance: DashboardAppearance | null; updatedAtMs: number; seededFromWeb: boolean;
   photoUpdatedAtMs?: number;
 }> {
-  const response = await fetch(`${DEFAULT_API_URL}/userAppearance`, {
-    headers: await authHeaders(),
-  });
-  await handleRevokedSession(response);
-  const body = await response.json();
-  if (!response.ok) throw new Error(body.error || 'Could not load appearance settings');
-  return body;
+  return authenticatedRequest('userAppearance', 'Could not load appearance settings');
 }
 
 export async function saveUserAppearance(appearance: DashboardAppearance): Promise<void> {
-  const response = await fetch(`${DEFAULT_API_URL}/userAppearance`, {
-    method: 'PUT', headers: await authHeaders(),
-    body: JSON.stringify({ appearance, source: Platform.OS === 'web' ? 'web' : 'tv' }),
+  await authenticatedRequest('userAppearance', 'Could not save appearance settings', {
+    method: 'PUT',
+    body: JSON.stringify({appearance, source: Platform.OS === 'web' ? 'web' : 'tv'}),
   });
-  await handleRevokedSession(response);
-  if (!response.ok) {
-    const body = await response.json();
-    throw new Error(body.error || 'Could not save appearance settings');
-  }
 }
 
 /**
  * Fetch the unified dashboard summary (Calendar, Tasks, Fitness, Weather)
  */
 export async function fetchDashboardSummary(): Promise<DashboardSummaryResponse> {
-  const url = `${DEFAULT_API_URL}/getDashboardSummary`;
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      ...await authHeaders(),
-      'X-Time-Zone': Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC',
-    },
+  return authenticatedRequest('getDashboardSummary', 'Failed to fetch dashboard', {
+    headers: {'X-Time-Zone': Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'},
   });
-  await handleRevokedSession(response);
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch dashboard: ${response.status} ${response.statusText}`);
-  }
-
-  return response.json();
 }
 
 /** Fetch real weather for one saved location. */
 export async function fetchLocationWeather(city: string): Promise<Weather> {
-  const url = `${DEFAULT_API_URL}/getLocationWeather?city=${encodeURIComponent(city)}`;
-  const response = await fetch(url, { method: 'GET', headers: await authHeaders() });
-  await handleRevokedSession(response);
-  if (!response.ok) {
-    throw new Error(`Weather lookup failed: ${response.status}`);
-  }
-  return response.json();
+  return authenticatedRequest(`getLocationWeather?city=${encodeURIComponent(city)}`, 'Weather lookup failed');
 }
 
 /**
@@ -211,20 +169,10 @@ export async function fetchLocationWeather(city: string): Promise<Weather> {
 export async function executeTVAction(
   action: 'completeTask' | 'updatePreferences',
   payload: Record<string, unknown>
-): Promise<{ success: boolean; message?: string }> {
-  const url = `${DEFAULT_API_URL}/executeAction`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: await authHeaders(),
-    body: JSON.stringify({ action, payload }),
+): Promise<{success: boolean; message?: string}> {
+  return authenticatedRequest('executeAction', `Action ${action} failed`, {
+    method: 'POST', body: JSON.stringify({action, payload}),
   });
-  await handleRevokedSession(response);
-
-  if (!response.ok) {
-    throw new Error(`Action ${action} failed: ${response.status}`);
-  }
-
-  return response.json();
 }
 
 /**

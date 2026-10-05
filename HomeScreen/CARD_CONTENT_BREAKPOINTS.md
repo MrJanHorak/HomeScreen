@@ -12,7 +12,7 @@ the exact entry count; a grid label such as 3×3 never hard-codes that count.
 
 ## Shared list fitting
 
-The pure planner in `src/helpers/cardContentLayout.ts` estimates word wrapping,
+The pure planner in `src/components/dashboard/shared/cardContentLayout.ts` estimates word wrapping,
 then refines its budget with measured headline and row heights. It evaluates
 one, two, and three columns for Schedule, Tasks and Weather, with comfortable
 two-line titles and separate metadata, or compact one-line entries with inline

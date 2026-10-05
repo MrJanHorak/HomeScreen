@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test:browser": "node --test test/appearanceEditor.test.cjs test/companion.test.cjs"
   },
   "dependencies": {
     "firebase": "^12.19.0"

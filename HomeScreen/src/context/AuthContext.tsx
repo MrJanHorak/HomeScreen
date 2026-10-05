@@ -1,9 +1,27 @@
-import React, { createContext, useCallback, useContext, useEffect, useRef, useState, ReactNode } from 'react';
-import { onAuthStateChanged, signInWithCustomToken, signOut as fbSignOut, User } from 'firebase/auth';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  ReactNode,
+} from 'react';
+import {
+  onAuthStateChanged,
+  signInWithCustomToken,
+  signOut as fbSignOut,
+  User,
+} from 'firebase/auth';
 import type { DevicePairingResponse } from '../../../shared/src/types';
 import { auth } from '../services/firebase';
-import { requestDevicePairing, pollDevicePairing, disconnectCurrentDevice, migrateLegacyDevice } from '../services/api';
-import {clearLocalUserData} from '../services/localUserData';
+import {
+  requestDevicePairing,
+  pollDevicePairing,
+  disconnectCurrentDevice,
+  migrateLegacyDevice,
+} from '../services/api';
+import { clearLocalUserData } from '../services/localUserData';
 
 const POLL_INTERVAL_MS = 3000;
 
@@ -38,11 +56,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setInitializing(false);
       if (u && !migrating.current) {
         migrating.current = true;
-        void u.getIdTokenResult().then(async (token) => {
-          if (token.signInProvider !== 'custom' || token.claims.dashboardDeviceId || auth.currentUser !== u) return;
-          const customToken = await migrateLegacyDevice();
-          if (auth.currentUser === u) await signInWithCustomToken(auth, customToken);
-        }).catch(() => undefined).finally(() => { migrating.current = false; });
+        void u
+          .getIdTokenResult()
+          .then(async (token) => {
+            if (
+              token.signInProvider !== 'custom' ||
+              token.claims.dashboardDeviceId ||
+              auth.currentUser !== u
+            )
+              return;
+            const customToken = await migrateLegacyDevice();
+            if (auth.currentUser === u)
+              await signInWithCustomToken(auth, customToken);
+          })
+          .catch(() => undefined)
+          .finally(() => {
+            migrating.current = false;
+          });
       }
     });
   }, []);
@@ -73,7 +103,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }, POLL_INTERVAL_MS);
     } catch (err) {
       setPairing(null);
-      setPairingError(err instanceof Error ? err.message : 'Could not reach the server');
+      setPairingError(
+        err instanceof Error ? err.message : 'Could not reach the server',
+      );
     }
   }, [stopPolling]);
 
@@ -92,7 +124,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, initializing, pairing, pairingError, startPairing, signOut }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        initializing,
+        pairing,
+        pairingError,
+        startPairing,
+        signOut,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

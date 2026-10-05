@@ -63,6 +63,7 @@ test('every companion page reflows at phone, tablet and laptop widths', async (t
       const dimensions = await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,width:window.innerWidth}));
       assert.ok(dimensions.scroll <= dimensions.width+1, `${route} overflows at ${width}: ${dimensions.scroll}`);
       assert.equal(await page.locator('.site-nav [aria-current=page]').count(),1);
+      assert.equal(await page.locator('.site-nav [aria-current=page]').getAttribute('href'), `/${route}`);
       if (process.env.COMPANION_SCREENSHOTS && [390,768,1440].includes(width)) {
         await fs.mkdir(process.env.COMPANION_SCREENSHOTS,{recursive:true});
         await page.screenshot({path:path.join(process.env.COMPANION_SCREENSHOTS,`${route}-${width}.png`),fullPage:true});

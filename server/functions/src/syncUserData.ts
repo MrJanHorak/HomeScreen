@@ -1,61 +1,15 @@
 import { onRequest } from "firebase-functions/v2/https";
-import {getStoredUserTokens, recordUserQuota, saveDashboardCache} from "./utils/db";
+import {recordUserQuota, saveDashboardCache} from "./utils/db";
 import { authenticatedUserId } from "./utils/requestAuth";
-import {boundSummary} from "./utils/summary";
 import {logSafeError} from "./utils/safeLog";
-import { fetchCalendarEvents } from "./services/googleCalendar";
-import { fetchActiveTasks } from "./services/googleTasks";
-import { fetchHealthData } from "./services/googleFit";
-import { fetchLocalWeather } from "./services/weatherService";
-import { fetchMealPlan } from "./services/mealSheet";
-import { DashboardSummaryResponse } from "./types";
+import {DashboardSummaryResponse} from "./types";
+import {fetchUserDashboard} from "./services/dashboardSummary";
 
 /**
  * Sync and cache dashboard data in Firestore for a given user
  */
 export async function syncUserDashboard(userId: string, timeZone = "UTC"): Promise<DashboardSummaryResponse> {
-  const userTokens = await getStoredUserTokens(userId);
-
-  const [calendarResult, tasksResult, healthResult, weatherResult, mealsResult] =
-    await Promise.allSettled([
-      fetchCalendarEvents(userTokens.google),
-      fetchActiveTasks(userTokens.google),
-      fetchHealthData(userTokens.google, {
-        stepGoal: userTokens.stepGoal,
-        distanceGoal: userTokens.distanceGoal,
-      }, timeZone),
-      fetchLocalWeather(userTokens.location || userTokens.weatherCity),
-      fetchMealPlan(userTokens.mealSheet),
-    ]);
-
-  const summary: DashboardSummaryResponse = boundSummary({
-    schedule: calendarResult.status === "fulfilled" ? calendarResult.value.today : [],
-    upcomingEvents: calendarResult.status === "fulfilled" ? calendarResult.value.upcoming : [],
-    meals: mealsResult.status === "fulfilled" ? mealsResult.value :
-      {status: "unavailable", items: [], message: "Meal plan is unavailable."},
-    tasks: tasksResult.status === "fulfilled" ? tasksResult.value : [],
-    health:
-      healthResult.status === "fulfilled"
-        ? healthResult.value
-        : {
-          status: "unavailable",
-          message: "Google Fit activity is unavailable right now. Try refreshing later.",
-          steps: 0,
-          stepGoal: userTokens.stepGoal || 10000,
-          distance: 0,
-          distanceGoal: userTokens.distanceGoal || 8,
-          calories: 0,
-          activeMinutes: null,
-          progress: 0,
-          weekly: [],
-        },
-    weather:
-      weatherResult.status === "fulfilled"
-        ? weatherResult.value
-        : { temp: "--", condition: "Unknown" },
-    savedLocations: userTokens.savedLocations,
-    updatedAt: new Date().toISOString(),
-  });
+  const summary = await fetchUserDashboard(userId, timeZone);
 
   await saveDashboardCache(userId, summary);
   return summary;

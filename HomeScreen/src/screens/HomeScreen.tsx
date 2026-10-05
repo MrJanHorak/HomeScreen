@@ -1,29 +1,29 @@
 import React, { useCallback, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
-import TVText from '../components/tv/TVText';
-import TVCard from '../components/tv/TVCard';
-import HeaderBar from '../components/HeaderBar';
-import MeasuredDashboardCard from '../components/MeasuredDashboardCard';
-import FavoriteAppsCarousel from '../components/FavoriteAppsCarousel';
-import TVDetailModal, { TVDetailModalProps } from '../components/tv/TVDetailModal';
+import TVText from '../components/shared/TVText';
+import TVCard from '../components/shared/TVCard';
+import HeaderBar from '../components/dashboard/header/HeaderBar';
+import MeasuredDashboardCard from '../components/dashboard/MeasuredDashboardCard';
+import FavoriteAppsCarousel from '../components/dashboard/favorites/FavoriteAppsCarousel';
+import TVDetailModal, { TVDetailModalProps } from '../components/shared/TVDetailModal';
 
 // Detail Views
-import WeatherDetailView from '../components/details/WeatherDetailView';
-import ScheduleDetailView from '../components/details/ScheduleDetailView';
-import ActivityDetailView from '../components/details/ActivityDetailView';
-import MediaDetailView from '../components/details/MediaDetailView';
-import MealDetailView from '../components/details/MealDetailView';
-import ToDoDetailView from '../components/details/ToDoDetailView';
-import SettingsDetailView from '../components/details/SettingsDetailView';
+import WeatherDetailView from '../components/details/weather/WeatherDetailView';
+import ScheduleDetailView from '../components/details/schedule/ScheduleDetailView';
+import ActivityDetailView from '../components/details/activity/ActivityDetailView';
+import MediaDetailView from '../components/details/media/MediaDetailView';
+import MealDetailView from '../components/details/meals/MealDetailView';
+import ToDoDetailView from '../components/details/tasks/ToDoDetailView';
+import SettingsDetailView from '../components/settings/SettingsDetailView';
 
 import { useDashboard } from '../context/DashboardContext';
 import { useAppearance, useTheme } from '../theme/ThemeContext';
 import { getCardRows } from '../theme/appearance';
 import type { CardId, CardPreference } from '../theme/appearance';
 import useCompactTVLayout from '../hooks/useCompactTVLayout';
-import useAmbientMode from '../hooks/useAmbientMode';
+import useAmbientMode from '../components/ambient/useAmbientMode';
 import AmbientScreen from '../components/ambient/AmbientScreen';
-import DashboardGrid from '../components/DashboardGrid';
+import DashboardGrid from '../components/dashboard/DashboardGrid';
 
 type DetailTopic =
   | 'weather'

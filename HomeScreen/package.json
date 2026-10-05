@@ -33,7 +33,10 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "test:cards": "node --test test/cardContentLayout.test.cjs"
+    "test:cards": "node --test test/cardContentLayout.test.cjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test test/api.test.cjs test/cardContentLayout.test.cjs test/activitySummary.test.cjs",
+    "test:browser": "node --test test/cardMatrix.test.cjs"
   },
   "private": true,
   "devDependencies": {

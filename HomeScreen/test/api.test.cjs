@@ -1,0 +1,77 @@
+const {test} = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const ts = require('typescript');
+
+function load(path, imports = {}) {
+  const code = ts.transpileModule(fs.readFileSync(path, 'utf8'), {
+    compilerOptions: {module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020},
+  }).outputText;
+  const module = {exports: {}};
+  const requireMock = (name) => {
+    if (!(name in imports)) throw new Error(`Unexpected import: ${name}`);
+    return imports[name];
+  };
+  new Function('module', 'exports', 'require', code)(module, module.exports, requireMock);
+  return module.exports;
+}
+
+const http = load('../shared/src/http.ts');
+
+function setup(t) {
+  const events = [];
+  const auth = {currentUser: {uid: 'owner', getIdToken: async () => 'fixture-token'}};
+  const api = load('src/services/api.ts', {
+    './firebase': {auth},
+    'firebase/auth': {signOut: async () => {events.push('sign-out'); auth.currentUser = null;}},
+    './localUserData': {clearLocalUserData: async (uid) => events.push(`clear:${uid}`)},
+    '../../../shared/src/http': http,
+    'react-native': {Platform: {OS: 'android'}},
+    '@react-native-async-storage/async-storage': {getItem: async () => null},
+  });
+  return {api, events, auth};
+}
+
+test('authenticated TV requests retain token, timezone and encoded city', async (t) => {
+  const {api} = setup(t);
+  const calls = [];
+  t.mock.method(global, 'fetch', async (url, options) => {
+    calls.push({url, options});
+    return Response.json({weather: {temp: '72°'}});
+  });
+  await api.fetchDashboardSummary();
+  await api.fetchLocationWeather('Denver, CO & US');
+  assert.equal(calls[0].options.headers.Authorization, 'Bearer fixture-token');
+  assert.ok(calls[0].options.headers['X-Time-Zone']);
+  assert.ok(calls[1].url.endsWith('city=Denver%2C%20CO%20%26%20US'));
+});
+
+test('a revoked TV session clears local user data before reporting the server error', async (t) => {
+  const {api, events, auth} = setup(t);
+  t.mock.method(global, 'fetch', async () => Response.json({error: 'TV removed'}, {status: 401}));
+  await assert.rejects(api.getUserPreferences(), {message: 'TV removed', status: 401});
+  assert.deepEqual(events, ['sign-out', 'clear:owner']);
+  assert.equal(auth.currentUser, null);
+});
+
+test('a stale settings save reports the conflict without signing out', async (t) => {
+  const {api, events} = setup(t);
+  t.mock.method(global, 'fetch', async () => Response.json({error: 'Reload settings'}, {status: 409}));
+  await assert.rejects(api.saveUserPreferences({}, 12), {message: 'Reload settings', status: 409});
+  assert.deepEqual(events, []);
+});
+
+test('non-JSON server failures use the endpoint message and retain the status', async () => {
+  await assert.rejects(http.readJsonResponse(new Response('<html>Bad gateway</html>', {status: 502}), 'Could not load settings'),
+    {message: 'Could not load settings', status: 502});
+});
+
+test('public pairing expiry does not clear a signed-in TV session', async (t) => {
+  const {api, events} = setup(t);
+  t.mock.method(global, 'fetch', async (_url, options) => {
+    assert.equal(options.headers.Authorization, undefined);
+    return Response.json({error: 'Expired'}, {status: 410});
+  });
+  assert.deepEqual(await api.pollDevicePairing({code: 'ABC234', pollSecret: 'secret'}), {status: 'expired'});
+  assert.deepEqual(events, []);
+});

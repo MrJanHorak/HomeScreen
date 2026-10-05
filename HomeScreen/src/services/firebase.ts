@@ -36,7 +36,10 @@ const secureAuthStorage = {
   },
   async removeItem(key: string): Promise<void> {
     const secureKey = `auth_${key.replace(/[^A-Za-z0-9._-]/g, '_')}`;
-    await Promise.all([SecureStore.deleteItemAsync(secureKey), AsyncStorage.removeItem(key)]);
+    await Promise.all([
+      SecureStore.deleteItemAsync(secureKey),
+      AsyncStorage.removeItem(key),
+    ]);
   },
 };
 
@@ -48,7 +51,9 @@ try {
   } else {
     // The Firebase RN runtime exports this, although its web type entry omits it.
     const nativeAuth = FirebaseAuth as typeof FirebaseAuth & {
-      getReactNativePersistence: (storage: typeof secureAuthStorage) => FirebaseAuth.Persistence;
+      getReactNativePersistence: (
+        storage: typeof secureAuthStorage,
+      ) => FirebaseAuth.Persistence;
     };
     _auth = FirebaseAuth.initializeAuth(app, {
       persistence: nativeAuth.getReactNativePersistence(secureAuthStorage),
@@ -56,7 +61,8 @@ try {
   }
 } catch (error) {
   // Fast Refresh re-runs this module; auth is already initialized
-  if ((error as {code?: string}).code !== 'auth/already-initialized') throw error;
+  if ((error as { code?: string }).code !== 'auth/already-initialized')
+    throw error;
   _auth = FirebaseAuth.getAuth(app);
 }
 
