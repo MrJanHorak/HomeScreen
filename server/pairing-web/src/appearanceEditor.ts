@@ -65,6 +65,10 @@ const paletteColors: Record<Appearance['palette'], {background: string; accent: 
 
 function copyCards(cards: Card[]): Card[] { return cards.map((card) => ({...card})); }
 
+class SettingsRequestError extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
+
 function normalize(value: unknown): Appearance {
   if (!value || typeof value !== 'object') return {...defaults, cards: copyCards(defaults.cards)};
   const raw = value as Partial<Appearance>;
@@ -108,6 +112,7 @@ export function createAppearanceEditor(
   let redo: string[] = [];
   let draftTimer: ReturnType<typeof setTimeout> | undefined;
   let draftError = '';
+  let conflict: {appearance: Appearance; updatedAtMs: number} | null = null;
   root.innerHTML = `
     <p class="field-label">DASHBOARD STUDIO</p>
     <h2>Make the TV yours</h2>
@@ -153,6 +158,13 @@ export function createAppearanceEditor(
       </div>
       <div class="draft-actions"><button id="appearance-undo" class="button button-text" type="button">Undo</button><button id="appearance-redo" class="button button-text" type="button">Redo</button><button id="draft-save" class="button button-secondary" type="button">Save draft</button></div>
       <div class="editor-actions"><button id="appearance-save" class="button button-primary" type="button">Save to TV <span aria-hidden="true">↗</span></button><button id="appearance-reload" class="button button-text" type="button">Discard changes</button></div>
+      <div id="appearance-conflict" class="settings-conflict" hidden role="region" aria-labelledby="conflict-title">
+        <h3 id="conflict-title">Review newer TV settings</h3>
+        <p>Your draft is safe. The TV settings were saved again after this draft started.</p>
+        <p id="conflict-differences" class="field-hint"></p>
+        <p>Keep your draft to replace the published design on your next Save to TV, including its colors, cards, background and ambient settings. Or use the latest TV settings and discard this draft.</p>
+        <div class="editor-actions"><button id="appearance-keep-draft" class="button button-secondary" type="button">Keep my draft</button><button id="appearance-use-latest" class="button button-text" type="button">Use latest TV settings</button></div>
+      </div>
       <p id="draft-status" class="field-hint" role="status" aria-live="polite"></p>
       <details class="studio-section"><summary>Saved designs and published history</summary><div class="studio-section-body">
         <label class="field-label" for="design-name">DESIGN NAME</label>
@@ -182,6 +194,9 @@ export function createAppearanceEditor(
   const preview = $('#tv-preview');
   const save = $<HTMLButtonElement>('#appearance-save');
   const reload = $<HTMLButtonElement>('#appearance-reload');
+  const conflictPanel = $('#appearance-conflict');
+  const keepDraft = $<HTMLButtonElement>('#appearance-keep-draft');
+  const useLatest = $<HTMLButtonElement>('#appearance-use-latest');
   const undoButton = $<HTMLButtonElement>('#appearance-undo');
   const redoButton = $<HTMLButtonElement>('#appearance-redo');
   const draftSave = $<HTMLButtonElement>('#draft-save');
@@ -225,7 +240,19 @@ export function createAppearanceEditor(
     if (loaded && !busy && draftChanged() && !draftError) {
       draftTimer = setTimeout(() => void saveDraft(), 1500);
     }
-    save.disabled = busy || !changed(); reload.disabled = busy;
+    save.disabled = busy || !changed() || Boolean(conflict); reload.disabled = busy;
+    conflictPanel.hidden = !conflict;
+    keepDraft.disabled = busy; useLatest.disabled = busy;
+    if (conflict) {
+      const groups: [string, (keyof Appearance)[]][] = [
+        ['layout and cards', ['layout', 'cards', 'grid']], ['colors', ['palette', 'customAccent']],
+        ['background', ['background', 'backgroundColor', 'backgroundZoom']],
+        ['card styles', ['cardStyles']], ['ambient mode', ['ambient']],
+      ];
+      const latest = conflict.appearance;
+      const differences = groups.filter(([, keys]) => keys.some((key) => JSON.stringify(appearance[key]) !== JSON.stringify(latest[key]))).map(([name]) => name);
+      $('#conflict-differences').textContent = differences.length ? `Your draft differs from the latest TV settings in: ${differences.join(', ')}.` : 'Your draft already matches the latest TV settings.';
+    }
     undoButton.disabled = busy || !undo.length; redoButton.disabled = busy || !redo.length;
     draftSave.disabled = busy || !draftChanged();
     designSave.disabled = busy || !designName.value.trim(); designName.disabled = busy;
@@ -414,12 +441,12 @@ export function createAppearanceEditor(
       ...(body ? {body: JSON.stringify(body)} : {}),
     });
     const result = await response.json();
-    if (!response.ok) throw new Error(result.error || 'Could not update dashboard settings.');
+    if (!response.ok) throw new SettingsRequestError(result.error || 'Could not update dashboard settings.', response.status);
     return result;
   }
   async function load() {
     const current = ++generation;
-    clearTimeout(draftTimer); draftError = '';
+    clearTimeout(draftTimer); draftError = ''; conflict = null;
     gridEditor.clear();
     photos.clear();
     loaded = false; busy = true; render(); message('Loading your dashboard settings…');
@@ -440,6 +467,7 @@ export function createAppearanceEditor(
         if (JSON.stringify(appearance) !== savedJson) revision = library.draft.baseUpdatedAtMs;
       }
       observedJson = JSON.stringify(appearance); undo = []; redo = [];
+      if (revision !== publishedRevision) conflict = {appearance: normalize(result.appearance), updatedAtMs: publishedRevision};
       loaded = true;
       void photos.load();
     } catch (error) {
@@ -448,7 +476,7 @@ export function createAppearanceEditor(
       message(error instanceof Error ? error.message : 'Could not load settings.', 'error');
     } finally { if (current === generation) {
       busy = false; render();
-      if (loaded && library.draft && revision !== publishedRevision) message('Restored a draft based on older TV settings. Discard changes to load the latest published settings before publishing.', 'error');
+      if (loaded && conflict) message('Restored an older draft. Review newer TV settings to keep your draft or use the latest settings.', 'error');
       else if (loaded && library.draft && !changed()) message('Draft already matches your TV settings.');
       else if (loaded && library.draft) message('Restored your saved draft. Discard changes to return to the latest TV settings.');
     } }
@@ -525,7 +553,7 @@ export function createAppearanceEditor(
     updatePreview(); updateActions();
   });
   save.addEventListener('click', async () => {
-    if (busy) return;
+    if (busy || conflict) return;
     const current = generation;
     const sentJson = JSON.stringify(appearance);
     busy = true; render(); message('Saving your dashboard…');
@@ -543,6 +571,17 @@ export function createAppearanceEditor(
       if (draftError) message('Saved to TV. The account draft could not be cleared; refresh designs and history to retry.', 'info');
     } catch (error) {
       if (current !== generation) return;
+      if (error instanceof SettingsRequestError && error.status === 409) {
+        try {
+          const latest = await request('GET', undefined, 'appearanceStudio');
+          if (current !== generation) return;
+          conflict = {appearance: normalize(latest.appearance), updatedAtMs: latest.updatedAtMs || 0};
+          publishedRevision = conflict.updatedAtMs;
+          history = latest.history;
+        } catch {
+          // Keep the original revision if refresh fails; the next save is still guarded.
+        }
+      }
       busy = false; render(); message(error instanceof Error ? error.message : 'Could not save settings.', 'error');
     }
     if (current !== generation || changed()) return;
@@ -554,13 +593,24 @@ export function createAppearanceEditor(
       if (current === generation) message('Saved to TV. Use Refresh designs and history to reload the revision list.', 'success');
     }
   });
-  reload.addEventListener('click', async () => {
+  async function discardDraft() {
     const current = generation;
     await changeLibrary({action: 'draft', draft: null}, 'Draft discarded.');
     if (current === generation && !draftError) await load();
+  }
+  reload.addEventListener('click', () => void discardDraft());
+  useLatest.addEventListener('click', () => void discardDraft());
+  keepDraft.addEventListener('click', () => {
+    if (busy || !conflict) return;
+    // Explicit choice to replace this revision; a later TV change will still return 409.
+    revision = conflict.updatedAtMs;
+    savedJson = JSON.stringify(conflict.appearance);
+    conflict = null;
+    render();
+    message('Draft kept. Review it, then Save to TV to replace the latest published design.');
   });
   return {
     load,
-    clear() { generation++; clearTimeout(draftTimer); gridEditor.clear(); surfaces.clear(); photos.clear(); preview.replaceChildren(); busy = false; loaded = false; revision = 0; appearance = normalize(null); savedJson = ''; library = emptyLibrary(); history = []; undo = []; redo = []; observedJson = ''; draftJson = 'null'; draftError = ''; $('#design-list').replaceChildren(); $('#revision-list').replaceChildren(); designName.value = ''; content.hidden = true; message('Sign in to edit your dashboard.'); },
+    clear() { generation++; clearTimeout(draftTimer); conflict = null; conflictPanel.hidden = true; gridEditor.clear(); surfaces.clear(); photos.clear(); preview.replaceChildren(); busy = false; loaded = false; revision = 0; appearance = normalize(null); savedJson = ''; library = emptyLibrary(); history = []; undo = []; redo = []; observedJson = ''; draftJson = 'null'; draftError = ''; $('#design-list').replaceChildren(); $('#revision-list').replaceChildren(); designName.value = ''; content.hidden = true; message('Sign in to edit your dashboard.'); },
   };
 }

@@ -196,6 +196,9 @@ body { line-height: 1.5; }
 .ambient-info { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; margin-bottom: 16px; }
 .plasma-colors { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .account-danger { margin-top: 24px; }
+.settings-conflict { margin-block: 16px; padding: 20px; border: 1px solid #ffa98d; border-radius: 16px; }
+.settings-conflict h3 { margin-top: 0; }
+.settings-conflict p { overflow-wrap: anywhere; }
 .account-actions { display: grid; gap: 8px; padding-bottom: 12px; }
 .account-actions .button { justify-self: start; }
 .installed-apps { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-bottom: 16px; }

@@ -111,8 +111,36 @@ test("TV publishes join bounded history and cannot access the owner library", as
   const f = fixture(t, {settings: {appearance, updatedAtMs: 100}, history: {revisions}}, "custom");
   for (const method of ["GET", "PUT"]) assert.equal((await f.studio(method, {})).statusCode, 403);
   assert.deepEqual(f.writes, []);
-  assert.equal((await f.publish({appearance, source: "web"})).statusCode, 200);
+  assert.equal((await f.publish({appearance: {...appearance, palette: "forest"}, source: "web"})).statusCode, 200);
   assert.equal(f.records.history.revisions.length, MAX_REVISIONS);
   assert.equal(f.records.history.revisions[0].source, "tv", "source cannot spoof the verified caller");
   assert.equal(f.records.history.revisions.at(-1).updatedAtMs, 72);
+});
+
+test("identical TV saves keep the revision and history unchanged, regardless of object key order", async (t) => {
+  const f = fixture(t, {settings: {appearance, updatedAtMs: 42, seededFromWeb: true}}, "custom");
+  const reordered = Object.fromEntries(Object.entries(appearance).reverse());
+  const result = await f.publish({appearance: reordered});
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.body.updatedAtMs, 42);
+  assert.deepEqual(f.writes, []);
+  assert.equal((await f.publish({appearance: {...appearance, palette: "forest"}, expectedUpdatedAtMs: 42})).statusCode, 200,
+    "a duplicate TV save does not invalidate the companion's draft revision");
+});
+
+test("identical legacy TV saves preserve newer framing and card styles without advancing the revision", async (t) => {
+  const stored = {...appearance, backgroundZoom: 1.25, cardStyles: {}};
+  const f = fixture(t, {settings: {appearance: stored, updatedAtMs: 42, seededFromWeb: true}}, "custom");
+  const result = await f.publish({appearance});
+  assert.equal(result.statusCode, 200);
+  assert.equal(result.body.updatedAtMs, 42);
+  assert.deepEqual(f.writes, []);
+});
+
+test("an identical web seed marks migration complete without creating a revision", async (t) => {
+  const f = fixture(t, {settings: {appearance, updatedAtMs: 42}});
+  assert.equal((await f.publish({appearance, source: "web", expectedUpdatedAtMs: 42})).statusCode, 200);
+  assert.equal(f.records.settings.updatedAtMs, 42);
+  assert.equal(f.records.settings.seededFromWeb, true);
+  assert.deepEqual(f.writes, ["settings"]);
 });

@@ -87,15 +87,52 @@ test('saved designs and revision restoration edit a draft with an undo path', as
   }
 });
 
-test('stale drafts cannot overwrite newer TV settings; discard loads the published revision', async (t) => {
+test('stale drafts offer recovery before saving; discard loads the published revision', async (t) => {
   const draft = {appearance: {...base, palette: 'forest'}, baseUpdatedAtMs: 5};
   const {page, state, waitIdle} = await setup(t, {library: {updatedAtMs: 1, draft, designs: []}});
-  await page.locator('#appearance-save').click(); await waitIdle();
-  assert.match(await page.locator('#appearance-status').textContent(), /changed on another device/);
+  assert.equal(await page.locator('#appearance-save').isDisabled(), true);
+  assert.equal(await page.locator('#appearance-conflict').isVisible(), true);
+  assert.match(await page.locator('#conflict-differences').textContent(), /colors/);
   assert.equal(await page.locator('#palette-select').inputValue(), 'forest'); assert.equal(state.publishes, 0);
   await page.locator('#appearance-reload').click();
   await page.waitForFunction(() => document.querySelector('#palette-select').value === 'night' && !document.querySelector('#appearance-reload').disabled);
   assert.equal(state.library.draft, null);
+});
+
+test('keeping an older draft requires an explicit publish and persists its new base across reload', async (t) => {
+  const draft = {appearance: {...base, palette: 'forest'}, baseUpdatedAtMs: 5};
+  const {page, state, open} = await setup(t, {library: {updatedAtMs: 1, draft, designs: []}});
+  await page.locator('#appearance-keep-draft').click();
+  assert.equal(state.publishes, 0);
+  assert.equal(await page.locator('#palette-select').inputValue(), 'forest');
+  assert.equal(await page.locator('#appearance-save').isEnabled(), true);
+  await page.waitForFunction(() => document.querySelector('#draft-status').textContent.startsWith('Draft saved to your account'));
+  assert.equal(state.library.draft.baseUpdatedAtMs, 10);
+  await open();
+  assert.equal(await page.locator('#appearance-conflict').isVisible(), false);
+  await page.locator('#appearance-save').click();
+  await page.waitForFunction(() => document.querySelector('#draft-status').textContent === 'No unpublished draft.');
+  assert.equal(state.publishes, 1);
+  assert.equal(state.appearance.palette, 'forest');
+});
+
+test('a TV change during editing or after keeping a draft still prevents an overwrite', async (t) => {
+  const {page, state, waitIdle} = await setup(t);
+  await page.locator('#palette-select').selectOption('forest');
+  state.updatedAtMs = 11; state.appearance = {...base, palette: 'plum'};
+  await page.locator('#appearance-save').click(); await waitIdle();
+  assert.equal(await page.locator('#appearance-conflict').isVisible(), true);
+  assert.equal(state.publishes, 0);
+  await page.locator('#appearance-keep-draft').click();
+  state.updatedAtMs = 12; state.appearance = {...base, palette: 'contrast'};
+  await page.locator('#appearance-save').click(); await waitIdle();
+  assert.equal(await page.locator('#appearance-conflict').isVisible(), true);
+  assert.equal(state.publishes, 0);
+  assert.equal(await page.locator('#palette-select').inputValue(), 'forest');
+  await page.locator('#appearance-use-latest').click(); await waitIdle();
+  await page.waitForFunction(() => document.querySelector('#palette-select').value === 'contrast');
+  assert.equal(state.library.draft, null);
+  assert.equal(state.appearance.palette, 'contrast');
 });
 
 test('library conflicts retain page edits and refresh permits an explicit draft retry', async (t) => {

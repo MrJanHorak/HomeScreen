@@ -7,6 +7,7 @@ import {validGrid} from "./utils/dashboardLayout";
 import {validCardStyles} from "./utils/cardStyle";
 import {validPhotoZoom} from "./utils/photoFraming";
 import {MAX_REVISIONS, PublishedRevision} from "./utils/appearanceLibrary";
+import {isDeepStrictEqual} from "node:util";
 
 const CARD_IDS = ["weather", "schedule", "activity", "media", "meal", "todo"];
 const LAYOUTS = ["balanced", "agenda", "wellness", "calm", "custom"];
@@ -114,6 +115,13 @@ export async function handleUserAppearance(req: Request, res: Response): Promise
         }
         if (!validAppearance(appearance)) return {invalid: true};
         if (Buffer.byteLength(JSON.stringify(appearance), "utf8") > 10_000) return {invalid: true};
+        // Retries and duplicate TV writes must not invalidate an owner's open draft.
+        if (isDeepStrictEqual(appearance, existing?.appearance)) {
+          if (req.body.source === "web" && existing?.seededFromWeb !== true) {
+            transaction.set(ref, {...existing, seededFromWeb: true});
+          }
+          return {updatedAtMs: existing?.updatedAtMs || 0};
+        }
         const history = await transaction.get(historyRef);
         const revisions: PublishedRevision[] = history.data()?.revisions || [];
         // Preserve the pre-history configuration on the first new publish.
@@ -133,7 +141,7 @@ export async function handleUserAppearance(req: Request, res: Response): Promise
         ].slice(0, MAX_REVISIONS)});
         return {updatedAtMs};
       });
-      if (result.conflict) res.status(409).json({error: "Settings changed on another device. Your draft is still here; reload the saved settings before trying again."});
+      if (result.conflict) res.status(409).json({error: "TV settings changed since this draft started. Your draft is safe; review the newer settings to continue."});
       else if (result.invalid) res.status(400).json({error: "This TV cannot change the saved free layout. Use the companion site or update the TV app."});
       else res.status(200).json({updatedAtMs: result.updatedAtMs});
       return;
