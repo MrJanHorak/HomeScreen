@@ -31,6 +31,7 @@
   "scripts": {
     "start": "expo start",
     "android": "expo run:android",
+    "android:release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android-release.ps1",
     "ios": "expo run:ios",
     "web": "expo start --web",
     "test:cards": "node --test test/cardContentLayout.test.cjs",

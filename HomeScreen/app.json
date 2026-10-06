@@ -28,6 +28,7 @@
       "expo-secure-store",
       "./plugins/withTvAppQueries",
       "./plugins/withNativeCleanOrder",
+      "./plugins/withAndroidBuildToolchain",
       "./plugins/withHomeScreenSplash",
       [
         "@react-native-tvos/config-tv",
