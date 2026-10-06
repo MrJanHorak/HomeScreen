@@ -91,13 +91,20 @@ remote-selectable detail view. The same stored grid scales to both TV sizes;
 there is no independent compact layout document. Automatic rows retain their
 arrangement and now use the same adaptive content renderer and custom card surfaces.
 Native measurement excludes the actual card border and padding. The fitter
-evaluates row density and up to three columns for Schedule, Tasks and Weather;
+evaluates row density and up to three columns for Schedule and Tasks;
 headline estimates are refined by measured text/row heights. Meals shows a few
 readable dated dinners in one column. Media uses large posters and spacious queue
-previews. Activity preserves its weekly step total independently of the chart
+previews. Weather uses a separate planner for larger current values/artwork,
+capped hourly and daily strips, and supporting metrics when space permits.
+Activity preserves its weekly step total independently of the chart
 breakpoint, alongside the original ring and all daily metrics. See the
 [card content breakpoints](../../HomeScreen/CARD_CONTENT_BREAKPOINTS.md) for the
 complete width/height thresholds and the 600-case verification matrix.
+
+For designing future card content, see the
+[widget design guide](../../HomeScreen/WIDGET_DESIGN_GUIDE.md) and the
+[weather layout design](../../HomeScreen/WEATHER_LAYOUT_DESIGN.md), including
+implemented family mappings across all 50 footprints in both reference profiles.
 
 The phone canvas has a 16:9 preview and 4-pixel gaps. It previews labels, positions,
 card colors/opacity, and the saved Google background when selected. It does not

@@ -7,6 +7,7 @@ import type { CardId } from '../../../theme/appearance';
 import type { CardPresentation } from './cardContentLayout';
 import CardHeader from './CardHeader';
 import CardContentRow from './CardContentRow';
+import CardDetailsHint from './CardDetailsHint';
 import type { CardDimensions, DashboardLine } from './types';
 
 export interface CardContentProps extends CardDimensions {
@@ -62,9 +63,6 @@ export default function CardContent({
   );
   const hidden = lines.length - plan.count;
   const headerBadge = !plan.footer && hidden ? `+${hidden} more` : badge;
-  const detailsHint = hidden
-    ? `+${hidden} more · Open details ↗`
-    : 'Open details ↗';
 
   return (
     <View
@@ -142,16 +140,7 @@ export default function CardContent({
       </View>
       {plan.footer && (
         <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
-          <Text
-            numberOfLines={1}
-            style={{
-              color: theme.colors.textSecondary,
-              fontSize: 10 * scale,
-              lineHeight: 14 * scale,
-            }}
-          >
-            {detailsHint}
-          </Text>
+          <CardDetailsHint scale={scale} hiddenCount={hidden} />
         </View>
       )}
     </View>

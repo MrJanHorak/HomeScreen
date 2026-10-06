@@ -33,7 +33,7 @@ for (const mode of ['compact', 'full']) test(`all six cards, all 50 grid footpri
   assert.deepEqual(errors, []);
   const report = await page.evaluate(() => [...document.querySelectorAll('[data-testid^="adaptive-"]')].map((card) => {
     const box = card.getBoundingClientRect();
-    const outside = [...card.querySelectorAll('[data-testid="card-row"], [data-testid="activity-metric"], [data-testid="activity-stats"], [data-testid="activity-weekly-chart"], [data-testid="activity-weekly-summary"], [data-testid="card-hero"]')].filter((node) => {
+    const outside = [...card.querySelectorAll('[data-testid="card-row"], [data-testid="activity-metric"], [data-testid="activity-stats"], [data-testid="activity-weekly-chart"], [data-testid="activity-weekly-summary"], [data-testid="card-hero"], [data-testid^="weather-"]')].filter((node) => {
       const r=node.getBoundingClientRect(); return r.bottom>box.bottom+1 || r.right>box.right+1 || r.left<box.left-1;
     });
     return {id:card.dataset.testid, size:card.closest('article')?.dataset.size, rows:card.querySelectorAll('[data-testid="card-row"]').length,
@@ -141,7 +141,7 @@ test('meal dates, completed tasks and zero weather values remain truthful after 
   assert.match(tasks, /1 task to do.*Pending task/);
   assert.doesNotMatch(tasks, /Already finished|Due /);
   const weather = await page.locator('[data-card="weather"] [data-size="12x6"]').textContent();
-  for (const expected of ['0° · Clear', 'H 0° · L 0°', '0% humidity', 'Feels like 0°', '0 mph wind']) {
+  for (const expected of ['0°', 'Clear', 'H 0° · L 0°', '0% humidity', 'Feels like 0°', '0 mph wind']) {
     assert.ok(weather.includes(expected), `missing real zero value: ${expected}`);
   }
 });
@@ -196,4 +196,71 @@ test('weather details retain forecasts, accessible city selection and keyboard f
   assert.match(text, /Extended forecast unavailable./);
   assert.doesNotMatch(text, /undefined|NaN|Feels like/);
   assert.deepEqual(errors, []);
+});
+
+for (const mode of ['compact', 'full']) test(`weather visual hierarchy, partial data and long labels: ${mode}`, async (t) => {
+  const page = await browser.newPage({viewport:{width:mode==='compact'?960:1920,height:1080}});
+  t.after(() => page.close());
+  const errors=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  await page.goto(`http://127.0.0.1:5174/?mode=${mode}`);
+  await page.locator('[data-card="weather"] [data-testid="weather-temperature"]').first().waitFor();
+  await page.evaluate(()=>document.fonts.ready);
+  const cards=page.locator('[data-card="weather"] [data-testid="adaptive-weather"]');
+  const report=async()=>cards.evaluateAll(nodes=>nodes.map(card=>{
+    const box=card.getBoundingClientRect();
+    const content=card.querySelector('[data-testid="weather-content"]').getBoundingClientRect();
+    const hint=card.querySelector('[data-testid="weather-details-hint"]')?.getBoundingClientRect();
+    const outside=[...card.querySelectorAll('[data-testid^="weather-"]')].filter(node=>{
+      const r=node.getBoundingClientRect();return r.bottom>box.bottom+1||r.right>box.right+1||r.left<box.left-1;
+    });
+    return {size:card.closest('article').dataset.size, text:card.textContent,
+      hours:card.querySelectorAll('[data-testid="weather-hour"]').length,
+      days:card.querySelectorAll('[data-testid="weather-day"]').length,
+      tempFont:parseFloat(getComputedStyle(card.querySelector('[data-testid="weather-temperature"]')).fontSize),
+      overlap:hint?content.bottom>hint.top-4:false,outside:outside.map(n=>n.dataset.testid)};
+  }));
+  let initial=await report();
+  assert.equal(initial.length,50);
+  assert.deepEqual(initial.filter(c=>c.outside.length||c.overlap),[]);
+  for(const card of initial){
+    assert.ok(card.text.includes('72°')&&card.text.includes('Partly cloudy'));
+    assert.doesNotMatch(card.text,/\+\d+ more/);
+    assert.ok(card.hours<=4&&card.days<=4);
+    assert.ok(card.tempFont>=(mode==='compact'?32:44.8)-0.01);
+  }
+  const large=initial.find(c=>c.size==='12x6');
+  assert.equal(large.hours,4);assert.equal(large.days,4);
+  assert.equal(initial.find(c=>c.size==='3x2').hours,0);
+  if(process.env.CARD_SCREENSHOT_DIR) {
+    for(const size of ['3x2','3x3','3x4','3x6','7x2','12x6']) {
+      await page.locator(`[data-card="weather"] [data-size="${size}"]`).screenshot({path:`${process.env.CARD_SCREENSHOT_DIR}/${mode}-weather-${size}.png`});
+    }
+  }
+
+  const patch={temp:'-12°',condition:'Thunderstorms with intermittent heavy rain',conditionIcon:'cloud-rain',
+    feelsLike:0,high:0,humidity:0,windSpeed:0,
+    forecast:[{day:'Wednesday',condition:'Snow',icon:'snowflake',high:0,low:-12}],
+    hourly:['12:00 AM','03:00 AM','06:00 AM','09:00 AM'].map((time,i)=>({time,temp:i===0?0:-12,icon:'moon',pop:i===0?'0%':'invalid'}))};
+  await page.evaluate(patch=>{
+    window.updateFixture({weather:patch,activeLocation:{id:'long',name:'A very long neighborhood and city name',query:'test'}});
+  },patch);
+  await page.waitForFunction(()=>document.querySelector('[data-testid="weather-temperature"]').textContent==='-12°');
+  const partial=await report();
+  assert.deepEqual(partial.filter(c=>c.outside.length||c.overlap),[]);
+  assert.ok(partial.every(c=>!c.text.includes('L 0°')),'missing low is not copied from high');
+  assert.ok(partial.find(c=>c.size==='12x6').text.includes('0%'));
+  assert.equal(await cards.last().locator('[data-testid="weather-hour"]').first().getAttribute('aria-label'),'12:00 AM, 0°, 0% chance of rain');
+  assert.doesNotMatch(partial.map(c=>c.text).join(''),/NaN|undefined|invalid/);
+
+  await page.evaluate(()=>window.updateFixture({weather:{temp:'0°',condition:'Clear',forecast:[{day:'Tue',condition:'Rain',icon:'cloud-rain',high:0,low:-2}]}}));
+  await page.waitForFunction(()=>document.querySelector('[data-testid="weather-temperature"]').textContent==='0°');
+  const dailyOnly=await report();
+  assert.ok(dailyOnly.every(c=>c.hours===0));
+  assert.ok(dailyOnly.find(c=>c.size==='12x6').days>0,'daily forecast replaces missing hourly data');
+  assert.deepEqual(dailyOnly.filter(c=>c.outside.length||c.overlap),[]);
+  await page.evaluate(()=>window.updateFixture({weather:null}));
+  await page.waitForFunction(()=>document.querySelector('[data-testid="weather-condition"]').textContent==='Unavailable');
+  assert.equal(await cards.locator('[data-testid="weather-hour"], [data-testid="weather-day"], [data-testid="weather-hero"] [aria-hidden="true"]').count(),0);
+  assert.deepEqual(errors,[]);
 });

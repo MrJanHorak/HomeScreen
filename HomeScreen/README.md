@@ -131,16 +131,24 @@ Press a title to move it to **Up Next**. Hold a title to hide it; **Hidden title
 
 ## Card content across sizes
 
-Card content now shares one fitter across automatic rows and the free canvas.
+Card content shares measured renderers across automatic rows and the free canvas.
 It uses the measured inner size to fit readable content. Meals shows a few dated
 dinners in one column, and Media uses larger posters with spacious queue previews.
-Schedule, Tasks and Weather can use compact rows and extra columns. Medium Activity
+Schedule and Tasks can use compact rows and extra columns. Weather uses larger
+current values/artwork and separate, capped hourly/daily forecast strips. Medium Activity
 retains its ring, all four daily metrics and a weekly summary whenever space permits,
 before adding a chart. Wider/taller cards add entries and weekly/forecast information
 when supplied. All six cards and all
 50 supported footprints are checked at compact and full TV dimensions. See
 [card content breakpoints](CARD_CONTENT_BREAKPOINTS.md) for thresholds, content
 priorities and verification commands.
+
+The [widget design guide](WIDGET_DESIGN_GUIDE.md) documents the complete size
+contract and a reusable process for future layouts. The implemented
+[weather design](WEATHER_LAYOUT_DESIGN.md) maps six layout families across all
+50 footprints in both reference profiles. The
+[other widget assessment](WIDGET_LAYOUT_ASSESSMENT.md) identifies follow-up
+opportunities and the shared components that support them.
 
 ## Android TV artwork
 

@@ -23,7 +23,7 @@ const data: FixtureDashboard = {
   schedule: Array.from({length: 6}, (_, i) => ({id: String(i), title: `Household appointment ${i}`, time: '10:30 AM', endTime: '11:30 AM', category: 'Home', color: '', date: date(0)})),
   upcomingEvents: Array.from({length: 8}, (_, i) => ({id: `next${i}`, title: `Upcoming appointment ${i}`, time: '11:00 AM', endTime: '', category: 'Home', color: '', date: date(i+1)})),
   tasks: Array.from({length: 16}, (_, i) => ({id: String(i), title: `Task ${i} · Pick up household supplies`, due: date(i)})),
-  weather: {temp: '72°', condition: 'Partly cloudy', high: 78, low: 61, feelsLike: 70, humidity: 54, windSpeed: 4, windDirection: 'NW', forecast: Array.from({length: 5}, (_, i) => ({day: `Day ${i}`, high: 78, low: 61, condition: 'Clear', icon: 'sun'})), hourly: [{time: '2 PM', temp: 73, pop: '10%', icon: 'sun'}]},
+  weather: {temp: '72°', condition: 'Partly cloudy', conditionIcon: 'cloud-sun', high: 78, low: 61, feelsLike: 70, humidity: 54, windSpeed: 4, windDirection: 'NW', forecast: Array.from({length: 5}, (_, i) => ({day: `Day ${i}`, high: 78, low: 61, condition: 'Clear', icon: 'sun'})), hourly: ['2 PM', '5 PM', '8 PM', '11 PM', '2 AM', '5 AM', '8 AM'].map((time, i) => ({time, temp: 73-i, pop: `${i ? 66-i*9 : 10}%`, icon: i > 2 ? 'moon' : 'sun'}))},
   health: {status: 'ok', steps: 1843, stepGoal: 10000, distance: 2.3, distanceGoal: 8, calories: 1256, activeMinutes: 94, progress: 0.1843, estimatedRestingCalories: 800,
     weekly: Array.from({length: 7}, (_, i) => ({date: date(-6+i), steps: 5000+i*500, distance: 3, calories: 1400, activeMinutes: 70}))},
 };

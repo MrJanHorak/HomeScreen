@@ -1,97 +1,77 @@
+import { Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import type { Weather } from '../../../../../shared/src/types';
 import { useDashboard } from '../../../context/DashboardContext';
 import useCompactTVLayout from '../../../hooks/useCompactTVLayout';
 import { useTheme } from '../../../theme/ThemeContext';
-import CardContent from '../shared/CardContent';
-import type { CardDimensions, DashboardIcon, DashboardLine } from '../shared/types';
+import { formatTemperature, weatherConditionIcon } from '../../../helpers/weatherHelpers';
+import CardHeader from '../shared/CardHeader';
+import CardDetailsHint from '../shared/CardDetailsHint';
+import type { CardDimensions } from '../shared/types';
+import WeatherForecastStrip from './WeatherForecastStrip';
+import { planWeatherCard } from './weatherCardLayout';
 
-function conditionIcon(condition: string): DashboardIcon {
-  const value = condition.toLowerCase();
-  if (value.includes('rain') || value.includes('drizzle'))
-    return 'weather-rainy';
-  if (value.includes('snow')) return 'weather-snowy';
-  if (value.includes('thunder')) return 'weather-lightning';
-  if (value.includes('cloud')) return 'weather-cloudy';
-  if (value.includes('fog') || value.includes('mist')) return 'weather-fog';
-  return value.includes('clear') ? 'weather-sunny' : 'weather-partly-cloudy';
-}
-
-function weatherLines(weather: Weather | null): DashboardLine[] {
-  const lines: DashboardLine[] = [];
-  if (weather?.feelsLike !== undefined) {
-    lines.push({
-      title: `Feels like ${Math.round(weather.feelsLike)}°`,
-      icon: 'thermometer',
-    });
-  }
-  if (weather?.humidity !== undefined) {
-    lines.push({
-      title: `${weather.humidity}% humidity`,
-      icon: 'water-percent',
-    });
-  }
-  if (weather?.windSpeed !== undefined) {
-    const direction = weather.windDirection
-      ? ` · ${weather.windDirection}`
-      : '';
-    lines.push({
-      title: `${weather.windSpeed} mph wind${direction}`,
-      icon: 'weather-windy',
-    });
-  }
-  for (const day of weather?.forecast || []) {
-    lines.push({
-      title: `${day.day} · ${Math.round(day.high)}° / ${Math.round(day.low)}°`,
-      detail: day.condition,
-      icon: conditionIcon(day.condition),
-    });
-  }
-  for (const hour of weather?.hourly || []) {
-    lines.push({
-      title: `${hour.time} · ${hour.temp}`,
-      detail: `${hour.pop} rain`,
-      icon: 'clock-outline',
-    });
-  }
-  return lines;
-}
-
-export default function WeatherDashboardCard({
-  width,
-  height,
-}: CardDimensions) {
+export default function WeatherDashboardCard({ width, height }: CardDimensions) {
   const { weather, activeLocation } = useDashboard();
   const theme = useTheme();
   const scale = useCompactTVLayout() ? 1 : 1.4;
-  const temp = weather?.temp ?? '--';
-  const temperature = temp.includes('°') ? temp : `${temp}°`;
-  const showIcon = height >= 115 * scale && width >= 240 * scale;
-  const iconSize = showIcon ? 34 * scale : 0;
-  const highLow =
-    weather?.high !== undefined
-      ? `H ${Math.round(weather.high)}° · L ${Math.round(weather.low ?? weather.high)}°`
-      : '';
-
-  return (
-    <CardContent
-      id='weather'
-      width={width}
-      height={height}
-      title={`${temperature} · ${weather?.condition || 'Unavailable'}`}
-      subtitle={[activeLocation.name, highLow].filter(Boolean).join(' · ')}
-      artWidth={iconSize}
-      artHeight={iconSize}
-      art={
-        showIcon ? (
-          <MaterialCommunityIcons
-            name={conditionIcon(weather?.condition || '')}
-            size={iconSize}
-            color={theme.colors.focusRing}
-          />
-        ) : undefined
-      }
-      lines={weatherLines(weather)}
-    />
-  );
+  const rawTemperature = weather?.temp?.trim() || '--';
+  const temperature = rawTemperature.includes('°') ? rawTemperature : `${rawTemperature}°`;
+  const condition = weather?.condition || 'Unavailable';
+  const available = Boolean(weather && !['unknown', 'unavailable'].includes(condition.toLowerCase()) && Number.isFinite(parseFloat(rawTemperature)));
+  const icon = available ? weatherConditionIcon(weather?.conditionIcon, condition) : undefined;
+  const hours = available ? weather?.hourly || [] : [];
+  const days = available ? weather?.forecast || [] : [];
+  const hasFeelsLike = available && Number.isFinite(weather?.feelsLike);
+  const highLow = available ? [
+    Number.isFinite(weather?.high) ? `H ${formatTemperature(weather?.high)}` : '',
+    Number.isFinite(weather?.low) ? `L ${formatTemperature(weather?.low)}` : '',
+  ].filter(Boolean).join(' · ') : '';
+  const metrics = available ? [
+    Number.isFinite(weather?.windSpeed) ? { icon: 'weather-windy' as const,
+      text: `${weather?.windSpeed} mph wind${weather?.windDirection ? ` · ${weather.windDirection}` : ''}` } : null,
+    Number.isFinite(weather?.humidity) ? { icon: 'water-percent' as const, text: `${weather?.humidity}% humidity` } : null,
+  ].filter(item => item !== null) : [];
+  const plan = planWeatherCard({ width, height, scale, temperature,
+    hasContext: hasFeelsLike || Boolean(highLow), hourlyCount: hours.length,
+    dailyCount: days.length, hasMetrics: metrics.length > 0, hasIcon: Boolean(icon) });
+  const context = [hasFeelsLike ? `Feels like ${formatTemperature(weather?.feelsLike)}` : '',
+    plan.currentWidth / scale >= 250 || !hasFeelsLike ? highLow : ''].filter(Boolean).join(' · ');
+  const forecast = <View style={{ gap: 8 * scale, minWidth: 0 }}>
+    {plan.hours > 0 && <WeatherForecastStrip hours={hours.slice(0, plan.hours)} scale={scale} shallow={plan.shallow} roomy={plan.roomyForecast} />}
+    {plan.days > 0 && <WeatherForecastStrip days={days.slice(0, plan.days)} scale={scale} shallow={plan.shallow} roomy={plan.roomyForecast} />}
+  </View>;
+  return <View testID='adaptive-weather' style={{ width, height, minWidth: 0 }}>
+    <View testID='weather-content' style={{ gap: plan.gap }}>
+      <CardHeader id='weather' scale={scale} height={plan.header} badge={activeLocation.name} />
+      <View style={{ flexDirection: plan.sideBySide ? 'row' : 'column', gap: (plan.sideBySide ? 16 : 8) * scale }}>
+        <View testID='weather-current' style={{ width: plan.currentWidth, minWidth: 0, gap: 4 * scale }}>
+          <View testID='weather-hero' style={{ flexDirection: 'row', alignItems: 'center', gap: 8 * scale }}>
+            <View style={{ flex: 1, minWidth: 0, gap: 2 * scale }}>
+              <Text testID='weather-temperature' numberOfLines={1} style={{ color: theme.colors.textPrimary,
+                fontSize: plan.temperatureSize, lineHeight: plan.temperatureLine, fontWeight: '700' }}>{temperature}</Text>
+              <Text testID='weather-condition' numberOfLines={1} style={{ color: theme.colors.textPrimary,
+                fontSize: (plan.shallow ? 12 : 14) * scale, lineHeight: plan.conditionLine }}>{condition}</Text>
+            </View>
+            {icon && plan.icon > 0 && <MaterialCommunityIcons name={icon} size={plan.icon} color={theme.colors.focusRing} />}
+          </View>
+          {plan.context && context && <Text testID='weather-context' numberOfLines={1}
+            style={{ color: theme.colors.textSecondary, fontSize: 11 * scale, lineHeight: 16 * scale }}>{context}</Text>}
+        </View>
+        {plan.sideBySide && <View style={{ width: plan.forecastWidth }}>{forecast}</View>}
+        {!plan.sideBySide && (plan.hours > 0 || plan.days > 0) && forecast}
+      </View>
+      {plan.metrics && <View testID='weather-metrics' style={{ flexDirection: 'row', gap: 14 * scale,
+        borderTopWidth: scale, borderTopColor: theme.colors.glassBorder, paddingTop: 6 * scale }}>
+        {metrics.map(metric => <View key={metric.icon} style={{ flex: 1, minWidth: 0,
+          flexDirection: 'row', alignItems: 'center', gap: 5 * scale }}>
+          <MaterialCommunityIcons name={metric.icon} size={14 * scale} color={theme.colors.focusRing} />
+          <Text numberOfLines={1} style={{ flex: 1, color: theme.colors.textSecondary, fontSize: 11 * scale,
+            lineHeight: 16 * scale }}>{metric.text}</Text>
+        </View>)}
+      </View>}
+    </View>
+    {plan.footer && <View testID='weather-details-hint' style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+      <CardDetailsHint scale={scale} />
+    </View>}
+  </View>;
 }
