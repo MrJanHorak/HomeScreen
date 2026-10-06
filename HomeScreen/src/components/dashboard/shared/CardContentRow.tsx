@@ -1,4 +1,4 @@
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import type { LayoutChangeEvent } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme/ThemeContext';
@@ -7,6 +7,7 @@ import type { CardId } from '../../../theme/appearance';
 import WatchPoster from '../../shared/WatchPoster';
 import { CARD_ICONS } from './CardHeader';
 import type { DashboardLine } from './types';
+import CardTextBlock from './CardTextBlock';
 
 interface CardContentRowProps {
   id: CardId;
@@ -58,33 +59,10 @@ export default function CardContentRow({
           style={{ width: 16 * scale, lineHeight: plan.rowLine }}
         />
       )}
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text
-          testID='card-row-title'
-          numberOfLines={dense ? 1 : 2}
-          style={{
-            color: theme.colors.textPrimary,
-            fontSize: dense ? 11 * scale : plan.rowSize,
-            lineHeight: plan.rowLine,
-            fontWeight: '600',
-          }}
-        >
-          {title}
-        </Text>
-        {!dense && line.detail && (
-          <Text
-            numberOfLines={1}
-            style={{
-              color: theme.colors.textSecondary,
-              fontSize: plan.detailSize,
-              lineHeight: plan.detailLine,
-              marginTop: 2 * scale,
-            }}
-          >
-            {line.detail}
-          </Text>
-        )}
-      </View>
+      <CardTextBlock style={{ flex: 1 }} title={title} detail={!dense ? line.detail : undefined}
+        titleTestID='card-row-title' titleLines={dense ? 1 : 2}
+        titleSize={dense ? 11 * scale : plan.rowSize} titleLine={plan.rowLine}
+        detailSize={plan.detailSize} detailLine={plan.detailLine} detailGap={2 * scale} />
     </View>
   );
 }

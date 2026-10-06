@@ -1,10 +1,11 @@
 # Applying the weather design principles to other widgets
 
-Assessment date: October 6, 2026. Weather is implemented. The other domain changes
-below are recommendations, not shipped redesigns. The shared details hint is
-already reused by Weather and `CardContent`; other widgets retain their behavior.
+Assessment date: October 6, 2026. Weather and Schedule are implemented. Remaining
+domain changes below are recommendations. Shared headers, details hints and text
+blocks are reused; other widgets retain their behavior.
 See [the design guide](WIDGET_DESIGN_GUIDE.md) for geometry and validation, and
-[Weather](WEATHER_LAYOUT_DESIGN.md) for an implementation example.
+[Weather](WEATHER_LAYOUT_DESIGN.md) and [Schedule](SCHEDULE_LAYOUT_DESIGN.md)
+for implementation examples.
 
 ## What transfers
 
@@ -22,7 +23,7 @@ horizontal strip is not automatically appropriate for a text-heavy task or event
 
 | Widget | Existing behavior | Applicable improvement | Reuse approach / priority |
 | --- | --- | --- | --- |
-| Schedule | Primary next event, then today's remaining events and future events in one shared list; columns maximize entry count | Separate **Today** and **Coming up**; use a time-aligned agenda for tall cards and primary event beside an agenda in wide cards; cap previews without shrinking event names | Highest next-design priority. Reuse `CardHeader`, `CardSection`, `CardContentRow` and details hint, with a group-aware domain planner |
+| Schedule | Implemented: prominent current/next event, separate **More today** and **Coming up** groups, capped at five total events | TV-clock status and preview expiration use supplied absolute occurrence windows; sparse cards emphasize one event | Reuses `CardHeader`, `CardSection`, `CardTextBlock` and details hint, with one domain planner and agenda renderer |
 | Tasks | Pending count plus pending names and optional due dates; compact rows/columns | Keep task names primary; cap preview count on large cards; only group due/undated tasks when supplied dates support it. Avoid a large count that displaces useful task names | Good candidate for a small shared list-preview cap first. Keep checklist rows and a list presentation; photos add little value |
 | Meals | Already caps two to four following dinners in a single column with larger text and date/cook/serving metadata | Separate next dinners from tonight's sides/preparation notes; wider layouts could place tonight beside following dinners | Mostly follows the new principles already. Reuse section/row primitives; keep meal grouping in its domain. Only add photos when actual data provides them |
 | Media / Play Next | Featured program, supplied progress and large posters; capped queue previews | An explicit **Up next** section; a wide featured-program/queue composition when names and posters remain readable | Already follows the principle strongly. Preserve `WatchPoster`, `CardProgress`, source/status handling and queue cap; share section chrome rather than a forecast tile |
@@ -55,10 +56,23 @@ Weather has one domain planner and one strip renderer used for both forecast kin
 The planner remains separate from the generic list fitter because its priorities
 and sections differ. This is domain separation rather than duplicating list logic.
 
+## Reuse added with Schedule
+
+- **`CardTextBlock`:** the bounded title/metadata pair is shared by Schedule and
+  existing `CardContentRow` consumers; their established sizes stay unchanged.
+- **`CardSection` / `cardSectionLayout`:** agenda rendering and budgeting reuse the
+  same section heading geometry as Weather.
+- **`scheduleRowSizing`:** the agenda and pure planner share text/spacing tokens.
+  One component handles both today's times and future dates.
+- **`useTVClock`:** Schedule and the header share one device-clock timer with
+  resume refresh rather than starting a timer per card.
+- **`zonedTime`:** Calendar and Fit reuse the existing timezone day-boundary
+  calculation; calendar-day comparisons on the TV use the same pure utility.
+
 ## Keeping later implementations DRY
 
 1. Reuse shell, theme, headers, sections, artwork/progress and details action first.
-2. For Schedule/Tasks, extend the existing list planner only when both need the same
+2. For later cards, extend the existing list planner only when multiple domains need the same
    behavior, such as a configurable preview cap or preserving section boundaries.
    Keep the default behavior stable for existing consumers.
 3. Keep event, task, meal, weather and activity priority rules in their own modules.

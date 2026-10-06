@@ -1,6 +1,33 @@
 const {test, before, after} = require('node:test');
 const assert = require('node:assert/strict');
 const {chromium} = require('playwright');
+async function scheduleReport(page) {
+  return page.locator('[data-card="schedule"] [data-testid="adaptive-schedule"]').evaluateAll(cards => cards.map(card => {
+    const box = card.getBoundingClientRect();
+    const content = card.querySelector('[data-testid="schedule-content"]').getBoundingClientRect();
+    const hint = card.querySelector('[data-testid="schedule-details-hint"]')?.getBoundingClientRect();
+    const outside = [...card.querySelectorAll('[data-testid^="schedule-"]')].filter(node => {
+      const r = node.getBoundingClientRect();
+      return r.bottom > box.bottom + 1 || r.right > box.right + 1 || r.left < box.left - 1;
+    });
+    return {size:card.closest('article').dataset.size, text:card.textContent,
+      following:card.querySelectorAll('[data-testid="schedule-event"]').length,
+      labels:[...card.querySelectorAll('[data-testid="schedule-featured"], [data-testid="schedule-event"]')].map(n => n.getAttribute('aria-label')),
+      font:parseFloat(getComputedStyle(card.querySelector('[data-testid="schedule-featured-title"]')).fontSize),
+      overlap:hint ? content.bottom > hint.top - 4 : false, outside:outside.map(n => n.dataset.testid)};
+  }));
+}
+
+function assertScheduleBounds(report, mode) {
+  assert.equal(report.length, 50);
+  assert.deepEqual(report.filter(c => c.outside.length || c.overlap), [], 'Schedule content and details hint must fit');
+  for (const card of report) {
+    assert.ok(card.following <= 4, `${card.size} must cap the preview at five events`);
+    assert.ok(card.font >= (mode === 'compact' ? 18 : 25.2) - 0.01, `${card.size} preserves readable primary text`);
+    assert.equal(new Set(card.labels).size, card.labels.length, `${card.size} repeats an event`);
+    assert.doesNotMatch(card.text, /NaN|undefined/);
+  }
+}
 let browser;
 before(async () => {browser = await chromium.launch({headless:true, ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? {executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE} : {})});});
 after(async () => {await browser?.close();});
@@ -19,6 +46,9 @@ for (const layout of ['rows', 'grid']) test(`dashboard ${layout} reuse labeled c
   assert.equal(await area.getAttribute('data-opened'), 'weather');
   await area.getByRole('button', {name:'Meals. Open details', exact:true}).click();
   assert.equal(await area.getAttribute('data-opened'), 'meal');
+  await area.getByRole('button', {name:'Schedule. Open details', exact:true}).focus();
+  await page.keyboard.press('Enter');
+  assert.equal(await area.getAttribute('data-opened'), 'schedule');
   assert.deepEqual(errors, []);
 });
 for (const mode of ['compact', 'full']) test(`all six cards, all 50 grid footprints: ${mode}`, async (t) => {
@@ -33,7 +63,7 @@ for (const mode of ['compact', 'full']) test(`all six cards, all 50 grid footpri
   assert.deepEqual(errors, []);
   const report = await page.evaluate(() => [...document.querySelectorAll('[data-testid^="adaptive-"]')].map((card) => {
     const box = card.getBoundingClientRect();
-    const outside = [...card.querySelectorAll('[data-testid="card-row"], [data-testid="activity-metric"], [data-testid="activity-stats"], [data-testid="activity-weekly-chart"], [data-testid="activity-weekly-summary"], [data-testid="card-hero"], [data-testid^="weather-"]')].filter((node) => {
+    const outside = [...card.querySelectorAll('[data-testid="card-row"], [data-testid="activity-metric"], [data-testid="activity-stats"], [data-testid="activity-weekly-chart"], [data-testid="activity-weekly-summary"], [data-testid="card-hero"], [data-testid^="weather-"], [data-testid^="schedule-"]')].filter((node) => {
       const r=node.getBoundingClientRect(); return r.bottom>box.bottom+1 || r.right>box.right+1 || r.left<box.left-1;
     });
     return {id:card.dataset.testid, size:card.closest('article')?.dataset.size, rows:card.querySelectorAll('[data-testid="card-row"]').length,
@@ -263,4 +293,82 @@ for (const mode of ['compact', 'full']) test(`weather visual hierarchy, partial 
   await page.waitForFunction(()=>document.querySelector('[data-testid="weather-condition"]').textContent==='Unavailable');
   assert.equal(await cards.locator('[data-testid="weather-hour"], [data-testid="weather-day"], [data-testid="weather-hero"] [aria-hidden="true"]').count(),0);
   assert.deepEqual(errors,[]);
+});
+
+for (const mode of ['compact', 'full']) test(`Schedule sparse, busy and long calendars across all footprints: ${mode}`, async (t) => {
+  const page = await browser.newPage({viewport:{width:mode === 'compact' ? 960 : 1920, height:1080}});
+  t.after(() => page.close());
+  const errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto(`http://127.0.0.1:5174/?mode=${mode}`);
+  await page.locator('[data-testid="schedule-time"]').first().waitFor();
+  await page.evaluate(() => document.fonts.ready);
+  const event = {id:'one', title:'Lunch with Alex', time:'12:30 PM', endTime:'1:30 PM', category:'Personal', color:'#49b4e7', date:'2026-10-06'};
+  const cases = [
+    {schedule:[], upcomingEvents:[]},
+    {schedule:[event], upcomingEvents:[]},
+    {schedule:[], upcomingEvents:[{...event, date:'2026-10-07'}]},
+    {schedule:Array.from({length:24}, (_, i) => ({...event, id:`today${i}`, title:['Lunch with Alex','Dentist appointment','Pick up groceries','Family dinner'][i % 4]})),
+      upcomingEvents:Array.from({length:30}, (_, i) => ({...event, id:`future${i}`, title:['Project review','Weekend plans','Annual checkup'][i % 3], date:`2026-10-${String(7 + Math.floor(i / 3)).padStart(2,'0')}`}))},
+    {schedule:Array.from({length:8}, (_, i) => ({...event, id:`long${i}`, title:'An unusually long appointment title with several important names and places to preserve',
+      time:['All Day','Continues','', '10:30 AM'][i % 4], endTime:'Continues', category:'An unusually long calendar category', color:'invalid'})),
+      upcomingEvents:[{...event, id:'undated', date:'invalid', time:''}, {...event, id:'next', date:'2026-10-07'}]},
+  ];
+  for (const [index, patch] of cases.entries()) {
+    await page.evaluate(patch => window.updateFixture(patch), patch);
+    await page.waitForTimeout(50);
+    const report = await scheduleReport(page);
+    assertScheduleBounds(report, mode);
+    if (index === 0) assert.ok(report.every(c => c.text.includes('No events to show') && c.following === 0));
+    if (index === 1 || index === 2) assert.ok(report.every(c => c.text.includes('Lunch with Alex') && c.following === 0));
+    if (index === 3) {
+      const large = report.find(c => c.size === '12x6');
+      assert.ok(large.text.includes('More today') && large.text.includes('Coming up'));
+      assert.equal(large.following, 4);
+      if (process.env.CARD_SCREENSHOT_DIR) for (const size of ['3x2','3x3','3x4','3x6','8x2','12x6']) {
+        await page.locator(`[data-card="schedule"] [data-size="${size}"]`).screenshot({path:`${process.env.CARD_SCREENSHOT_DIR}/${mode}-schedule-${size}.png`});
+      }
+    }
+    if (index === 1 && process.env.CARD_SCREENSHOT_DIR) await page.locator('[data-card="schedule"] [data-size="6x4"]').screenshot({path:`${process.env.CARD_SCREENSHOT_DIR}/${mode}-schedule-sparse.png`});
+  }
+  assert.deepEqual(errors, []);
+});
+
+test('Schedule follows TV time at start, end and calendar midnight without a feed refresh', async (t) => {
+  const page = await browser.newPage({viewport:{width:960,height:1080}});
+  t.after(() => page.close());
+  await page.clock.install({time:new Date('2026-10-06T13:59:59Z')});
+  await page.clock.pauseAt(new Date('2026-10-06T13:59:59Z'));
+  await page.goto('http://127.0.0.1:5174/');
+  await page.locator('[data-testid="schedule-time"]').first().waitFor();
+  const timed = (id, title, start, end, date = '2026-10-06') => ({id, title, time:'10:00 AM', endTime:'11:00 AM', category:'Personal', color:'', date,
+    startMs:Date.parse(start), endMs:Date.parse(end), allDay:false, timeZone:'America/New_York'});
+  const patch = {schedule:[
+    timed('meeting','Morning meeting','2026-10-06T14:00:00Z','2026-10-06T15:00:00Z'),
+    timed('next','Next appointment','2026-10-06T15:00:00Z','2026-10-06T16:00:00Z'),
+    {...timed('day','All-day reminder','2026-10-06T04:00:00Z','2026-10-07T04:00:00Z'), allDay:true, time:'All Day'},
+  ], upcomingEvents:[timed('tomorrow','Tomorrow appointment','2026-10-07T14:00:00Z','2026-10-07T15:00:00Z','2026-10-07')]};
+  await page.evaluate(patch => window.updateFixture(patch), patch);
+  let report = await scheduleReport(page);
+  assert.ok(report.every(c => c.text.includes('Morning meeting') && !c.text.includes('Happening now')));
+  await page.clock.fastForward(1000);
+  await page.waitForFunction(() => document.querySelector('[data-testid="adaptive-schedule"]').textContent.includes('Happening now'));
+  assertScheduleBounds(await scheduleReport(page), 'compact');
+  await page.clock.fastForward(3600000);
+  await page.waitForFunction(() => !document.querySelector('[data-testid="adaptive-schedule"]').textContent.includes('Morning meeting'));
+  report = await scheduleReport(page);
+  assert.ok(report.every(c => c.text.includes('Next appointment') && c.text.includes('Happening now')));
+  assertScheduleBounds(report, 'compact');
+  await page.clock.fastForward(3600000);
+  await page.waitForFunction(() => document.querySelector('[data-testid="adaptive-schedule"]').textContent.includes('All-day reminder'));
+  assert.ok((await scheduleReport(page)).every(c => !c.text.includes('Happening now') && !c.text.includes('Next appointment')));
+  await page.clock.fastForward(12 * 3600000);
+  await page.waitForFunction(() => document.querySelector('[data-testid="adaptive-schedule"]').textContent.includes('Tomorrow appointment'));
+  report = await scheduleReport(page);
+  assert.ok(report.every(c => c.text.includes('1 today') && !c.text.includes('All-day reminder')));
+  assertScheduleBounds(report, 'compact');
+  await page.evaluate(() => window.updateFixture({schedule:[{id:'legacy', title:'Legacy appointment', time:'10:00 AM', endTime:'11:00 AM', date:'2026-10-07', category:'Home',color:''}],upcomingEvents:[]}));
+  await page.clock.fastForward(8 * 3600000);
+  report = await scheduleReport(page);
+  assert.ok(report.every(c => c.text.includes('Legacy appointment') && !c.text.includes('Happening now')));
 });

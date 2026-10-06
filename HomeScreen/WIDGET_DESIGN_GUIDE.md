@@ -5,7 +5,8 @@ The geometry below describes the current implementation. A widget's design
 proposal must identify which behavior is implemented and which is still planned.
 See [current content breakpoints](CARD_CONTENT_BREAKPOINTS.md) for shipped fitting
 behavior and [the weather design](WEATHER_LAYOUT_DESIGN.md) for the first implemented
-use of this guide. See [other widget opportunities](WIDGET_LAYOUT_ASSESSMENT.md)
+use of this guide. [Schedule](SCHEDULE_LAYOUT_DESIGN.md) applies it to grouped
+agendas and clock-aware previews. See [other widget opportunities](WIDGET_LAYOUT_ASSESSMENT.md)
 for the applicability and reuse assessment.
 
 ## Size contract

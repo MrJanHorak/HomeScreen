@@ -85,6 +85,15 @@ Aggregates Calendar events, Tasks, Fitness activity, local Weather, and optional
   }
   ```
 
+Calendar occurrences also include `date` (YYYY-MM-DD), `startMs`/`endMs` (absolute
+Unix milliseconds), `allDay`, and the response's `timeZone`. Windows are clipped
+to each occupied calendar day, so overnight events have separate day occurrences
+and all-day events honor daylight saving boundaries. Updated TVs use these
+optional fields with their device clock for scheduled in-progress status and
+preview expiration, retaining the full fetched day in details. Old clients ignore
+them; cached older summaries keep legacy behavior until the normal cache refresh.
+Deploy updated Functions and TV code to enable this behavior.
+
 ### 2. `authDevice` (`POST`)
 Implements TV device code authentication (RFC 8628 style pairing flow):
 - `POST /authDevice?action=request-code`: Generates a displayed 6-character code and a private `pollSecret`. Keep the secret on the TV only.

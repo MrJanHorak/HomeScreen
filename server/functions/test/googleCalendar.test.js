@@ -65,3 +65,28 @@ test("keeps today's primary calendar first and future days in time order", () =>
   assert.deepEqual(feed.today.map((event) => event.title), ["today-primary", "today-work"]);
   assert.deepEqual(feed.upcoming.map((event) => event.title), ["early", "late"]);
 });
+
+test("exports absolute clipped occurrence bounds for timed and overnight events", () => {
+  const feed=buildCalendarFeed([
+    entry(primary,"overnight",{dateTime:"2026-09-29T23:30:00-04:00"},{dateTime:"2026-09-30T01:00:00-04:00"}),
+  ],now,zone);
+  assert.equal(feed.today[0].startMs,Date.parse("2026-09-30T03:30:00Z"));
+  assert.equal(feed.today[0].endMs,Date.parse("2026-09-30T04:00:00Z"));
+  assert.equal(feed.upcoming[0].startMs,Date.parse("2026-09-30T04:00:00Z"));
+  assert.equal(feed.upcoming[0].endMs,Date.parse("2026-09-30T05:00:00Z"));
+  assert.equal(feed.today[0].allDay,false);
+  assert.equal(feed.today[0].timeZone,zone);
+});
+
+test("all-day occurrence bounds follow 23- and 25-hour daylight-saving days", () => {
+  for(const [date,next,hours,start,end] of [
+    ["2026-03-08","2026-03-09",23,"2026-03-08T05:00:00Z","2026-03-09T04:00:00Z"],
+    ["2026-11-01","2026-11-02",25,"2026-11-01T04:00:00Z","2026-11-02T05:00:00Z"],
+  ]) {
+    const feed=buildCalendarFeed([entry(primary,"day",{date},{date:next})],new Date(start),zone);
+    assert.equal(feed.today[0].startMs,Date.parse(start));
+    assert.equal(feed.today[0].endMs,Date.parse(end));
+    assert.equal((feed.today[0].endMs-feed.today[0].startMs)/3600000,hours);
+    assert.equal(feed.today[0].allDay,true);
+  }
+});

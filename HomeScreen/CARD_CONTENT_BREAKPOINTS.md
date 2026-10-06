@@ -4,7 +4,8 @@ This document describes implemented behavior. For the reusable size contract,
 all 50 reference dimensions, and future-widget design process, see the
 [widget design guide](WIDGET_DESIGN_GUIDE.md). The implemented
 [weather layout design](WEATHER_LAYOUT_DESIGN.md) maps visual layout families
-across every footprint.
+across every footprint. The implemented [Schedule design](SCHEDULE_LAYOUT_DESIGN.md)
+maps grouped agenda families and device-clock behavior across those sizes.
 
 Automatic rows and the free canvas both render `AdaptiveDashboardCard` inside a
 measured content box. Padding and the actual configured border width are excluded
@@ -20,7 +21,7 @@ the exact entry count; a grid label such as 3×3 never hard-codes that count.
 
 The pure planner in `src/components/dashboard/shared/cardContentLayout.ts` estimates word wrapping,
 then refines its budget with measured headline and row heights. It evaluates
-one, two, and three columns for Schedule and Tasks, with comfortable
+one, two, and three columns for Tasks, with comfortable
 two-line titles and separate metadata, or compact one-line entries with inline
 metadata. Additional columns require at least **185 normalized dp per cell**.
 Meals and Media use single-column previews with two-line, 14 dp titles, separate
@@ -46,7 +47,7 @@ content width/height by that scale when reading the following thresholds.
 | 220 dp and above | 22 dp | 3 | 24 / 6 dp |
 
 The line limit is a cap; unused headline lines never reserve empty space. List
-fonts for Schedule and Tasks remain 11–12 normalized dp with a 15 dp
+fonts for Tasks remain 11–12 normalized dp with a 15 dp
 line height. Meals and Media use an 18 dp row line height and 14 dp metadata line
 height. The details hint appears only in leftover space,
 after entries are fitted. If the hint cannot fit, a header count identifies hidden
@@ -58,7 +59,7 @@ entries. Every card still opens its full detail view with the remote.
 | --- | --- | --- |
 | Meals | Tonight/next dinner, date, servings/cook; a readable following dinner when space allows | A few more dated dinners as height increases; width preserves longer names rather than packing in columns |
 | Activity | All four daily metrics: steps, distance, move minutes, calories; step goal and progress | Percentage ring, seven-day total and daily average, then the chart and additional weekly metrics |
-| Schedule | First event's title, date and time; upcoming event becomes primary if today is empty | More events from today followed by future dates, end times and category in comfortable rows |
+| Schedule | Current/next event's title and time, today count or future date; upcoming event becomes primary if today is empty | Separate More today / Coming up groups, capped at four following entries; larger primary text, end time and calendar name |
 | Tasks | Pending count and multiple task names; due dates when provided | More tasks, wider/full titles and separate due-date metadata; completed tasks are excluded |
 | Weather | Larger temperature, condition, location and condition icon | Feels-like/high-low, a capped hourly strip, a separate daily strip, then wind/humidity when their budgets fit; wide short cards put forecasts beside current weather |
 | Media | Featured program, provider/episode, actual supplied progress | Larger featured artwork and a few queue previews with large posters and separate provider labels |
@@ -67,6 +68,22 @@ Empty/unavailable states remain truthful. Missing data is never filled with
 invented values. A null activity-minute value is a dash; a real zero stays zero.
 Estimated resting calories retain the `est. kcal` label. Playback position zero
 is valid; a progress bar requires an actual position and a positive duration.
+
+### Schedule modes and time
+
+Schedule uses its own pure domain planner with shared header, text block,
+section geometry and details hint. Width ≥550 dp puts the featured event beside
+an agenda; narrower cards stack sections from height 190 dp. Following previews
+are capped at one below height 190, two below 300 and four thereafter. Titles stay
+18–28 dp primary and 14–16 dp in the agenda. Optional type enlargement and metadata
+yield before an earlier event or group is lost. Sparse cards emphasize one event.
+
+Absolute occurrence timestamps let the shared TV clock label timed events
+`Happening now` during their scheduled interval and exclude ended occurrences
+from the preview. All-day entries remain until their calendar day's end, and
+full details retain the original day. Missing timestamps produce no guessed
+status. See [Schedule design](SCHEDULE_LAYOUT_DESIGN.md) for all 50 mappings,
+timezone rules, partial data and rollout requirements.
 
 ### Activity modes
 
@@ -103,7 +120,7 @@ Provider progress appears from height 70 dp when supplied.
 
 - `npm run test:cards` checks all legal dimensions, initial estimates, measured
   height refinement, row budgets, weather growth/fallbacks/formatting, and the
-  reported Meals/Activity regressions.
+  reported Meals/Activity regressions, Schedule preview retention and clock boundaries.
 - The Vite fixture under `test/` renders the actual React Native Web components
   with isolated data/hook fixtures and the production MaterialCommunityIcons
   glyph map/font, without Expo's native font-loading runtime.
@@ -113,7 +130,8 @@ Provider progress appears from height 70 dp when supplied.
   Bundled packages can be supplied through `NODE_PATH`; an installed browser
   through `PLAYWRIGHT_CHROMIUM_EXECUTABLE`. `CARD_SCREENSHOT_DIR` saves examples.
 - The matrix checks the bounds of headlines, rows, activity metrics and charts,
-  plus weather sections/details-hint bounds, long labels, missing forecasts and
+  plus weather and Schedule sections/details-hint bounds, long labels, clock
+  transitions, sparse/busy calendars, missing forecasts and
   recovery from populated to empty/unavailable data. It checks real zero
   media progress and upcoming events on otherwise empty days.
 - Native verification on the connected Sony BRAVIA confirms the current layout:
@@ -121,9 +139,11 @@ Provider progress appears from height 70 dp when supplied.
   the weekly step total/daily average, and two queue programs with larger posters.
   Browser checks do not replace native font/remote verification
   at every physical device density. New Weather has browser coverage but still
-  needs native visual review. The Android production export and TypeScript
+  needs native visual review, as does the new Schedule design. The Android production export and TypeScript
   checks verify the app bundle.
 
-This is a TV client change. An existing development client receives it through
-Metro; installed standalone clients need an updated app build. No backend or
-appearance-document migration is required.
+An existing development client receives TV layout changes through Metro;
+installed standalone clients need an updated app build. Schedule's live status
+also requires updated Functions to supply absolute occurrence windows; old
+cached responses retain legacy behavior until refreshed. No appearance-document
+migration is required.

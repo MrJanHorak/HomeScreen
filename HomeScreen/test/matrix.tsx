@@ -41,7 +41,7 @@ function Matrix() {
         {Array.from({length:50},(_,i) => [3+Math.floor(i/5), 2+i%5]).map(([w,h]) => {
           const rect = gridRect({id,x:0,y:0,width:w,height:h},areaWidth,areaHeight,gap);
           const width=rect.width-padding*2-3; const height=rect.height-padding*2-3;
-          return <article key={`${w}x${h}`} data-size={`${w}x${h}`} style={{background:'#192638',border:'1px solid #57657c',padding:12}}>
+          return <article key={`${w}x${h}`} data-size={`${w}x${h}`} style={{alignSelf:'flex-start',background:'#192638',border:'1px solid #57657c',padding:12}}>
             <p>{w} × {h} · {Math.round(width)} × {Math.round(height)}</p><AdaptiveDashboardCard id={id} width={width} height={height}/>
           </article>;
         })}

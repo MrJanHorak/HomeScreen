@@ -53,6 +53,11 @@ export interface CalendarEvent {
   category: string;
   color: string;
   date?: string;
+  /** Absolute occurrence bounds; optional for compatibility with cached/older feeds. */
+  startMs?: number;
+  endMs?: number;
+  allDay?: boolean;
+  timeZone?: string;
 }
 
 export interface MealPlanItem {

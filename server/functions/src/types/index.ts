@@ -57,6 +57,10 @@ export interface CalendarEventSummary {
   category: string;
   color: string;
   date?: string;
+  startMs?: number;
+  endMs?: number;
+  allDay?: boolean;
+  timeZone?: string;
 }
 
 export interface TaskSummary {

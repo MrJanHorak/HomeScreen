@@ -2,6 +2,7 @@ import { google, calendar_v3 as CalendarV3 } from "googleapis";
 import { GoogleTokens, CalendarEventSummary } from "../types";
 import { getOAuth2Client } from "./googleAuth";
 import {logSafeError} from "../utils/safeLog";
+import {zonedDateKey as dateInZone, zonedMidnight} from "../utils/zonedTime";
 
 const UPCOMING_DAYS = 14;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -17,14 +18,6 @@ const GOOGLE_EVENT_COLORS: Record<string, string> = {
   "5": "#f6bf26", "6": "#f4511e", "7": "#039be5", "8": "#616161",
   "9": "#3f51b5", "10": "#0b8043", "11": "#d50000",
 };
-
-function dateInZone(date: Date, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone, year: "numeric", month: "2-digit", day: "2-digit",
-  }).formatToParts(date);
-  const part = (type: string) => parts.find((item) => item.type === type)?.value || "";
-  return `${part("year")}-${part("month")}-${part("day")}`;
-}
 
 function addDays(date: string, days: number): string {
   return new Date(Date.parse(`${date}T00:00:00Z`) + days * DAY_MS)
@@ -76,6 +69,8 @@ export function buildCalendarFeed(
       date <= finalDate && date <= lastDate; date = addDays(date, 1)) {
       const startsToday = firstDate === date;
       const endsToday = finalDate === date;
+      const dayStart = zonedMidnight(date, timeZone);
+      const dayEnd = zonedMidnight(addDays(date, 1), timeZone);
       occurrences.push({
         event: {
           id: `${calendar.id || "primary"}:${event.id || event.iCalUID || "event"}:${date}`,
@@ -85,6 +80,11 @@ export function buildCalendarFeed(
           category: calendar.summary || "General",
           color,
           date,
+          // Each occupied date has its own absolute window, including 23/25-hour DST days.
+          startMs: isAllDay ? dayStart : Math.max(startMs, dayStart),
+          endMs: isAllDay ? dayEnd : Math.min(endMs, dayEnd),
+          allDay: isAllDay,
+          timeZone,
         },
         primary: calendar.primary === true,
         startTime: isAllDay || !startsToday ? 0 : startMs,

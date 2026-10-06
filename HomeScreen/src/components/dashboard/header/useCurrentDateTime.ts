@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import useTVClock from '../../../hooks/useTVClock';
 
 export interface CurrentDateTime {
   rawDate: Date;
@@ -8,17 +8,7 @@ export interface CurrentDateTime {
 }
 
 export function useCurrentDateTime(): CurrentDateTime {
-  const [currentTime, setCurrentTime] = useState<Date>(new Date());
-
-  useEffect(() => {
-     const updateTime = () => setCurrentTime(new Date());
-    const intervalTimer: ReturnType<typeof setInterval> = setInterval(updateTime
-    , 1000);
-
-    return () => {
-      clearInterval(intervalTimer);
-    };
-  }, []);
+  const currentTime = new Date(useTVClock());
 
   const formattedDate: string = currentTime.toLocaleDateString('en-US', {
     weekday: 'long',

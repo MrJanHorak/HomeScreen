@@ -1,15 +1,6 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const ts = require('typescript');
-const path = require('node:path');
-function load(file) {
-  const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), {compilerOptions: {module: ts.ModuleKind.CommonJS}}).outputText;
-  const result = {exports:{}};
-  new Function('module', 'exports', 'require', code)(result, result.exports,
-    id => id.startsWith('.') ? load(path.resolve(path.dirname(file), id) + '.ts') : require(id));
-  return result.exports;
-}
+const load = require('./loadPureModule.cjs');
 const {planWeatherCard, weatherFamily} = load('src/components/dashboard/weather/weatherCardLayout.ts');
 const {formatTemperature, rainProbability, weatherConditionIcon} = load('src/helpers/weatherHelpers.ts');
 const {gridRect} = load('../server/functions/src/utils/dashboardLayout.ts');
