@@ -5,6 +5,8 @@ import WatchPoster from '../../shared/WatchPoster';
 import CardContent from '../shared/CardContent';
 import CardProgress from '../shared/CardProgress';
 import type { CardDimensions } from '../shared/types';
+import {View} from 'react-native';
+import {mediaArtworkLayout} from './mediaArtworkLayout';
 
 function queueMessage(
   status: ReturnType<typeof useWatchNext>['status'],
@@ -30,9 +32,8 @@ export default function MediaDashboardCard({ width, height }: CardDimensions) {
   const { items, status } = useWatchNext();
   const scale = useCompactTVLayout() ? 1 : 1.4;
   const first = items[0];
-  const showArt =
-    Boolean(first) && height >= 100 * scale && width >= 180 * scale;
-  const artHeight = showArt ? Math.min(120 * scale, height * 0.42) : 0;
+  const {artHeight, artWidth} = first ? mediaArtworkLayout(width, height, scale) : {artHeight:0,artWidth:0};
+  const showArt = artHeight > 0;
   const progress =
     first?.positionMs != null &&
     first.durationMs != null &&
@@ -50,20 +51,23 @@ export default function MediaDashboardCard({ width, height }: CardDimensions) {
       title={first?.title || 'Continue watching'}
       subtitle={first ? programDetail(first) : queueMessage(status)}
       badge={first ? 'Play Next' : undefined}
-      artWidth={artHeight * 0.7}
+      artWidth={artWidth}
       artHeight={artHeight}
+      artLeading
       art={
         showArt ? (
+          <View testID='media-art'>
           <WatchPoster
             uri={first?.posterUri}
-            width={artHeight * 0.7}
+            width={artWidth}
             height={artHeight}
           />
+          </View>
         ) : undefined
       }
       extra={
         showProgress && progress !== null ? (
-          <CardProgress value={progress} />
+          <View testID='media-progress' style={{width:'100%', maxWidth:220 * scale}}><CardProgress value={progress} /></View>
         ) : undefined
       }
       extraHeight={showProgress ? 5 : 0}
@@ -71,6 +75,7 @@ export default function MediaDashboardCard({ width, height }: CardDimensions) {
         title: item.title,
         detail: item.appName || undefined,
         posterUri: item.posterUri || null,
+        section: 'Up next',
       }))}
     />
   );

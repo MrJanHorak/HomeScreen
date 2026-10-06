@@ -1,23 +1,31 @@
 import { Text, View } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { Activity, ActivityDay } from '../../../../../shared/src/types';
 import { useTheme } from '../../../theme/ThemeContext';
 import useCompactTVLayout from '../../../hooks/useCompactTVLayout';
 import TVProgressRing from '../../shared/TVProgressRing';
 import ActivityStats from './ActivityStats';
-import {activityBarPercent, activityChartPeak, summarizeActivityWeek} from '../../../helpers/activitySummary';
+import {activityChartPeak, summarizeActivityWeek} from '../../../helpers/activitySummary';
+import CardHeader from '../shared/CardHeader';
+import CardDetailsHint from '../shared/CardDetailsHint';
+import CardSection from '../shared/CardSection';
+import {activityMiniChartWidth} from '../shared/cardContentLayout';
+import ActivityDayBars from './ActivityDayBars';
 
-export function ActivityWeeklySummary({weekly, scale, showAverage = true}: {
-  weekly: ActivityDay[]; scale: number; showAverage?: boolean;
+export function ActivityWeeklySummary({weekly, scale, showAverage = true, width = 0, stepGoal = 0}: {
+  weekly: ActivityDay[]; scale: number; showAverage?: boolean; width?:number; stepGoal?:number;
 }) {
   const theme = useTheme();
   const summary = summarizeActivityWeek(weekly);
-  return <View testID="activity-weekly-summary" style={{borderTopWidth: 1, borderColor: theme.colors.glassBorder,
-    paddingTop: 7 * scale, gap: 2 * scale, flexShrink: 0}}>
-    <Text numberOfLines={1} style={{color: theme.colors.textSecondary, fontSize: 11 * scale, lineHeight: 14 * scale}}>Last 7 days</Text>
+  const chartWidth = weekly.length ? activityMiniChartWidth(width, scale, showAverage) : 0;
+  return <CardSection title='Last 7 days' scale={scale} testID='activity-weekly-summary'>
+    <View style={{flexDirection:'row', alignItems:'center', gap:10 * scale}}>
+    <View style={{gap:2 * scale, ...(chartWidth ? {flex:1, minWidth:0} : {})}}>
     <Text numberOfLines={1} style={{color: theme.colors.textPrimary, fontSize: 14 * scale, lineHeight: 18 * scale, fontWeight: '700'}}>{summary.steps.toLocaleString()} steps</Text>
     {showAverage && <Text numberOfLines={1} style={{color: theme.colors.textSecondary, fontSize: 11 * scale, lineHeight: 14 * scale}}>{summary.averageSteps.toLocaleString()} daily avg</Text>}
-  </View>;
+    </View>
+    {chartWidth > 0 && <ActivityDayBars weekly={weekly} peak={activityChartPeak(weekly, stepGoal)} width={chartWidth} scale={scale} compact />}
+    </View>
+  </CardSection>;
 }
 
 function WeeklyChart({ weekly, peak, width, scale, showTotals }: {
@@ -30,29 +38,13 @@ function WeeklyChart({ weekly, peak, width, scale, showTotals }: {
     `${Math.round(summary.calories).toLocaleString()} kcal`,
     ...(summary.moveMinutes !== null ? [`${summary.moveMinutes} move min`] : []),
   ];
-  const showValues = width >= 235 * scale;
-  const barWidth = Math.max(8 * scale, Math.min(14 * scale, width / 22));
 
   return <View testID="activity-weekly-chart" style={{ flex: 1, minHeight: 0, minWidth: 0, gap: 3 * scale }}>
     <ActivityWeeklySummary weekly={weekly} scale={scale} />
     {showTotals && <Text numberOfLines={width >= 330 * scale ? 1 : 2} style={{color: theme.colors.textSecondary, fontSize: 10 * scale, lineHeight: 13 * scale}}>
       {totals.join(' · ')}
     </Text>}
-    <View style={{ flex: 1, minHeight: 0, flexDirection: 'row', alignItems: 'flex-end', gap: 2 * scale, paddingTop: 4 * scale }}>
-      {weekly.map((day) => <View key={day.date} style={{ flex: 1, height: '100%', alignItems: 'center', minWidth: 0, gap: 4 * scale }}>
-        {showValues && <Text numberOfLines={1} style={{ color: theme.colors.textSecondary, fontSize: 8 * scale, fontVariant: ['tabular-nums'] }}>
-          {day.steps >= 10000 ? `${(day.steps / 1000).toFixed(1)}k` : day.steps.toLocaleString()}
-        </Text>}
-        <View style={{ flex: 1, minHeight: 0, width: barWidth, borderRadius: barWidth / 2,
-          backgroundColor: theme.colors.glassChip, justifyContent: 'flex-end', overflow: 'hidden' }}>
-          <View style={{ height: `${activityBarPercent(day.steps, peak)}%`,
-            width: '100%', borderRadius: barWidth / 2, backgroundColor: theme.colors.focusRing }} />
-        </View>
-        <Text numberOfLines={1} style={{ color: theme.colors.textSecondary, fontSize: 9 * scale }}>
-          {new Date(`${day.date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short' }).slice(0, 2)}
-        </Text>
-      </View>)}
-    </View>
+    <ActivityDayBars weekly={weekly} peak={peak} width={width} scale={scale} />
   </View>;
 }
 
@@ -66,7 +58,9 @@ export default function ActivityWeeklyCard({ health, width, height, sideBySide }
   const weekly = health.weekly || [];
   const peak = activityChartPeak(weekly, health.stepGoal);
   const overviewWidth = sideBySide ? width * 0.44 : width;
-  const ringSize = Math.min(90 * scale, overviewWidth * 0.34, height * 0.27);
+  const enlarged = sideBySide ? width / scale >= 700 && height / scale >= 300
+    : width / scale >= 300 && height / scale >= 400;
+  const ringSize = Math.min((enlarged ? 120 : 90) * scale, overviewWidth * 0.34, height * 0.27);
 
   const today = <>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 * scale, minWidth: 0 }}>
@@ -76,18 +70,13 @@ export default function ActivityWeeklyCard({ health, width, height, sideBySide }
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <ActivityStats steps={health.steps} distance={health.distance} calories={health.calories}
-          activeMinutes={health.activeMinutes} estimatedRestingCalories={health.estimatedRestingCalories} dense />
+          activeMinutes={health.activeMinutes} estimatedRestingCalories={health.estimatedRestingCalories} dense enlarged={enlarged} />
       </View>
     </View>
   </>;
 
   return <View testID="adaptive-activity" style={{ height, width, minWidth: 0, gap: 7 * scale, overflow: 'hidden' }}>
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 * scale }}>
-      <View style={{ padding: 5 * scale, borderRadius: 8, backgroundColor: theme.colors.glassChip }}>
-        <MaterialCommunityIcons name="heart-pulse" size={17 * scale} color={theme.colors.focusRing} />
-      </View>
-      <Text numberOfLines={1} style={{ flex: 1, color: theme.colors.textPrimary, fontSize: 12 * scale, fontWeight: '700' }}>Activity</Text>
-    </View>
+    <CardHeader id='activity' scale={scale} height={24 * scale} badge='Today' />
 
     {sideBySide ? <View style={{ flex: 1, minHeight: 0, flexDirection: 'row', gap: 16 * scale }}>
       <View style={{ width: overviewWidth, minWidth: 0, gap: 7 * scale }}>{today}</View>
@@ -97,6 +86,6 @@ export default function ActivityWeeklyCard({ health, width, height, sideBySide }
       <WeeklyChart weekly={weekly} peak={peak} width={width} scale={scale} showTotals={height >= 290 * scale} />
     </>}
 
-    <Text numberOfLines={1} style={{ color: theme.colors.textSecondary, fontSize: 10 * scale }}>Open details ↗</Text>
+    <CardDetailsHint scale={scale} />
   </View>;
 }

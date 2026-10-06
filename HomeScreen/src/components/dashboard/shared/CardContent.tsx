@@ -8,6 +8,7 @@ import type { CardPresentation } from './cardContentLayout';
 import CardHeader from './CardHeader';
 import CardContentRow from './CardContentRow';
 import CardDetailsHint from './CardDetailsHint';
+import CardSection from './CardSection';
 import type { CardDimensions, DashboardLine } from './types';
 
 export interface CardContentProps extends CardDimensions {
@@ -21,6 +22,7 @@ export interface CardContentProps extends CardDimensions {
   art?: ReactNode;
   artWidth?: number;
   artHeight?: number;
+  artLeading?: boolean;
   presentation?: CardPresentation;
 }
 
@@ -38,6 +40,7 @@ export default function CardContent({
   art,
   artWidth = 0,
   artHeight = 0,
+  artLeading = false,
   presentation = 'standard',
 }: CardContentProps) {
   const theme = useTheme();
@@ -63,26 +66,43 @@ export default function CardContent({
   );
   const hidden = lines.length - plan.count;
   const headerBadge = !plan.footer && hidden ? `+${hidden} more` : badge;
+  const sections: Array<{title?:string; groups:typeof groups}> = [];
+  for (const group of groups) {
+    const title = group[0]?.section;
+    const previous = sections[sections.length - 1];
+    if (previous && previous.title === title) previous.groups.push(group);
+    else sections.push({title, groups:[group]});
+  }
+  const rows = <View testID='card-rows' style={{width:plan.cellWidth * plan.columns + plan.rowGap * (plan.columns - 1),
+    gap:plan.rowGap, marginTop:plan.sideBySide || !groups.length ? 0 : plan.rowGap}}>
+    {sections.map((section, index) => {
+      const content = <View style={{gap:plan.rowGap}}>{section.groups.map((group, row) => <View key={row}
+        style={{flexDirection:'row', gap:plan.gap, alignItems:'flex-start'}}>
+        {group.map((line, column) => <CardContentRow key={`${column}-${line.title}`} id={id}
+          line={line} scale={scale} plan={plan} onMeasure={measureRow} />)}
+      </View>)}</View>;
+      return section.title ? <CardSection key={index} title={section.title} scale={scale}
+        compact={plan.sectionCompact} testID='card-section'>{content}</CardSection>
+        : <View key={index}>{content}</View>;
+    })}
+  </View>;
 
   return (
     <View
       testID={`adaptive-${id}`}
-      style={{ height, width, minWidth: 0, overflow: 'hidden' }}
+      style={{ height, width, minWidth: 0, overflow: 'hidden', gap:plan.gap }}
     >
+      <CardHeader id={id} scale={scale} height={plan.header} badge={headerBadge} />
+      <View style={{flexDirection:plan.sideBySide ? 'row' : 'column', gap:plan.sideBySide ? 16 * scale : 0}}>
       <View
         testID='card-hero'
         onLayout={measureHero}
-        style={{ gap: plan.gap, flexShrink: 0 }}
+        style={{ width:plan.heroWidth, gap: plan.gap, flexShrink: 0 }}
       >
-        <CardHeader
-          id={id}
-          scale={scale}
-          height={plan.header}
-          badge={headerBadge}
-        />
         <View
           style={{ flexDirection: 'row', gap: plan.gap, alignItems: 'center' }}
         >
+          {artLeading && art}
           <View style={{ flex: 1, minWidth: 0, gap: plan.gap }}>
             <Text
               numberOfLines={plan.titleLimit}
@@ -107,36 +127,12 @@ export default function CardContent({
                 {subtitle}
               </Text>
             )}
+            {extra}
           </View>
-          {art}
+          {!artLeading && art}
         </View>
-        {extra}
       </View>
-      <View
-        testID='card-rows'
-        style={{ gap: plan.rowGap, marginTop: groups.length ? plan.rowGap : 0 }}
-      >
-        {groups.map((group, index) => (
-          <View
-            key={index}
-            style={{
-              flexDirection: 'row',
-              gap: plan.gap,
-              alignItems: 'flex-start',
-            }}
-          >
-            {group.map((line, column) => (
-              <CardContentRow
-                key={`${column}-${line.title}`}
-                id={id}
-                line={line}
-                scale={scale}
-                plan={plan}
-                onMeasure={measureRow}
-              />
-            ))}
-          </View>
-        ))}
+      {rows}
       </View>
       {plan.footer && (
         <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>

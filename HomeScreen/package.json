@@ -34,9 +34,9 @@
     "android:release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-android-release.ps1",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "test:cards": "node --test test/cardContentLayout.test.cjs test/weatherCardLayout.test.cjs test/scheduleCardLayout.test.cjs",
+    "test:cards": "node --test test/cardContentLayout.test.cjs test/weatherCardLayout.test.cjs test/scheduleCardLayout.test.cjs test/tasksCardLayout.test.cjs",
     "typecheck": "tsc --noEmit",
-    "test": "node --test test/api.test.cjs test/cardContentLayout.test.cjs test/activitySummary.test.cjs test/weatherCardLayout.test.cjs test/scheduleCardLayout.test.cjs",
+    "test": "node --test test/api.test.cjs test/cardContentLayout.test.cjs test/activitySummary.test.cjs test/weatherCardLayout.test.cjs test/scheduleCardLayout.test.cjs test/tasksCardLayout.test.cjs",
     "test:browser": "node --test test/cardMatrix.test.cjs"
   },
   "private": true,

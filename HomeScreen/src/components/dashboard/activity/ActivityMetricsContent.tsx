@@ -58,7 +58,7 @@ export default function ActivityMetricsContent({health, width, height, scale}: A
       </View>
       {showProgress && <CardProgress value={progress} />}
       {summaryHeight > 0 && (
-        <ActivityWeeklySummary weekly={weekly} scale={scale} showAverage={summaryHeight >= 62 * scale} />
+        <ActivityWeeklySummary weekly={weekly} scale={scale} width={width} stepGoal={health.stepGoal} showAverage={summaryHeight >= 62 * scale} />
       )}
     </View>
   );

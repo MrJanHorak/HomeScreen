@@ -6,6 +6,9 @@ all 50 reference dimensions, and future-widget design process, see the
 [weather layout design](WEATHER_LAYOUT_DESIGN.md) maps visual layout families
 across every footprint. The implemented [Schedule design](SCHEDULE_LAYOUT_DESIGN.md)
 maps grouped agenda families and device-clock behavior across those sizes.
+The implemented [Tasks design](TASKS_LAYOUT_DESIGN.md) maps the bounded checklist;
+[Meals/Media/Activity refinements](PREVIEW_WIDGET_REFINEMENTS.md) document shared
+grouping and enlargement.
 
 Automatic rows and the free canvas both render `AdaptiveDashboardCard` inside a
 measured content box. Padding and the actual configured border width are excluded
@@ -20,13 +23,13 @@ the exact entry count; a grid label such as 3×3 never hard-codes that count.
 ## Shared list fitting
 
 The pure planner in `src/components/dashboard/shared/cardContentLayout.ts` estimates word wrapping,
-then refines its budget with measured headline and row heights. It evaluates
-one, two, and three columns for Tasks, with comfortable
-two-line titles and separate metadata, or compact one-line entries with inline
-metadata. Additional columns require at least **185 normalized dp per cell**.
-Meals and Media use single-column previews with two-line, 14 dp titles, separate
+then refines its budget with measured headline and row heights. Meals and Media
+use single-column previews with two-line, 14 dp titles, separate
 11 dp metadata and 10 dp row gaps. Their layouts prioritize legibility and artwork
-over queue density. Live measurements still prevent rows from overflowing.
+over queue density. Named sections use shared rendering/budget tokens. From
+width 650 / height 150 dp, the primary and preview sit beside one another.
+Live measurements still prevent rows from overflowing. Tasks and Schedule have
+their own domain planners, sharing headers, text blocks and details hints.
 
 Meals allow up to two following entries below 220 dp content height, three from
 220–299 dp and four from 300 dp. These are caps: fewer entries appear when long
@@ -42,13 +45,15 @@ content width/height by that scale when reading the following thresholds.
 | --- | --- | --- | --- |
 | Below 110 dp | 16 dp | 1 | 18 / 4 dp |
 | 110–129 dp | 19 dp | 2 | 18 / 4 dp |
-| 130–199 dp | 19 dp | 2 | 24 / 6 dp |
-| 200–219 dp | 22 dp | 2 | 24 / 6 dp |
-| 220 dp and above | 22 dp | 3 | 24 / 6 dp |
+| 130–199 dp | 19 dp | 2 | 18 / 6 dp |
+| 200–219 dp | 22 dp, falling back to 19 | 2 | 18 / 6 dp |
+| 220 dp and above | 22 dp, falling back to 19 | 3 Meals / 4 Media, falling back to 2 | 18 / 6 dp |
 
-The line limit is a cap; unused headline lines never reserve empty space. List
-fonts for Tasks remain 11–12 normalized dp with a 15 dp
-line height. Meals and Media use an 18 dp row line height and 14 dp metadata line
+This table describes Meals/Media; loading/error cards retain generic typography.
+Primary type reaches 28 dp in roomy side compositions or sparse cards; it and
+optional section chrome yield if they would remove a preview. The line limit is
+a cap; unused headline lines never reserve empty space. Tasks uses 14–18 dp names
+with an 18–24 dp line height. Meals and Media use an 18 dp row line height and 14 dp metadata line
 height. The details hint appears only in leftover space,
 after entries are fitted. If the hint cannot fit, a header count identifies hidden
 entries. Every card still opens its full detail view with the remote.
@@ -60,7 +65,7 @@ entries. Every card still opens its full detail view with the remote.
 | Meals | Tonight/next dinner, date, servings/cook; a readable following dinner when space allows | A few more dated dinners as height increases; width preserves longer names rather than packing in columns |
 | Activity | All four daily metrics: steps, distance, move minutes, calories; step goal and progress | Percentage ring, seven-day total and daily average, then the chart and additional weekly metrics |
 | Schedule | Current/next event's title and time, today count or future date; upcoming event becomes primary if today is empty | Separate More today / Coming up groups, capped at four following entries; larger primary text, end time and calendar name |
-| Tasks | Pending count and multiple task names; due dates when provided | More tasks, wider/full titles and separate due-date metadata; completed tasks are excluded |
+| Tasks | Readable checklist names, with the pending count in the header | Up to six tasks, at most two columns, larger names and separate due labels when they retain the prefix; completed tasks are excluded |
 | Weather | Larger temperature, condition, location and condition icon | Feels-like/high-low, a capped hourly strip, a separate daily strip, then wind/humidity when their budgets fit; wide short cards put forecasts beside current weather |
 | Media | Featured program, provider/episode, actual supplied progress | Larger featured artwork and a few queue previews with large posters and separate provider labels |
 
@@ -68,6 +73,15 @@ Empty/unavailable states remain truthful. Missing data is never filled with
 invented values. A null activity-minute value is a dash; a real zero stays zero.
 Estimated resting calories retain the `est. kcal` label. Playback position zero
 is valid; a progress bar requires an actual position and a positive duration.
+
+### Tasks modes
+
+Tasks uses one column below width 550 dp and two above it when multiple tasks
+exist. The columns read down the left, then down the right. Preview caps are two
+below height 110, four below 220 and six thereafter. Names grow from 14 to 18 dp
+in taller/sparse cards only if they retain the prefix. Due labels yield first if
+they displace names. Provider order stays intact, and yearless due labels receive
+no guessed overdue status. See [Tasks design](TASKS_LAYOUT_DESIGN.md) for all 50 mappings.
 
 ### Schedule modes and time
 
@@ -103,14 +117,24 @@ daily metrics and gaps, 44 dp of available space adds the total, and 62 dp adds
 the daily average. The chart modes retain both, so increasing card height never
 removes a previously visible weekly total.
 
+Roomy daily values and rings enlarge within their existing modes, and Today / Last
+7 days grouping uses shared header/section components. See [the refinement guide](PREVIEW_WIDGET_REFINEMENTS.md).
+Summary cards that retain the weekly average add miniature day bars beside the
+total/average from width 220 dp. The 34 dp chart fits within the existing 62 dp
+summary reservation, without reducing metrics or adding height. The miniature
+and full charts reuse the same supplied-day renderer and goal/peak scaling.
+
 ### Artwork
 
 Weather uses 40–104 dp condition artwork and a 32–80 dp temperature across six
 families. The icon is omitted before a long signed/unit-bearing temperature loses
 space. The shortest cards omit optional context; forecasts are capped at four
 entries per strip (three at minimum width). See [weather layout design](WEATHER_LAYOUT_DESIGN.md)
-for thresholds and data fallbacks. Media's side poster appears at
-width ≥180 dp and height ≥100 dp, capped at 120 dp high or 42% of the card height.
+for thresholds and data fallbacks. Media's leading poster appears at
+width ≥180 dp when at least 40 dp remains below its header. Short posters normally
+use 48 dp, growing toward 42% of the card height, capped at 120 dp and by available
+body height / a 120 dp text column. Progress sits under the text beside the poster,
+capped at 220 dp width.
 Narrow Media cards cap the featured title at 19 dp and allow four lines from
 220 dp height, to preserve the name beside larger artwork. Queue posters stay
 64 dp high; rows are omitted when they cannot fit, rather than shrinking them.
@@ -120,7 +144,8 @@ Provider progress appears from height 70 dp when supplied.
 
 - `npm run test:cards` checks all legal dimensions, initial estimates, measured
   height refinement, row budgets, weather growth/fallbacks/formatting, and the
-  reported Meals/Activity regressions, Schedule preview retention and clock boundaries.
+  reported Meals/Activity regressions, Tasks and grouped-preview growth retention,
+  Schedule preview retention and clock boundaries.
 - The Vite fixture under `test/` renders the actual React Native Web components
   with isolated data/hook fixtures and the production MaterialCommunityIcons
   glyph map/font, without Expo's native font-loading runtime.
@@ -137,9 +162,13 @@ Provider progress appears from height 70 dp when supplied.
 - Native verification on the connected Sony BRAVIA confirms the current layout:
   two readable following dinners, the Activity ring with all daily metrics and
   the weekly step total/daily average, and two queue programs with larger posters.
+  A subsequent native screenshot confirms artwork in the user's short Media
+  card, progress within its text column, and miniature bars in the medium
+  Activity summary, with all daily metrics and weekly total/average retained.
   Browser checks do not replace native font/remote verification
   at every physical device density. New Weather has browser coverage but still
-  needs native visual review, as does the new Schedule design. The Android production export and TypeScript
+  needs native visual review, as do Schedule, Tasks and the latest refinements.
+  The Android production export and TypeScript
   checks verify the app bundle.
 
 An existing development client receives TV layout changes through Metro;

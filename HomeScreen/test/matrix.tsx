@@ -36,6 +36,12 @@ function Matrix() {
   const compact = new URLSearchParams(location.search).get('mode') !== 'full';
   const [areaWidth, areaHeight, gap, padding] = compact ? [900, 340, 8, 12] : [1800, 740, 12, 20];
   return <FixtureProvider value={{data, watch, compact}}><main data-revision={revision}>
+    {new URLSearchParams(location.search).has('small-visuals') && <section data-small-visuals style={{display:'flex',gap:16,alignItems:'flex-start'}}>
+      {([['media',265,80],['activity',346,200]] as const).map(([id,width,height]) => <article key={id} data-visual={id}
+        style={{padding:12,border:'1px solid #57657c',borderRadius:14,background:'#192638'}}>
+        <AdaptiveDashboardCard id={id} width={width} height={height} />
+      </article>)}
+    </section>}
     {DASHBOARD_CARD_IDS.map((id) => <section key={id} data-card={id}>
       <h2>{id}</h2><div style={{display:'flex',flexWrap:'wrap',gap:16}}>
         {Array.from({length:50},(_,i) => [3+Math.floor(i/5), 2+i%5]).map(([w,h]) => {

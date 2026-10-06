@@ -36,6 +36,7 @@ export default function useCardContentLayout(
     height: number;
   } | null>(null);
   const [measurements, setMeasurements] = useState<Record<string, number>>({});
+  const estimate = planCardContent({...input, measurements});
   const key = JSON.stringify([
     input.id,
     input.width,
@@ -47,6 +48,9 @@ export default function useCardContentLayout(
     input.artHeight,
     input.extraHeight,
     input.presentation,
+    Boolean(input.lines.length),
+    estimate.titleSize,
+    estimate.titleLimit,
   ]);
   const plan = planCardContent({
     ...input,
@@ -55,7 +59,7 @@ export default function useCardContentLayout(
   });
 
   function measureHero(event: LayoutChangeEvent) {
-    const height = event.nativeEvent.layout.height;
+    const height = event.nativeEvent.layout.height + plan.header + plan.gap;
     setMeasuredHero((current) => {
       if (
         current?.key === key &&

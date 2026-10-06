@@ -1,9 +1,12 @@
+import {cardSectionLayout} from './cardSectionLayout';
+
 /** Content dimensions, not grid labels, define the breakpoints (all values in TV dp). */
 export interface CardLine {
   title: string;
   detail?: string;
   compactDetail?: string;
   posterUri?: string | null;
+  section?: string;
 }
 export type RowDensity = 'comfortable' | 'compact';
 export type CardPresentation = 'standard' | 'meal' | 'media';
@@ -57,7 +60,7 @@ export function lineKey(
     line.posterUri !== undefined,
   ]);
 }
-export function planCardContent({
+function fitCardContent({
   width,
   height,
   scale,
@@ -83,11 +86,18 @@ export function planCardContent({
   measuredHero?: number;
   measurements?: Record<string, number>;
   presentation?: CardPresentation;
-}) {
+}, readable = false) {
   const type = cardTypography(height, scale);
+  const preview = presentation !== 'standard';
+  const sideBySide = preview && lines.length > 0 && width / scale >= 650 && height / scale >= 150;
+  const heroWidth = sideBySide ? width * 0.44 : width;
+  const sectionCompact = readable || height / scale < 220;
+  if (preview) type.header = 18 * scale;
+  if (preview && (sideBySide && height / scale >= 400 || !lines.length && height / scale >= 300 && width / scale >= 300))
+    type.titleSize = 28 * scale;
   if (presentation === 'media' && width / scale < 300)
     type.titleSize = Math.min(type.titleSize, 19 * scale);
-  const preview = presentation !== 'standard';
+  if (readable && preview) type.titleSize = Math.min(type.titleSize, 19 * scale);
   const rowGap = (preview ? 10 : type.gap / scale) * scale;
   const rowSize = (preview ? 14 : 12) * scale;
   const rowLine = (preview ? 18 : 15) * scale;
@@ -105,18 +115,18 @@ export function planCardContent({
       : presentation === 'media'
         ? 3
         : lines.length;
-  const titleWidth = Math.max(1, width - (artWidth ? artWidth + type.gap : 0));
+  const titleWidth = Math.max(1, heroWidth - (artWidth ? artWidth + type.gap : 0));
   const titleLimit =
     height / scale < 110
       ? 1
-      : height / scale < 220
+      : readable || height / scale < 220
         ? 2
         : presentation === 'media'
           ? 4
           : 3;
   const titleCount = textLines(title, titleWidth, type.titleSize, titleLimit);
   const subtitleCount = subtitle
-    ? textLines(subtitle, titleWidth, 11 * scale, height / scale >= 220 ? 2 : 1)
+    ? textLines(subtitle, titleWidth, 11 * scale, !readable && height / scale >= 220 ? 2 : 1)
     : 0;
   const hero =
     measuredHero ??
@@ -124,14 +134,15 @@ export function planCardContent({
       type.gap +
       Math.max(
         titleCount * type.titleSize * 1.2 +
-          (subtitle ? type.gap + subtitleCount * type.subtitleLine : 0),
+          (subtitle ? type.gap + subtitleCount * type.subtitleLine : 0) +
+          (extraHeight ? type.gap + extraHeight : 0),
         artHeight,
-      ) +
-      (extraHeight ? type.gap + extraHeight : 0);
-  const available = Math.max(0, height - hero);
+      );
+  const available = Math.max(0, height - (sideBySide ? type.header + type.gap : hero));
+  const rowsWidth = sideBySide ? width - heroWidth - 16 * scale : width;
   const candidates = [];
   for (const columns of preview ? [1] : [1, 2, 3]) {
-    const cellWidth = (width - (columns - 1) * rowGap) / columns;
+    const cellWidth = (rowsWidth - (columns - 1) * rowGap) / columns;
     if (columns > 1 && cellWidth < 185 * scale) continue;
     for (const density of preview
       ? (['comfortable'] as const)
@@ -166,9 +177,11 @@ export function planCardContent({
               ),
           ),
         );
-        // The first row needs a gap; no speculative footer displaces actual content.
-        if (used + rowGap + rowHeight > available - 1) break;
-        used += rowGap + rowHeight;
+        const newSection = group[0]?.section && (i === 0 || group[0].section !== lines[i - 1]?.section);
+        const before = (i === 0 && sideBySide ? 0 : rowGap)
+          + (newSection ? cardSectionLayout(sectionCompact).height * scale : 0);
+        if (used + before + rowHeight > available - 1) break;
+        used += before + rowHeight;
         count += group.length;
       }
       candidates.push({ columns, cellWidth, density, count, used });
@@ -193,10 +206,21 @@ export function planCardContent({
     posterWidth,
     ...rows,
     hero,
+    heroWidth,
+    sideBySide,
+    sectionCompact,
     titleLimit,
     subtitleCount,
-    footer: height - hero - rows.used >= 18 * scale + rowGap,
+    footer: height - (sideBySide ? Math.max(hero, type.header + type.gap + rows.used) : hero + rows.used) >= 18 * scale + rowGap,
   };
+}
+/** Enlarge primary text/section chrome only when it preserves the readable preview. */
+export function planCardContent(input: Parameters<typeof fitCardContent>[0]) {
+  if (!input.presentation || input.presentation === 'standard') return fitCardContent(input);
+  const estimate = {...input, measuredHero:undefined};
+  const preferred = fitCardContent(estimate);
+  const readable = fitCardContent(estimate, true);
+  return fitCardContent(input, readable.count > preferred.count);
 }
 export function activityLayout(
   width: number,
@@ -219,4 +243,10 @@ export function activitySummaryHeight(
 ) {
   if (!hasWeekly || available < 44 * scale) return 0;
   return available >= 62 * scale ? 62 * scale : 44 * scale;
+}
+
+/** Fits beside the total/average inside their existing 62 dp reservation. */
+export function activityMiniChartWidth(width: number, scale: number, showAverage: boolean): number {
+  return showAverage && width >= 220 * scale
+    ? Math.min(140 * scale, Math.max(98 * scale, width * 0.36)) : 0;
 }

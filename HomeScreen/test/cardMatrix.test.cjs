@@ -49,6 +49,11 @@ for (const layout of ['rows', 'grid']) test(`dashboard ${layout} reuse labeled c
   await area.getByRole('button', {name:'Schedule. Open details', exact:true}).focus();
   await page.keyboard.press('Enter');
   assert.equal(await area.getAttribute('data-opened'), 'schedule');
+  for (const [id, label] of [['todo','Tasks'],['media','Media'],['activity','Activity']]) {
+    await area.getByRole('button', {name:`${label}. Open details`,exact:true}).focus();
+    await page.keyboard.press('Enter');
+    assert.equal(await area.getAttribute('data-opened'), id);
+  }
   assert.deepEqual(errors, []);
 });
 for (const mode of ['compact', 'full']) test(`all six cards, all 50 grid footprints: ${mode}`, async (t) => {
@@ -63,7 +68,7 @@ for (const mode of ['compact', 'full']) test(`all six cards, all 50 grid footpri
   assert.deepEqual(errors, []);
   const report = await page.evaluate(() => [...document.querySelectorAll('[data-testid^="adaptive-"]')].map((card) => {
     const box = card.getBoundingClientRect();
-    const outside = [...card.querySelectorAll('[data-testid="card-row"], [data-testid="activity-metric"], [data-testid="activity-stats"], [data-testid="activity-weekly-chart"], [data-testid="activity-weekly-summary"], [data-testid="card-hero"], [data-testid^="weather-"], [data-testid^="schedule-"]')].filter((node) => {
+    const outside = [...card.querySelectorAll('[data-testid="card-row"], [data-testid="card-rows"], [data-testid="card-section"], [data-testid="activity-metric"], [data-testid="activity-stats"], [data-testid="activity-weekly-chart"], [data-testid="activity-weekly-summary"], [data-testid="activity-mini-chart"], [data-testid="activity-day-bars"], [data-testid="activity-day"], [data-testid="media-art"], [data-testid="media-progress"], [data-testid="card-hero"], [data-testid^="weather-"], [data-testid^="schedule-"], [data-testid^="tasks-"]')].filter((node) => {
       const r=node.getBoundingClientRect(); return r.bottom>box.bottom+1 || r.right>box.right+1 || r.left<box.left-1;
     });
     return {id:card.dataset.testid, size:card.closest('article')?.dataset.size, rows:card.querySelectorAll('[data-testid="card-row"]').length,
@@ -123,6 +128,43 @@ for (const mode of ['compact', 'full']) test(`all six cards, all 50 grid footpri
   assert.match(await page.locator('[data-testid="adaptive-activity"]').first().textContent(),/Activity unavailable/);
   assert.match(await page.locator('[data-testid="adaptive-schedule"]').first().textContent(),/Upcoming appointment/,'tomorrow becomes primary when today is empty');
   assert.deepEqual(errors, []);
+});
+
+test('short Media shows supplied artwork with confined progress; medium Activity fits a seven-day graphic', async (t) => {
+  const page=await browser.newPage({viewport:{width:1100,height:800}});
+  t.after(()=>page.close());
+  const errors=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  await page.goto('http://127.0.0.1:5174/?small-visuals');
+  await page.locator('[data-small-visuals] [data-testid="media-art"]').waitFor();
+  const poster='data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="140" height="200"><rect width="140" height="200" fill="#066b85"/><circle cx="70" cy="70" r="36" fill="#38bdf8"/><text x="70" y="146" text-anchor="middle" fill="white" font-size="18">Poster</text></svg>');
+  await page.evaluate(poster=>window.updateWatchFixture({status:'ready',items:[{id:1,title:'Agent P Under C',appName:'Disney+',episodeTitle:'Perry Hawaiian Style',posterUri:poster,positionMs:700,durationMs:1000}]}),poster);
+  const media=page.locator('[data-visual="media"]');
+  const activity=page.locator('[data-visual="activity"]');
+  await media.locator('img').waitFor({state:'attached'});
+  await page.waitForFunction(()=>document.querySelector('[data-visual="media"] img')?.complete);
+  const geometry=await media.evaluate(node=>{
+    const card=node.querySelector('[data-testid="adaptive-media"]').getBoundingClientRect();
+    const poster=node.querySelector('[data-testid="media-art"]').getBoundingClientRect();
+    const progress=node.querySelector('[role="progressbar"]').getBoundingClientRect();
+    return {posterHeight:poster.height,cardWidth:card.width,barWidth:progress.width,
+      inside:progress.bottom<=card.bottom+1 && poster.bottom<=card.bottom+1,afterPoster:progress.left>poster.right};
+  });
+  assert.ok(geometry.posterHeight>=40&&geometry.inside&&geometry.afterPoster);
+  assert.ok(geometry.barWidth<geometry.cardWidth-30&&geometry.barWidth<=220);
+  assert.equal(await media.getByRole('progressbar').getAttribute('aria-valuenow'),'70');
+  assert.equal(await activity.locator('[data-testid="activity-mini-chart"] [data-testid="activity-day"]').count(),7);
+  assert.match(await activity.textContent(),/45,500 steps.*6,500 daily avg/);
+  for(const value of ['1,843','2.3','94','1,256']) assert.ok((await activity.textContent()).includes(value));
+  if(process.env.CARD_SCREENSHOT_DIR) for(const id of ['media','activity'])
+    await page.locator(`[data-visual="${id}"]`).screenshot({path:`${process.env.CARD_SCREENSHOT_DIR}/small-${id}-visual.png`});
+  // Real zero bars stay empty; missing days are not fabricated to fill seven positions.
+  await page.evaluate(()=>window.updateFixture({health:{status:'ok',steps:0,distance:0,calories:0,activeMinutes:null,stepGoal:10000,
+    weekly:[{date:'2026-10-05',steps:0,distance:0,calories:0,activeMinutes:null},{date:'2026-10-06',steps:5000,distance:1,calories:200,activeMinutes:5}]}}));
+  await page.waitForFunction(()=>document.querySelector('[data-visual="activity"] [data-testid="activity-mini-chart"]')?.textContent.includes('Mo'));
+  assert.equal(await activity.locator('[data-testid="activity-mini-chart"] [data-testid="activity-day"]').count(),2);
+  assert.equal(await activity.locator('[data-testid="activity-mini-chart"] [data-testid="activity-day-fill"]').first().evaluate(n=>n.getBoundingClientRect().height),0);
+  assert.deepEqual(errors,[]);
 });
 
 test('summary loading does not hide independently loaded Play Next and cards recover on refresh', async (t) => {
@@ -371,4 +413,74 @@ test('Schedule follows TV time at start, end and calendar midnight without a fee
   await page.clock.fastForward(8 * 3600000);
   report = await scheduleReport(page);
   assert.ok(report.every(c => c.text.includes('Legacy appointment') && !c.text.includes('Happening now')));
+});
+
+for (const mode of ['compact','full']) test(`Tasks hierarchy and grouped previews with sparse/long/partial data: ${mode}`, async (t) => {
+  const page = await browser.newPage({viewport:{width:mode === 'compact' ? 960 : 1920,height:1080}});
+  t.after(() => page.close());
+  const errors=[];
+  page.on('pageerror',error=>errors.push(error.message));
+  await page.goto(`http://127.0.0.1:5174/?mode=${mode}`);
+  await page.locator('[data-testid="tasks-content"]').first().waitFor();
+  await page.evaluate(()=>document.fonts.ready);
+  const taskReport = () => page.locator('[data-card="todo"] [data-testid="adaptive-todo"]').evaluateAll(cards => cards.map(card => {
+    const box=card.getBoundingClientRect(), content=card.querySelector('[data-testid="tasks-content"]').getBoundingClientRect();
+    const hint=card.querySelector('[data-testid="tasks-details-hint"]')?.getBoundingClientRect();
+    return {size:card.closest('article').dataset.size,text:card.textContent,
+      labels:[...card.querySelectorAll('[data-testid="card-row"]')].map(row=>row.getAttribute('aria-label')),
+      fonts:[...card.querySelectorAll('[data-testid="card-row-title"]')].map(n=>parseFloat(getComputedStyle(n).fontSize)),
+      outside:content.bottom>box.bottom+1 || content.right>box.right+1,
+      overlap:hint ? content.bottom>hint.top-4 : false};
+  }));
+  const base={id:'0',title:'Pick up groceries',due:'2026-10-07'};
+  const cases=[[],[base],Array.from({length:30},(_,i)=>({...base,id:String(i),title:['Pick up groceries','Book annual checkup','Replace kitchen filter','Send paperwork'][i%4],due:i%2 ? null : 'Sep 28'})),
+    Array.from({length:20},(_,i)=>({...base,id:String(i),title:'A very long household task involving several important names and places to remember',due:i%3 ? '2026-10-07' : null})),
+    [{...base,title:'',due:' '},{...base,id:'1',completed:true,title:'Completed task'}, {...base,tasklistId:'other',title:'Same ID in another list'}, base,base]];
+  for(const [index,tasks] of cases.entries()) {
+    await page.evaluate(tasks=>window.updateFixture({tasks}),tasks);
+    await page.waitForTimeout(50);
+    const report=await taskReport();
+    assert.equal(report.length,50);
+    assert.deepEqual(report.filter(c=>c.outside||c.overlap),[]);
+    for(const card of report) {
+      assert.ok(card.labels.length<=6);
+      assert.ok(card.fonts.every(font=>font >= (mode==='compact'?14:19.6)-0.01));
+      assert.doesNotMatch(card.text,/Completed task|undefined|NaN|Overdue/);
+      if(index===0) assert.ok(card.text.includes('All caught up'));
+      else assert.ok(card.labels.length>=1);
+    }
+    if(index===2) {
+      assert.equal(report.find(c=>c.size==='3x2').labels.length,mode==='compact'?2:4);
+      assert.equal(report.find(c=>c.size==='12x6').labels.length,6);
+      if(process.env.CARD_SCREENSHOT_DIR) for(const size of ['3x2','3x3','3x4','3x6','8x2','12x6'])
+        await page.locator(`[data-card="todo"] [data-size="${size}"]`).screenshot({path:`${process.env.CARD_SCREENSHOT_DIR}/${mode}-tasks-${size}.png`});
+    }
+  }
+  // A sparse dinner retains its own sides/notes in a separate section.
+  await page.evaluate(()=>{
+    const d=new Date(), today=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    window.updateFixture({meals:{status:'ok',items:[{date:today,title:'Roast chicken',side:'Green salad',note:'Prepare the vegetables before roasting',servings:'0',cook:'Alex'}]}});
+    window.updateWatchFixture({status:'ready',items:Array.from({length:8},(_,i)=>({id:i,title:i ? 'A very long queued program title with several episode details to preserve' : 'An unusually long featured program title that needs several lines', appName:'A long streaming provider name',episodeTitle:'A long episode title',posterUri:null,positionMs:i?null:0,durationMs:i?null:10000}))});
+  });
+  await page.waitForFunction(()=>document.querySelector('[data-testid="adaptive-meal"]').textContent.includes('Roast chicken'));
+  const meal=page.locator('[data-card="meal"] [data-size="12x6"]');
+  assert.match(await meal.textContent(),/With dinner.*Green salad.*Prepare the vegetables/);
+  assert.match(await meal.textContent(),/Serves 0/);
+  assert.doesNotMatch(await meal.textContent(),/Next dinners/);
+  const media=page.locator('[data-card="media"] [data-size="12x6"]');
+  assert.match(await media.textContent(),/Up next/);
+  const grouped=await page.locator('[data-card="meal"] [data-testid="adaptive-meal"], [data-card="media"] [data-testid="adaptive-media"]').evaluateAll(cards=>cards.map(card=>{
+    const box=card.getBoundingClientRect();
+    return {text:card.textContent,outside:[...card.querySelectorAll('[data-testid="card-hero"], [data-testid="card-rows"], [data-testid="card-row"], [data-testid="card-section"]')].filter(n=>{
+      const r=n.getBoundingClientRect();return r.bottom>box.bottom+1||r.right>box.right+1||r.left<box.left-1;
+    }).map(n=>n.textContent)};
+  }));
+  assert.deepEqual(grouped.filter(c=>c.outside.length),[]);
+  if(process.env.CARD_SCREENSHOT_DIR) for(const id of ['meal','media','activity']) for(const size of ['3x4','3x6','12x6'])
+    await page.locator(`[data-card="${id}"] [data-size="${size}"]`).screenshot({path:`${process.env.CARD_SCREENSHOT_DIR}/${mode}-${id}-refined-${size}.png`});
+  // Missing/zero activity stays truthful in each geometry, including enlarged values.
+  await page.evaluate(()=>window.updateFixture({health:{status:'ok',steps:0,distance:0,calories:0,activeMinutes:null,stepGoal:10000,weekly:[]}}));
+  const activity=await page.locator('[data-card="activity"] [data-testid="adaptive-activity"]').allTextContents();
+  assert.ok(activity.every(text=>text.includes('0')&&text.includes('0.0')&&text.includes('—')&&!text.includes('Last 7 days')));
+  assert.deepEqual(errors,[]);
 });

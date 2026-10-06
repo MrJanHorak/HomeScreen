@@ -7,6 +7,8 @@ See [current content breakpoints](CARD_CONTENT_BREAKPOINTS.md) for shipped fitti
 behavior and [the weather design](WEATHER_LAYOUT_DESIGN.md) for the first implemented
 use of this guide. [Schedule](SCHEDULE_LAYOUT_DESIGN.md) applies it to grouped
 agendas and clock-aware previews. See [other widget opportunities](WIDGET_LAYOUT_ASSESSMENT.md)
+and the implemented [Tasks checklist](TASKS_LAYOUT_DESIGN.md) and
+[Meals/Media/Activity refinements](PREVIEW_WIDGET_REFINEMENTS.md)
 for the applicability and reuse assessment.
 
 ## Size contract

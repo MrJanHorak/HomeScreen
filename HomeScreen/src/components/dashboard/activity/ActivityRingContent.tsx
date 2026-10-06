@@ -12,11 +12,12 @@ export default function ActivityRingContent({health, width, height, scale}: Acti
   const type = cardTypography(height, scale);
   const weekly = health.weekly || [];
   const hasWeekly = weekly.length > 0;
+  const enlarged = width / scale >= 300 && height / scale >= 260 && !hasWeekly;
   const progress = health.stepGoal > 0 ? Math.min(1, Math.max(0, health.steps / health.stepGoal)) : 0;
   // Reserve the weekly total before giving the remaining space to the ring.
   const summaryReserve = activitySummaryHeight(height - type.header - type.gap * 2 - 74 * scale, scale, hasWeekly);
   const ringSize = Math.min(
-    82 * scale,
+    (enlarged ? 120 : 82) * scale,
     width * 0.3,
     height - type.header - type.gap - 17 * scale,
     summaryReserve ? height - type.header - type.gap * 2 - summaryReserve - 16 * scale : Infinity,
@@ -29,7 +30,7 @@ export default function ActivityRingContent({health, width, height, scale}: Acti
 
   return (
     <View testID="adaptive-activity" style={{height, width, gap: type.gap, overflow: 'hidden'}}>
-      <CardHeader id="activity" scale={scale} height={type.header} />
+      <CardHeader id="activity" scale={scale} height={type.header} badge='Today' />
       <View style={{flexDirection: 'row', alignItems: 'center', gap: 6 * scale}}>
         <View style={{width: ringSize + 12 * scale, alignItems: 'center', gap: 3 * scale}}>
           <TVProgressRing progress={progress} size={ringSize} strokeWidth={6 * scale} />
@@ -47,11 +48,12 @@ export default function ActivityRingContent({health, width, height, scale}: Acti
             activeMinutes={health.activeMinutes}
             estimatedRestingCalories={health.estimatedRestingCalories}
             dense
+            enlarged={enlarged}
           />
         </View>
       </View>
       {summaryHeight > 0 && (
-        <ActivityWeeklySummary weekly={weekly} scale={scale} showAverage={summaryHeight >= 62 * scale} />
+        <ActivityWeeklySummary weekly={weekly} scale={scale} width={width} stepGoal={health.stepGoal} showAverage={summaryHeight >= 62 * scale} />
       )}
     </View>
   );

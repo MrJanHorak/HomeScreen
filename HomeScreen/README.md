@@ -135,7 +135,9 @@ Card content shares measured renderers across automatic rows and the free canvas
 It uses the measured inner size to fit readable content. Meals shows a few dated
 dinners in one column, and Media uses larger posters with spacious queue previews.
 Schedule emphasizes the current/next event with separate capped Today/Coming up
-groups; Tasks can use compact rows and extra columns. Weather uses larger
+groups; Tasks uses a capped readable checklist with at most two columns. Meals
+and Media separate supporting sections and use side compositions on wide cards.
+Weather uses larger
 current values/artwork and separate, capped hourly/daily forecast strips. Medium Activity
 retains its ring, all four daily metrics and a weekly summary whenever space permits,
 before adding a chart. Wider/taller cards add entries and weekly/forecast information
@@ -153,7 +155,10 @@ and TV-clock event status. With updated Functions, Schedule marks timed events
 as **Happening now** and removes ended events from the dashboard preview while
 retaining the full day in details. All-day entries remain for their calendar day;
 legacy feeds with missing timestamps keep their existing behavior. The
-[other widget assessment](WIDGET_LAYOUT_ASSESSMENT.md) identifies follow-up
+[Tasks design](TASKS_LAYOUT_DESIGN.md) maps its checklist across all 50 sizes.
+[Meals/Media/Activity refinements](PREVIEW_WIDGET_REFINEMENTS.md) cover named
+sections and selective enlargement. These refinements need updated TV code, with
+no backend migration. The [other widget assessment](WIDGET_LAYOUT_ASSESSMENT.md) identifies follow-up
 opportunities and the shared components that support them.
 
 ## Android TV artwork

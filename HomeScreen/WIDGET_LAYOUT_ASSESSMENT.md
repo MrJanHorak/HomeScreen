@@ -1,11 +1,13 @@
 # Applying the weather design principles to other widgets
 
-Assessment date: October 6, 2026. Weather and Schedule are implemented. Remaining
-domain changes below are recommendations. Shared headers, details hints and text
-blocks are reused; other widgets retain their behavior.
+Assessment date: October 6, 2026. Weather, Schedule and Tasks designs and the
+Meals/Media/Activity refinements are implemented. The table below records the
+resulting behavior and remaining limits. Headers, sections, text blocks, measured
+preview fitting and details hints are shared where their behavior matches.
 See [the design guide](WIDGET_DESIGN_GUIDE.md) for geometry and validation, and
 [Weather](WEATHER_LAYOUT_DESIGN.md) and [Schedule](SCHEDULE_LAYOUT_DESIGN.md)
-for implementation examples.
+for implementation examples, plus [Tasks](TASKS_LAYOUT_DESIGN.md) and
+[the remaining refinements](PREVIEW_WIDGET_REFINEMENTS.md).
 
 ## What transfers
 
@@ -24,15 +26,15 @@ horizontal strip is not automatically appropriate for a text-heavy task or event
 | Widget | Existing behavior | Applicable improvement | Reuse approach / priority |
 | --- | --- | --- | --- |
 | Schedule | Implemented: prominent current/next event, separate **More today** and **Coming up** groups, capped at five total events | TV-clock status and preview expiration use supplied absolute occurrence windows; sparse cards emphasize one event | Reuses `CardHeader`, `CardSection`, `CardTextBlock` and details hint, with one domain planner and agenda renderer |
-| Tasks | Pending count plus pending names and optional due dates; compact rows/columns | Keep task names primary; cap preview count on large cards; only group due/undated tasks when supplied dates support it. Avoid a large count that displaces useful task names | Good candidate for a small shared list-preview cap first. Keep checklist rows and a list presentation; photos add little value |
-| Meals | Already caps two to four following dinners in a single column with larger text and date/cook/serving metadata | Separate next dinners from tonight's sides/preparation notes; wider layouts could place tonight beside following dinners | Mostly follows the new principles already. Reuse section/row primitives; keep meal grouping in its domain. Only add photos when actual data provides them |
-| Media / Play Next | Featured program, supplied progress and large posters; capped queue previews | An explicit **Up next** section; a wide featured-program/queue composition when names and posters remain readable | Already follows the principle strongly. Preserve `WatchPoster`, `CardProgress`, source/status handling and queue cap; share section chrome rather than a forecast tile |
-| Activity | Separate compact metrics, ring, wide-weekly and tall-weekly modes; preserves all four daily metrics and weekly total before chart | Clearer Today/Last 7 days separation; enlarge values where there is room, while retaining daily metrics and supplied weekly totals | Already has the right architecture. Existing ring/progress/chart components should remain domain-specific; avoid hiding established metrics merely to reduce density |
+| Tasks | Implemented: readable checklist, small header count, capped at six entries/two columns | Due metadata and enlargement yield before task names; yearless labels cannot establish urgency, so provider order remains | Domain planner shares header, text block, details hint and date labels; no imagery or speculative urgency groups |
+| Meals | Implemented: **Next dinners** / **With dinner** sections, bounded previews, wide primary/preview composition | Future dinners retain priority over optional sides/notes; real dates, servings and cook remain | Shared named-section fitting with Media; actual data is required before adding photos |
+| Media / Play Next | Implemented: **Up next** section and wide primary/queue composition | Primary titles enlarge where previews are preserved; large queue posters and supplied progress remain | Shared preview composition, `WatchPoster`, `CardProgress`, source/status handling and section chrome |
+| Activity | Implemented: **Today** / **Last 7 days** grouping, larger roomy daily values/ring | All four daily metrics and weekly totals stay before charts; missing/estimated values retain meaning | Shared header/section/details hint plus existing domain ring, metrics and chart components |
 
 The biggest benefit is Schedule's mixed groups. Tasks' information is inherently
 textual, so a bounded, legible checklist is more useful than borrowing weather's
-visual strip. Meals, Media and Activity need smaller refinements rather than a
-replacement layout system.
+visual strip. Meals, Media and Activity receive smaller refinements within their
+established renderers rather than a replacement layout system.
 
 ## Reuse implemented with Weather
 
@@ -70,6 +72,19 @@ and sections differ. This is domain separation rather than duplicating list logi
   calculation; calendar-day comparisons on the TV use the same pure utility.
 
 ## Keeping later implementations DRY
+
+Tasks reuses the bounded text block but has its own checklist budget: it has no
+featured-event hierarchy or artwork row. Meals and Media share section and
+side-composition logic in `CardContent`, with native measurements keyed to the
+selected typography. Activity reuses section/header/hint chrome and retains its
+domain charts. Tasks and Meals share a date-only label formatter; Meals also uses
+the existing shared TV clock to advance its day filter. No per-footprint
+components or universal widget framework were added.
+
+Media now fits leading artwork in short cards and places progress in the primary
+text column. Activity's miniature weekly bars reuse `ActivityDayBars`, the same
+renderer as the full chart, inside the existing total/average height reservation.
+The current Sony TV layout has been inspected with both improvements visible.
 
 1. Reuse shell, theme, headers, sections, artwork/progress and details action first.
 2. For later cards, extend the existing list planner only when multiple domains need the same
