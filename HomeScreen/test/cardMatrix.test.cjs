@@ -4,6 +4,23 @@ const {chromium} = require('playwright');
 let browser;
 before(async () => {browser = await chromium.launch({headless:true, ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? {executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE} : {})});});
 after(async () => {await browser?.close();});
+for (const layout of ['rows', 'grid']) test(`dashboard ${layout} reuse labeled cards and open the selected details`, async (t) => {
+  const page = await browser.newPage({viewport:{width:960,height:1080}});
+  t.after(() => page.close());
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto(`http://127.0.0.1:5174/?layout=${layout}`);
+  const area = page.locator('[data-dashboard-layout]');
+  await area.locator('[data-testid="adaptive-meal"]').waitFor();
+  assert.equal(await area.getByRole('button').count(), 6);
+  const weather = area.getByRole('button', {name:'Weather. Open details', exact:true});
+  await weather.focus();
+  await page.keyboard.press('Enter');
+  assert.equal(await area.getAttribute('data-opened'), 'weather');
+  await area.getByRole('button', {name:'Meals. Open details', exact:true}).click();
+  assert.equal(await area.getAttribute('data-opened'), 'meal');
+  assert.deepEqual(errors, []);
+});
 for (const mode of ['compact', 'full']) test(`all six cards, all 50 grid footprints: ${mode}`, async (t) => {
   const page = await browser.newPage({viewport:{width:mode==='compact'?960:1920,height:1080}});
   t.after(() => page.close());

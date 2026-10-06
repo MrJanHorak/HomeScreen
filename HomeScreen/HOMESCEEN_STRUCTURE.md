@@ -5,14 +5,14 @@ TVScreenWrapper / ThemeProvider / DashboardProvider
 └── HomeScreen
     ├── HeaderBar (greeting, clock/date, settings)
     ├── Data-error banner, when needed
-    ├── Cards
+    ├── DashboardLayout
     │   ├── Automatic rows from appearance.cards; or
     │   └── DashboardGrid from appearance.grid (12 columns × 6 rows)
-    │       └── TVCard → MeasuredDashboardCard → AdaptiveDashboardCard
+    │       └── DashboardCard (TVCard + inner measurement) → AdaptiveDashboardCard
     │           └── components/dashboard/<domain>/*DashboardCard
     │   Weather · Schedule · Activity · Media · Meals · Tasks
     ├── FavoriteAppsCarousel (outside the movable grid)
-    └── TVDetailModal
+    └── DashboardDetailModal → TVDetailModal
         └── Weather / Schedule / Activity / Media / Meals / Tasks / Settings
 
 Idle → AmbientScreen; remote input → dashboard

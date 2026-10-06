@@ -1,3 +1,7 @@
+import {pairingTemplate} from '../features/pairing/pairingTemplate';
+import {mealTemplate} from '../features/meals/mealTemplate';
+import {accountTemplate} from '../features/account/accountTemplate';
+
 export type CompanionPage = 'pair' | 'dashboard' | 'settings' | 'meals' | 'account';
 
 interface PageCopy {
@@ -93,14 +97,22 @@ function pageGuide(page: CompanionPage): string {
   }
 }
 
-/** Render route-specific copy and controls; authentication stays in the entry point. */
+function pageContent(page: CompanionPage): string {
+  switch (page) {
+    case 'pair': return pairingTemplate();
+    case 'meals': return mealTemplate();
+    case 'account': return accountTemplate();
+    case 'dashboard': return '<section id="appearance-editor" class="appearance-editor" aria-label="Dashboard appearance"></section>';
+    case 'settings': return '<section id="weather-editor" class="settings-panel" aria-label="Weather and activity settings"></section>';
+  }
+}
+
+/** The shell renders only the active feature; each controller owns its controls. */
 export function renderCompanionPage(root: HTMLElement, page: CompanionPage): void {
   const copy = PAGE_COPY[page];
   document.title = copy.title;
   const pairMode = page === 'pair';
   const dashboardMode = page === 'dashboard';
-  const settingsMode = page === 'settings';
-  const mealMode = page === 'meals';
   root.innerHTML = `
   <a class="skip-link" href="#page-content">Skip to controls</a>
   <main class="layout companion-mode ${dashboardMode ? 'dashboard-mode' : ''} ${pairMode ? 'pair-mode' : ''}">
@@ -127,53 +139,11 @@ export function renderCompanionPage(root: HTMLElement, page: CompanionPage): voi
 
       <div id="page-content" tabindex="-1" class="page-workspace">
       <div class="page-primary">
-      <form id="pair-form" novalidate ${!pairMode ? 'hidden' : ''}>
-        <label class="field-label" for="pair-code">CODE ON YOUR TV</label>
-        <input id="pair-code" name="code" type="text" inputmode="text" autocomplete="one-time-code"
-          autocapitalize="characters" spellcheck="false" maxlength="6" placeholder="A7K9W2" required />
-        <p class="field-hint">Six characters. The code expires after 15 minutes.</p>
-        <button id="connect-button" class="button button-primary" type="submit" disabled>
-          Connect TV <span aria-hidden="true">↗</span>
-        </button>
-      </form>
-
+      ${pairMode ? pageContent(page) : ''}
       <p id="status" class="status" role="status" aria-live="polite"></p>
       <a id="connected-next" class="mode-link" href="/dashboard" hidden>Design your dashboard from this device →</a>
 
-      <section id="appearance-editor" class="appearance-editor" aria-label="Dashboard appearance" ${dashboardMode ? '' : 'hidden'}></section>
-      <section id="weather-editor" class="settings-panel" aria-label="Weather and activity settings" ${settingsMode ? '' : 'hidden'}></section>
-
-      <section class="meal-panel" aria-labelledby="meal-title" ${mealMode ? '' : 'hidden'}>
-        <p class="field-label">MEAL PLAN</p>
-        <h2 id="meal-title">Show dinner on your TV</h2>
-        <p class="meal-copy">Connect a private Google Sheet for your dinner plan. Keep adding weeks to the same Sheet; your TV refreshes automatically.</p>
-        <button id="meal-access-button" class="button button-secondary" type="button" disabled>Allow Google Sheets access</button>
-        <form id="meal-form" hidden>
-          <label class="field-label" for="meal-url">GOOGLE SHEET LINK</label>
-          <input id="meal-url" type="url" inputmode="url" autocomplete="url" placeholder="https://docs.google.com/spreadsheets/d/…" required />
-          <p class="field-hint">The meal tab needs Date and Meal_Name columns. Use real dates so today's dinner appears.</p>
-          <button id="meal-save-button" class="button button-primary" type="submit">Use this Sheet <span aria-hidden="true">↗</span></button>
-        </form>
-        <p id="meal-current" class="meal-current" hidden></p>
-        <button id="meal-remove-button" class="button button-text" type="button" hidden>Disconnect meal Sheet</button>
-        <p id="meal-status" class="status" role="status" aria-live="polite"></p>
-      </section>
-      <section id="account-controls" class="account-controls" aria-labelledby="account-controls-title" hidden>
-        <p class="field-label">ACCOUNT & PRIVACY</p>
-        <h2 id="account-controls-title">Connected services</h2>
-        <p class="meal-copy">Your linked TVs share dashboard design, weather cities, photos, and Google connections. Favorite apps are specific to each TV.</p>
-        <div id="connection-status" class="connection-status" aria-live="polite">Checking connected services…</div>
-        <p class="field-hint">Calendar and activity use read access. Tasks access also lets the TV complete tasks. Sheets access is read-only; Google Photos uses only photos you select.</p>
-        <a class="mode-link" href="https://myaccount.google.com/connections" target="_blank" rel="noopener noreferrer">Review Google permissions ↗</a>
-        <section id="device-manager" class="device-manager" aria-label="Linked TVs"></section>
-        <details class="help-panel account-danger"><summary>Disconnect services or remove account data</summary><p>These actions can sign out linked TVs. You’ll see the exact effect before confirming.</p><div class="account-actions">
-          <button id="disconnect-photos-button" class="button button-text" type="button">Remove saved photos and sign out TVs</button>
-          <button id="disconnect-google-button" class="button button-text" type="button">Disconnect Calendar, Tasks and activity; sign out TVs</button>
-          <button id="revoke-button" class="button button-text" type="button">Sign out on every device</button>
-          <button id="delete-account-button" class="button button-text danger" type="button">Delete account and saved data</button>
-        </div></details>
-        <p id="account-status" class="status" role="status" aria-live="polite"></p>
-      </section>
+      ${pairMode ? '' : pageContent(page)}
       </div>
       ${pageGuide(page)}
       </div>

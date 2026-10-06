@@ -6,10 +6,12 @@ use it. Feature and subfeature folder names are lowercase.
 
 ```text
 src/
-├── main.ts                     Entry point and authentication/flow wiring
+├── main.ts                     Bootstrap, authentication, active-feature wiring
 ├── vite-env.d.ts
 ├── app/
-│   └── companionPage.ts        Route copy, navigation, and common page markup
+│   ├── companionPage.ts        Route copy, navigation, and common page shell
+│   ├── authNavigation.ts       Remember/recover paths across sign-in redirects
+│   └── signInError.ts          Firebase sign-in error copy
 ├── features/
 │   ├── dashboard/
 │   │   ├── appearanceEditor.ts Coordinator: drafts, Undo/Redo, conflicts, publish
@@ -24,13 +26,17 @@ src/
 │   │   └── photos/            Photo gallery and picker lifecycle
 │   ├── weather/
 │   │   └── weatherEditor.ts
+│   ├── pairing/                Pairing controller and form template
+│   ├── meals/                  Meal controller and section template
+│   ├── account/                Account controller and section template
 │   └── devices/
 │       ├── deviceManager.ts
 │       └── apps/
 │           └── deviceAppsEditor.ts
 ├── shared/
 │   ├── apiClient.ts           Authenticated requests used across features
-│   └── dom.ts                 Required DOM element lookup
+│   ├── dom.ts                 Required element lookup and status messages
+│   └── googleAuthorization.ts Validate Google authorization redirect URLs
 └── styles/
     └── style.css              Current app-wide stylesheet
 ```
@@ -52,10 +58,18 @@ src/
 - Remove empty folders after moving code. Create a new feature folder when it
   has an implementation rather than adding empty placeholders.
 
-`main.ts` still coordinates authentication, redirect recovery, and the existing
-pairing, meal, and account flows. Extracting those controllers is a separate
-behavioral refactor; it needs regression coverage for asynchronous account changes
-and redirects. New extracted controllers should live in their own feature folders.
+`companionPage.ts` renders the common shell plus only the current route's feature
+template. `main.ts` constructs just that feature and connects authentication to
+its `load`/`clear` lifecycle. Constructors initialize their controls without
+starting network work. An account change clears the previous user's feature state
+before loading the next user's data; sign-out also clears it. Controllers ignore
+late asynchronous completions after clearing. The account controller composes
+the device manager, which owns the per-TV app editors.
+
+Keep markup and control state with their feature. A small private render helper
+can remain in its owner file; extract a template when it clarifies a substantial
+view. Use shared status and request helpers before adding another wrapper or
+controller abstraction. All current features expose their own lifecycle directly.
 
 ## Verification
 

@@ -1,7 +1,8 @@
 import React, {useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import AdaptiveDashboardCard from '../src/components/dashboard/AdaptiveDashboardCard';
-import MeasuredDashboardCard from '../src/components/dashboard/MeasuredDashboardCard';
+import DashboardCard from '../src/components/dashboard/DashboardCard';
+import DashboardLayout from '../src/components/dashboard/DashboardLayout';
 import WeatherDetailView from '../src/components/details/weather/WeatherDetailView';
 import {gridRect, DASHBOARD_CARD_IDS} from '../../server/functions/src/utils/dashboardLayout';
 import {FixtureProvider} from './fixtureHooks';
@@ -46,7 +47,15 @@ function Matrix() {
         })}
       </div>
     </section>)}
-    <section data-measured style={{display:'flex',flexDirection:'column',width:425,height:199}}><MeasuredDashboardCard id="meal" /></section>
+    <section data-measured style={{display:'flex',flexDirection:'column',width:425,height:199}}><DashboardCard id="meal" style={{flex: 1}} onOpen={() => undefined} /></section>
+    {new URLSearchParams(location.search).has('layout') && <section data-dashboard-layout
+      style={{display: 'flex', flexDirection: 'column', width: areaWidth, height: areaHeight}}>
+      <DashboardLayout cards={DASHBOARD_CARD_IDS.map((id) => ({id, visible: true, size: 'standard'}))}
+        grid={new URLSearchParams(location.search).get('layout') === 'grid' ? {
+          version: 1, columns: 12, rows: 6,
+          items: DASHBOARD_CARD_IDS.map((id, index) => ({id, x: index % 3 * 4, y: Math.floor(index / 3) * 3, width: 4, height: 3}))
+        } : null} onOpen={(id) => document.querySelector('[data-dashboard-layout]')?.setAttribute('data-opened', id)} />
+    </section>}
     <section data-weather-detail style={{display:'flex',flexDirection:'column',width:900,height:600}}><WeatherDetailView /></section>
   </main></FixtureProvider>;
 }

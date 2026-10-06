@@ -14,7 +14,8 @@ components/
 │   └── WatchPoster.tsx
 ├── dashboard/
 │   ├── AdaptiveDashboardCard.tsx
-│   ├── MeasuredDashboardCard.tsx
+│   ├── DashboardCard.tsx      Focusable shell and inner measurement for both layouts
+│   ├── DashboardLayout.tsx    Automatic rows or the free grid
 │   ├── DashboardGrid.tsx
 │   ├── shared/             Card frame, rows, layout planner, measurement hook
 │   ├── activity/           Activity card and its ring, metrics, stats, weekly view
@@ -26,6 +27,7 @@ components/
 │   ├── header/             HeaderBar and its private clock/greeting hooks
 │   └── favorites/
 ├── details/
+│   ├── DashboardDetailModal.tsx  Typed detail routing and modal composition
 │   ├── weather/            WeatherDetailView and its forecast subcomponents
 │   ├── activity/
 │   ├── schedule/
@@ -62,6 +64,14 @@ Small private components can remain in their parent's file until extracting them
 makes the file easier to follow. Add another folder level when it expresses
 ownership clearly, rather than giving every single file its own folder.
 Remove empty folders when their contents move.
+
+`screens/HomeScreen.tsx` coordinates modal selection and ambient mode.
+`DashboardLayout` owns row sizing and chooses the grid. Both paths reuse
+`DashboardCard`, which applies `TVCard` and measures the inner box before rendering
+`AdaptiveDashboardCard`. The old measurement-only wrapper was folded into this
+shell. Domain cards and their shared fitting rules retain separate responsibilities.
+`DashboardDetailModal` owns the header definitions and detail-view selection,
+including the callback from Settings to preview ambient mode.
 
 ## Reuse and imports
 

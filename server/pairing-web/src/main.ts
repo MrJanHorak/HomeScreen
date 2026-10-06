@@ -1,19 +1,16 @@
-import {companionPageForPath, renderCompanionPage} from './app/companionPage';
-import {createApiClient} from './shared/apiClient';
-import { FirebaseError, initializeApp } from 'firebase/app';
-import {
-  getAuth,
-  getRedirectResult,
-  GoogleAuthProvider,
-  onAuthStateChanged,
-  signInWithRedirect,
-  signOut,
-} from 'firebase/auth';
-import './styles/style.css';
-import { createAppearanceEditor } from './features/dashboard/appearanceEditor';
-import {createDeviceManager} from './features/devices/deviceManager';
-import {createWeatherEditor} from './features/weather/weatherEditor';
+import {initializeApp} from 'firebase/app';
+import {getAuth, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signInWithRedirect, signOut} from 'firebase/auth';
 import {validatedApiUrl} from '../../../shared/src/transport';
+import {companionPageForPath, renderCompanionPage} from './app/companionPage';
+import {restoreSignInPath, rememberSignInPath} from './app/authNavigation';
+import {signInErrorMessage} from './app/signInError';
+import {requiredElement, statusWriter} from './shared/dom';
+import {createAppearanceEditor} from './features/dashboard/appearanceEditor';
+import {createWeatherEditor} from './features/weather/weatherEditor';
+import {createPairingController} from './features/pairing/pairingController';
+import {createMealController} from './features/meals/mealController';
+import {createAccountController} from './features/account/accountController';
+import './styles/style.css';
 
 const config = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -28,102 +25,16 @@ if (window.location.hostname === `${config.projectId}.web.app` &&
     config.authDomain === `${config.projectId}.firebaseapp.com`) {
   window.location.replace(`https://${config.authDomain}${window.location.pathname}${window.location.search}${window.location.hash}`);
 }
-const appElement = document.querySelector<HTMLDivElement>('#app');
-if (!appElement) throw new Error('Missing app root');
-// Keep meal setup on its own path even if the phone browser drops a query string
-// while returning from Firebase's Google sign-in redirect.
-const initialUrl = new URL(window.location.href);
-try {
-  const returnPath = sessionStorage.getItem('homescreen:signin-path');
-  if (initialUrl.pathname === '/pair' && ['/settings', '/account'].includes(returnPath || '')) {
-    initialUrl.pathname = returnPath!; window.history.replaceState({}, '', initialUrl);
-  }
-  sessionStorage.removeItem('homescreen:signin-path');
-} catch { /* Private browsers may block storage. */ }
-let returningToMeals = false;
-let returningToDashboard = false;
-try {
-  returningToMeals = window.sessionStorage.getItem('homescreen:meal-signin') === '1';
-  returningToDashboard = window.sessionStorage.getItem('homescreen:dashboard-signin') === '1';
-} catch { /* Storage can be unavailable in some private browsers. */ }
-if (initialUrl.pathname !== '/dashboard' && returningToDashboard && initialUrl.pathname === '/pair') {
-  initialUrl.pathname = '/dashboard';
-  window.history.replaceState({}, '', initialUrl);
-} else if (initialUrl.pathname !== '/meals' &&
-    (initialUrl.searchParams.get('mode') === 'meals' ||
-      (initialUrl.pathname === '/pair' && returningToMeals))) {
-  initialUrl.pathname = '/meals';
-  initialUrl.searchParams.delete('mode');
-  window.history.replaceState({}, '', initialUrl);
-}
-if (window.location.pathname === '/meals') {
-  try { window.sessionStorage.removeItem('homescreen:meal-signin'); } catch { /* Ignore. */ }
-}
-if (window.location.pathname === '/dashboard') {
-  try { window.sessionStorage.removeItem('homescreen:dashboard-signin'); } catch { /* Ignore. */ }
-}
+
+const app = requiredElement<HTMLDivElement>(document, '#app');
+restoreSignInPath();
+const page = companionPageForPath(window.location.pathname);
 const params = new URLSearchParams(window.location.search);
-const mealMode = window.location.pathname === '/meals';
-const dashboardMode = window.location.pathname === '/dashboard';
-const settingsMode = window.location.pathname === '/settings';
-const accountMode = window.location.pathname === '/account';
-renderCompanionPage(appElement, companionPageForPath(window.location.pathname));
-
-const accountName = document.querySelector<HTMLElement>('#account-name')!;
-const signInButton = document.querySelector<HTMLButtonElement>('#signin-button')!;
-const signOutButton = document.querySelector<HTMLButtonElement>('#signout-button')!;
-const connectButton = document.querySelector<HTMLButtonElement>('#connect-button')!;
-const codeInput = document.querySelector<HTMLInputElement>('#pair-code')!;
-const pairForm = document.querySelector<HTMLFormElement>('#pair-form')!;
-const status = document.querySelector<HTMLElement>('#status')!;
-const connectedNext = document.querySelector<HTMLAnchorElement>('#connected-next')!;
-const mealStatus = document.querySelector<HTMLElement>('#meal-status')!;
-const mealAccessButton = document.querySelector<HTMLButtonElement>('#meal-access-button')!;
-const mealForm = document.querySelector<HTMLFormElement>('#meal-form')!;
-const mealUrl = document.querySelector<HTMLInputElement>('#meal-url')!;
-const mealSaveButton = document.querySelector<HTMLButtonElement>('#meal-save-button')!;
-const mealCurrent = document.querySelector<HTMLElement>('#meal-current')!;
-const mealRemoveButton = document.querySelector<HTMLButtonElement>('#meal-remove-button')!;
-const accountControls = document.querySelector<HTMLElement>('#account-controls')!;
-const accountStatus = document.querySelector<HTMLElement>('#account-status')!;
-const connectionStatus = document.querySelector<HTMLElement>('#connection-status')!;
-const disconnectPhotosButton = document.querySelector<HTMLButtonElement>('#disconnect-photos-button')!;
-const disconnectGoogleButton = document.querySelector<HTMLButtonElement>('#disconnect-google-button')!;
-const revokeButton = document.querySelector<HTMLButtonElement>('#revoke-button')!;
-const deleteAccountButton = document.querySelector<HTMLButtonElement>('#delete-account-button')!;
-const prefilledCode = (params.get('code') || '').toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '');
-if (prefilledCode.length === 6) codeInput.value = prefilledCode;
-
-function showStatus(message: string, kind: 'info' | 'error' | 'success' = 'info') {
-  status.textContent = message;
-  status.dataset.kind = kind;
-}
-
-function showMealStatus(message: string, kind: 'info' | 'error' | 'success' = 'info') {
-  mealStatus.textContent = message;
-  mealStatus.dataset.kind = kind;
-}
-
-function signInErrorMessage(error: unknown): string {
-  if (!(error instanceof FirebaseError)) return 'Google sign-in failed. Please try again.';
-  switch (error.code) {
-    case 'auth/unauthorized-domain':
-      return `Add ${window.location.hostname} to Firebase Authentication authorized domains.`;
-    case 'auth/operation-not-allowed':
-      return 'Enable Google sign-in in Firebase Authentication sign-in methods.';
-    case 'auth/network-request-failed':
-      return 'Could not reach Firebase Authentication. Check your connection and try again.';
-    case 'auth/web-storage-unsupported':
-      return 'This browser blocks the storage needed for sign-in. Try Chrome or Safari.';
-    case 'auth/invalid-credential':
-      if (/invalid_client|client secret is invalid/i.test(error.message)) {
-        return 'Google sign-in is misconfigured. The site owner must update the Google OAuth client ID and secret in Firebase Authentication.';
-      }
-      return 'Google sign-in could not verify your account. Please try again or contact the site owner.';
-    default:
-      return `Google sign-in failed (${error.code}). Please try again.`;
-  }
-}
+renderCompanionPage(app, page);
+const accountName = requiredElement(app, '#account-name');
+const signInButton = requiredElement<HTMLButtonElement>(app, '#signin-button');
+const signOutButton = requiredElement<HTMLButtonElement>(app, '#signout-button');
+const showStatus = statusWriter(requiredElement(app, '#status'));
 
 if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId || !apiUrl) {
   showStatus('Site configuration is incomplete. Check pairing-web/.env.local and rebuild.', 'error');
@@ -131,124 +42,39 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
 } else {
   const auth = getAuth(initializeApp(config));
   const provider = new GoogleAuthProvider();
-  const editor = createAppearanceEditor(
-    document.querySelector<HTMLElement>('#appearance-editor')!, apiUrl,
-    async () => auth.currentUser ? auth.currentUser.getIdToken() : null,
-  );
-  const devices = createDeviceManager(
-    document.querySelector<HTMLElement>('#device-manager')!, apiUrl,
-    async () => auth.currentUser ? auth.currentUser.getIdToken() : null,
-  );
-  const weatherEditor = createWeatherEditor(
-    document.querySelector<HTMLElement>('#weather-editor')!, apiUrl,
-    async () => auth.currentUser ? auth.currentUser.getIdToken() : null,
-  );
-  let busy = false;
-  let mealsBusy = false;
-  let mealsAuthorized = false;
-  let currentSheet: string | null = null;
-  let accountBusy = false;
+  const getUser = () => auth.currentUser;
+  const getToken = async () => getUser()?.getIdToken() ?? null;
+  const signOutAccount = () => signOut(auth);
 
-  function showAccountStatus(message: string, kind: 'error' | 'success' = 'success') {
-    accountStatus.textContent = message;
-    accountStatus.dataset.kind = kind;
+  // Only the current page's feature owns DOM listeners and asynchronous work.
+  const feature = (() => {
+    switch (page) {
+      case 'pair': return createPairingController(app, apiUrl, getUser, showStatus, params);
+      case 'meals': return createMealController(app, apiUrl, getUser, params);
+      case 'account': return createAccountController(app, apiUrl, getUser, signOutAccount, showStatus);
+      case 'dashboard': return createAppearanceEditor(requiredElement(app, '#appearance-editor'), apiUrl, getToken);
+      case 'settings': return createWeatherEditor(requiredElement(app, '#weather-editor'), apiUrl, getToken);
+    }
+  })();
+
+  function showSignedInStatus() {
+    if (params.has('result')) return;
+    showStatus(page === 'pair' ? 'Signed in. Enter the code shown on your TV.' :
+      page === 'meals' ? 'Signed in. Connect your meal Sheet below.' : '');
   }
 
-  function updateControls() {
-    const signedIn = Boolean(auth.currentUser);
-    accountName.textContent = auth.currentUser?.email || (signedIn ? 'Signed in' : 'Not signed in');
-    signInButton.hidden = signedIn;
-    signOutButton.hidden = !signedIn;
-    connectButton.disabled = !signedIn || busy;
-    codeInput.disabled = busy;
-    document.querySelectorAll<HTMLElement>('.step').forEach((step, index) => step.classList.toggle('active', signedIn ? index === 1 : index === 0));
-    mealAccessButton.hidden = !signedIn || mealsAuthorized;
-    mealAccessButton.disabled = !signedIn || mealsBusy;
-    mealForm.hidden = !signedIn || !mealsAuthorized;
-    mealUrl.disabled = mealsBusy;
-    mealSaveButton.disabled = mealsBusy;
-    mealCurrent.hidden = !signedIn || !currentSheet;
-    mealCurrent.textContent = currentSheet ? `Connected: ${currentSheet}` : '';
-    mealRemoveButton.hidden = !signedIn || !mealsAuthorized;
-    mealRemoveButton.textContent = currentSheet ? 'Disconnect meal Sheet' : 'Remove Google Sheets access';
-    mealRemoveButton.disabled = mealsBusy;
-    accountControls.hidden = !signedIn || !accountMode;
-    for (const button of [disconnectPhotosButton, disconnectGoogleButton, revokeButton, deleteAccountButton]) {
-      button.disabled = accountBusy;
-    }
-  }
-
-  const mealRequest = createApiClient(apiUrl,
-    async () => auth.currentUser ? auth.currentUser.getIdToken() : null, {
-      signIn: 'Sign in before connecting a meal Sheet.',
-      failure: 'Could not connect the meal Sheet.',
-    });
-
-  async function loadMealConfig() {
-    if (!auth.currentUser) {
-      mealsAuthorized = false;
-      currentSheet = null;
-      updateControls();
-      return;
-    }
-    try {
-      const result = await mealRequest('mealSheetConfig', 'GET') as {
-        authorized: boolean; spreadsheetTitle: string | null;
-      };
-      mealsAuthorized = result.authorized;
-      currentSheet = result.spreadsheetTitle;
-      updateControls();
-      if (params.get('result') === 'meals_connected') {
-        showMealStatus('Google Sheets access is ready. Paste your meal Sheet link below.', 'success');
-      }
-    } catch (error) {
-      showMealStatus(error instanceof Error ? error.message : 'Could not load meal settings.', 'error');
-    }
-  }
-
-  async function loadConnections() {
-    if (!auth.currentUser) return;
-    try {
-      const result = await mealRequest('accountSecurity', 'GET') as {
-        connections: {dashboardGoogle: boolean; mealSheet: boolean; photos: boolean};
-      };
-      const entries = [
-        ['Calendar, Tasks & activity', result.connections.dashboardGoogle],
-        ['Google Sheets', result.connections.mealSheet],
-        ['Google Photos', result.connections.photos],
-      ] as const;
-      connectionStatus.replaceChildren(...entries.map(([name, connected]) => {
-        const item = document.createElement('div');
-        item.className = 'connection-item';
-        const title = document.createElement('span');
-        title.textContent = name;
-        const state = document.createElement('strong');
-        state.textContent = connected ? 'Connected' : 'Not connected';
-        state.dataset.connected = String(connected);
-        item.append(title, state);
-        return item;
-      }));
-    } catch {
-      connectionStatus.textContent = 'Connection status is temporarily unavailable.';
-    }
-  }
-
+  let previousUserId: string | null | undefined;
   onAuthStateChanged(auth, () => {
-    updateControls();
-    if (mealMode) void loadMealConfig();
-    if (auth.currentUser && accountMode) void loadConnections();
-    else connectionStatus.textContent = 'Sign in to see connected services.';
-    if (auth.currentUser && accountMode) void devices.load();
-    else devices.clear();
-    if (auth.currentUser && settingsMode) void weatherEditor.load();
-    else weatherEditor.clear();
-    if (dashboardMode) {
-      if (auth.currentUser) void editor.load();
-      else editor.clear();
-    }
-    if (auth.currentUser && !params.has('result')) {
-      showStatus(settingsMode || accountMode || dashboardMode ? '' : mealMode ? 'Signed in. Connect your meal Sheet below.' :
-        'Signed in. Enter the code shown on your TV.');
+    const user = getUser();
+    const userId = user?.uid ?? null;
+    if (previousUserId !== undefined && previousUserId !== userId) feature.clear();
+    previousUserId = userId;
+    accountName.textContent = user?.email || (user ? 'Signed in' : 'Not signed in');
+    signInButton.hidden = Boolean(user);
+    signOutButton.hidden = !user;
+    if (user) {
+      void feature.load();
+      showSignedInStatus();
     }
   }, (error) => {
     console.error('Firebase Auth state error:', error);
@@ -256,10 +82,7 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
   });
 
   void getRedirectResult(auth).then((credential) => {
-    if (credential && !params.has('result')) {
-      showStatus(settingsMode || accountMode || dashboardMode ? '' : mealMode ? 'Signed in. Connect your meal Sheet below.' :
-        'Signed in. Enter the code shown on your TV.');
-    }
+    if (credential) showSignedInStatus();
   }).catch((error: unknown) => {
     console.error('Firebase redirect sign-in failed:', error);
     showStatus(signInErrorMessage(error), 'error');
@@ -269,13 +92,7 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
     try {
       signInButton.disabled = true;
       showStatus('Redirecting to Google sign-in…');
-      try {
-        window.sessionStorage.setItem('homescreen:signin-path', window.location.pathname);
-        if (mealMode) window.sessionStorage.setItem('homescreen:meal-signin', '1');
-        else window.sessionStorage.removeItem('homescreen:meal-signin');
-        if (dashboardMode) window.sessionStorage.setItem('homescreen:dashboard-signin', '1');
-        else window.sessionStorage.removeItem('homescreen:dashboard-signin');
-      } catch { /* The /meals path still identifies the flow. */ }
+      rememberSignInPath(page);
       await signInWithRedirect(auth, provider);
     } catch (error) {
       console.error('Firebase redirect sign-in failed:', error);
@@ -285,171 +102,21 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
   });
 
   signOutButton.addEventListener('click', async () => {
-    await signOut(auth);
-    showStatus('Signed out. Choose the Google account you want on your TV.');
-    showMealStatus('');
-  });
-
-  async function accountAction(
-    action: 'disconnectPhotos' | 'disconnectGoogle' | 'signOutEverywhere' | 'deleteAccount',
-    confirmation: string,
-    success: string,
-  ) {
-    if (!window.confirm(confirmation)) return;
-    accountBusy = true;
-    updateControls();
     try {
-      await mealRequest('accountSecurity', 'POST', {action});
-      await signOut(auth);
-      showStatus(success, 'success');
+      await signOutAccount();
+      showStatus('Signed out. Choose the Google account you want on your TV.');
     } catch (error) {
-      showAccountStatus(error instanceof Error ? error.message : 'Account action failed.', 'error');
-    } finally {
-      accountBusy = false;
-      updateControls();
-    }
-  }
-
-  disconnectPhotosButton.addEventListener('click', () => void accountAction(
-    'disconnectPhotos', 'Remove selected photos, disconnect Photos, and sign out all TVs?',
-    'Saved photos and Photos access removed. Sign in again to continue.',
-  ));
-  disconnectGoogleButton.addEventListener('click', () => void accountAction(
-    'disconnectGoogle', 'Disconnect Calendar, Tasks and activity, and sign out all TVs?',
-    'Google dashboard access removed. Pair again to reconnect.',
-  ));
-  revokeButton.addEventListener('click', () => void accountAction(
-    'signOutEverywhere', 'Sign out every TV and browser session for this account?',
-    'All sessions revoked. Sign in again to continue.',
-  ));
-  deleteAccountButton.addEventListener('click', () => void accountAction(
-    'deleteAccount', 'Permanently delete your account, saved settings, photos and dashboard data?',
-    'Account and saved data deleted.',
-  ));
-
-  mealAccessButton.addEventListener('click', async () => {
-    mealsBusy = true;
-    updateControls();
-    showMealStatus('Opening Google permission screen…');
-    try {
-      const result = await mealRequest('beginGoogleMeals', 'POST') as {authorizationUrl: string};
-      if (new URL(result.authorizationUrl).origin !== 'https://accounts.google.com') {
-        throw new Error('The server returned an invalid Google permission URL.');
-      }
-      window.location.assign(result.authorizationUrl);
-    } catch (error) {
-      showMealStatus(error instanceof Error ? error.message : 'Could not request Sheet access.', 'error');
-      mealsBusy = false;
-      updateControls();
-    }
-  });
-
-  mealForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    mealsBusy = true;
-    updateControls();
-    showMealStatus('Checking your Sheet…');
-    try {
-      const result = await mealRequest('mealSheetConfig', 'PUT', {url: mealUrl.value.trim()}) as {
-        spreadsheetTitle: string; mealCount: number;
-      };
-      currentSheet = result.spreadsheetTitle;
-      mealUrl.value = '';
-      void loadConnections();
-      showMealStatus(`Connected ${result.mealCount} dated dinners. Your TV will refresh automatically.`, 'success');
-    } catch (error) {
-      showMealStatus(error instanceof Error ? error.message : 'Could not connect this Sheet.', 'error');
-    } finally {
-      mealsBusy = false;
-      updateControls();
-    }
-  });
-
-  mealRemoveButton.addEventListener('click', async () => {
-    mealsBusy = true;
-    updateControls();
-    try {
-      await mealRequest('mealSheetConfig', 'DELETE');
-      currentSheet = null;
-      mealsAuthorized = false;
-      void loadConnections();
-      showMealStatus('Meal Sheet disconnected and its stored access removed.', 'success');
-    } catch (error) {
-      showMealStatus(error instanceof Error ? error.message : 'Could not remove the Sheet.', 'error');
-    } finally {
-      mealsBusy = false;
-      updateControls();
-    }
-  });
-
-  codeInput.addEventListener('input', () => {
-    codeInput.value = codeInput.value.toUpperCase().replace(/[^A-HJ-NP-Z2-9]/g, '');
-  });
-
-  pairForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const user = auth.currentUser;
-    const code = codeInput.value.trim().toUpperCase();
-    if (!user) {
-      showStatus('Sign in before entering your TV code.', 'error');
-      return;
-    }
-    if (!/^[A-HJ-NP-Z2-9]{6}$/.test(code)) {
-      showStatus('Enter the six-character code displayed on your TV.', 'error');
-      codeInput.focus();
-      return;
-    }
-
-    busy = true;
-    updateControls();
-    showStatus('Checking your TV code…');
-    try {
-      const response = await fetch(`${apiUrl}/beginGoogleLink`, {
-        method: 'POST',
-        redirect: 'error',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${await user.getIdToken()}`,
-        },
-        body: JSON.stringify({ code }),
-      });
-      if (!response.ok) {
-        if (response.status === 400 || response.status === 404 || response.status === 410) {
-          throw new Error('That code is invalid or expired. Request a new code on your TV.');
-        }
-        if (response.status === 401) throw new Error('Your sign-in expired. Sign in again.');
-        if (response.status === 429) throw new Error('Too many attempts. Please try again in 15 minutes.');
-        throw new Error('Could not start pairing. Please try again.');
-      }
-      const body: unknown = await response.json();
-      const authorizationUrl =
-        typeof body === 'object' && body !== null && 'authorizationUrl' in body
-          ? (body as { authorizationUrl: unknown }).authorizationUrl
-          : null;
-      if (typeof authorizationUrl !== 'string' ||
-          new URL(authorizationUrl).origin !== 'https://accounts.google.com') {
-        throw new Error('The server returned an invalid Google sign-in URL.');
-      }
-      window.location.assign(authorizationUrl);
-    } catch (error) {
-      showStatus(error instanceof Error ? error.message : 'Could not start pairing.', 'error');
-      busy = false;
-      updateControls();
+      showStatus(signInErrorMessage(error), 'error');
     }
   });
 
   const result = params.get('result');
   if (result === 'connected') {
     showStatus('TV connected. You can return to your TV now.', 'success');
-    connectedNext.hidden = false;
+    requiredElement(app, '#connected-next').hidden = false;
   }
   if (result === 'denied') showStatus('Google access was not approved. You can try again.', 'error');
   if (result === 'expired') showStatus('The TV code expired. Request a new one on your TV.', 'error');
   if (result === 'error') showStatus('Pairing could not finish. Please request a new TV code.', 'error');
-  if (result === 'meals_denied') showMealStatus('Google Sheets access was not approved.', 'error');
-  if (result === 'meals_error') showMealStatus('Could not connect Google Sheets. Please try again.', 'error');
   if (result) window.history.replaceState({}, '', window.location.pathname);
-  if (prefilledCode.length === 6 && !result) {
-    showStatus('Code filled from the QR. Check that it matches your TV before connecting.');
-  }
 }

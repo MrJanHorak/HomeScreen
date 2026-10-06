@@ -41,8 +41,10 @@ below improve the busiest paths; they do not certify every file as finished.
 - Card-row drags commit on a completed drop. Cancellation leaves the draft intact,
   and clearing/reloading removes window listeners so an old gesture cannot alter
   another account's editor. Browser regressions cover these behaviors.
-- `companionPage.ts` owns page markup, navigation, help, and typed route-specific
-  copy. The entry point retains authentication and feature initialization.
+- `companionPage.ts` owns the common page shell, navigation, help, and typed
+  route-specific copy. Pairing, meal, and account templates live with their
+  controllers. The entry point retains authentication and initializes only the
+  current route's feature; controllers own `load`/`clear` and late-response guards.
 - `HomeScreen/src/components/dashboard/AdaptiveDashboardCard.tsx` now selects one of six
   domain components. `components/dashboard/shared/CardContent.tsx` owns their shared
   content frame, `CardContentRow` renders a row, and `useCardContentLayout` owns
@@ -101,7 +103,6 @@ below improve the busiest paths; they do not certify every file as finished.
 | Area | Concern | Useful next refactor |
 | --- | --- | --- |
 | `server/pairing-web/src/features/dashboard/appearanceEditor.ts` | Views and API access are separated; the coordinator still owns the draft lifecycle. | Keep new features in the relevant view/service; extract a draft state module only when its behavior needs reuse. |
-| `server/pairing-web/src/main.ts` | Page markup is separated; account actions, pairing, and meal setup still share the entry module. | Move feature controllers into named modules while retaining sign-in redirect and account-change behavior. |
 | Appearance types/defaults in TV, browser, and backend | Palette, layout, and ambient contracts are repeated; clients also import pure helpers from the backend source tree. | Establish a shared contract module with build support in all three projects, retaining strict server validation and tolerant legacy client normalization. |
 | `HomeScreen/src/context/DashboardContext.tsx` and `src/theme/ThemeContext.tsx` | Providers combine storage, polling, synchronization, and state updates. | Extract persistence/sync hooks around existing account-generation guards. |
 | Larger detail views and companion editors | Several files still mix long render sections and compressed callbacks. | Extract repeated rows/controls when behavior matches and expand callbacks when working on those features. |
@@ -117,7 +118,7 @@ to learn; prefer a small set of direct, reusable building blocks.
 The dashboard has useful foundations, but it is not consistently easy for a
 junior to follow yet. `HomeScreen.tsx` mostly composes the header, cards, ambient
 screen, and detail modal. Both automatic rows and the free grid reuse
-`MeasuredDashboardCard` and the same content-fitting rules. `TVCard`, `TVText`,
+`DashboardCard` and the same content-fitting rules. `TVCard`, `TVText`,
 `WatchPoster`, `TVProgressRing`, and `ActivityStats` are existing reusable pieces
 worth retaining.
 
@@ -143,6 +144,14 @@ missing forecast data. These checks do not verify provider lifecycle
 behavior, every detail view, or native remote navigation.
 
 ## Local checks
+
+The current composition and reuse boundaries for both clients are documented in
+[the component hierarchy](COMPONENT_HIERARCHY.md). HomeScreen delegates row/grid
+composition and detail routing. The shared dashboard shell incorporates the old
+measurement-only wrapper. Companion pairing, meals, and account flows now have
+feature controllers; shared status and Google redirect validation replace repeated
+logic. Browser regressions cover their route rendering, confirms, redirects,
+late responses, and account changes.
 
 From the repository root:
 

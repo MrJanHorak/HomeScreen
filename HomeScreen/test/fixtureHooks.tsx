@@ -1,5 +1,7 @@
 import React, {createContext, useContext} from 'react';
 import {TVTheme} from '../src/theme/tvTheme';
+import {DEFAULT_APPEARANCE} from '../src/theme/appearance';
+import type {ReactNode} from 'react';
 import type {useDashboard as useDashboardContract} from '../src/context/DashboardContext';
 import type {useWatchNext as useWatchNextContract} from '../src/hooks/useWatchNext';
 
@@ -26,4 +28,6 @@ function useFixture(): FixtureState {
 export function useDashboard() {return useFixture().data;}
 export function useWatchNext() {return useFixture().watch;}
 export function useTheme() {return TVTheme;}
+export function useAppearance() {return {appearance: DEFAULT_APPEARANCE};}
+export function CardThemeProvider({children}: {children: ReactNode}) {return <>{children}</>;}
 export default function useCompactTVLayout() {return useFixture().compact;}
