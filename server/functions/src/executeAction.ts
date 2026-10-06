@@ -1,5 +1,5 @@
 import { onRequest } from "firebase-functions/v2/https";
-import { getStoredUserTokens, invalidateDashboardCache, saveUserTokens } from "./utils/db";
+import { getStoredUserTokens, invalidateDashboardCache, recordUserQuota, saveUserTokens } from "./utils/db";
 import { authenticatedUserId } from "./utils/requestAuth";
 import {parsePreferences} from "./utils/validation";
 import {logSafeError} from "./utils/safeLog";
@@ -12,6 +12,7 @@ export const executeActionHandler = onRequest(
     secrets: ["TOKEN_ENCRYPTION_KEY", "GOOGLE_CLIENT_SECRET"],
   },
   async (req, res) => {
+    res.set("Cache-Control", "private, no-store");
     if (req.method === "OPTIONS") {
       res.status(204).send("");
       return;
@@ -41,6 +42,9 @@ export const executeActionHandler = onRequest(
           }
 
           const userTokens = await getStoredUserTokens(userId);
+          if (!await recordUserQuota(userId, "task_action", 60, 10 * 60 * 1000)) {
+            res.status(429).json({error: "Too many task actions"}); return;
+          }
           await markTaskCompleted(userTokens.google, taskId, payload?.tasklistId);
           await invalidateDashboardCache(userId);
           res.status(200).json({ success: true, message: `Task ${taskId} marked as completed` });

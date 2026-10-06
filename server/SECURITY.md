@@ -1,7 +1,7 @@
 # Security and retention setup
 
-The Firestore Rules screenshot reviewed in October 2026 shows the default database
-denying all client reads and writes. The same policy is now versioned in
+The deployed Firestore rules were read through the Firebase Rules API on
+October 5, 2026 and deny all client reads and writes. The same policy is versioned in
 `firestore.rules` and referenced by `firebase.json`. The Admin SDK used by Cloud
 Functions bypasses Firestore Rules, so each HTTP handler still verifies a Firebase
 ID token and uses its UID for user data.
@@ -19,6 +19,9 @@ Check the Rules tab afterwards. Do not replace this policy if another app in the
 same Firestore database needs direct client access; merge its requirements first.
 
 ## Enable Firestore TTL
+
+All eight policies below were verified ACTIVE in `tv-homescreen-backend` on
+October 5, 2026. Their existence does not replace application expiration checks.
 
 Cloud Functions set a `deleteAt` Firestore timestamp on temporary pairing state,
 request counters, dashboard caches, shared weather caches, and Photos Picker
@@ -86,13 +89,42 @@ subcollections are removed on account deletion.
 
 Only Google browser sessions may list, rename, or remove other TVs and use the
 account security controls. A TV may read its own name and remove its own session.
-All devices remain inside the owner's UID boundary. TVs paired before the device
-claim was introduced are still supported but require one sign-out and re-pair to
-join the managed list. Sign-out-everywhere continues to revoke those legacy
-sessions. Test per-device denial and new pairing on the Firebase emulators before
+All devices remain inside the owner's UID boundary. TV sessions without a managed
+device claim now receive `401` and must pair again. The installation-key migration
+endpoint was removed because a copied legacy credential could mint additional TVs.
+Only a Google browser owner may start pairing another TV. Test per-device denial and new pairing on the Firebase emulators before
 deploying the backend; the unit suite also covers owner isolation and revocation.
 
 ## Operational follow-up
+
+See the [October 5 release security review](SECURITY_REVIEW.md) for confirmed
+findings, source fixes, test evidence, and remaining deployment gates. The deployed
+runtime still uses the default Compute service account with project Editor access.
+Move functions to dedicated identities with only their required permissions before
+public release; changing source code does not remove the existing IAM binding.
+
+Account controls now invalidate pending consent with a transactionally checked
+authorization version. Credential, photo, Sheet selection, and dashboard cache
+writes reject obsolete versions. Settings writes also check a deletion tombstone,
+so an already-running request cannot recreate deleted personal data. The minimal
+`account_security/{uid}` marker holds a version, deletion flag, and update time;
+it also holds a session revocation cutoff. It contains no credentials or dashboard
+content and survives account deletion.
+Do not remove this barrier during recursive user cleanup. Document its retention
+in the privacy policy. Deletion requires an owner sign-in within five minutes;
+refreshing an ID token does not count as a new sign-in. If cleanup fails after
+disabling Auth, an administrator must finish deletion for that UID.
+
+Source quotas also cover pairing polls, consent creation, Photos session creation,
+Sheet validation, task completion, and dashboard cache misses. Application quotas
+still consume infrastructure resources when rejecting traffic. Edge abuse controls,
+raw function URL bypass prevention, and billing alerts remain release requirements.
+
+Production clients reject non-HTTPS API configuration. Development HTTP is limited
+to local emulator hosts. The companion Hosting configuration adds security headers
+and a report-only CSP; validate real Google sign-in and then enforce the policy.
+The Android release script rejects known debug signing unless explicitly enabled
+for internal testing. Provision production signing before distribution.
 
 Appearance documents accept a versioned 12-by-6 grid containing only the six
 supported card IDs, with exactly one item per visible card. Bounds, integer
@@ -119,16 +151,17 @@ and forced-sync endpoints have per-user quotas. For public deployment, add an
 edge rate limit and cost alerts, then review Cloud Functions, Firestore, and
 Google API quotas. Test the account actions and Firestore deny rules in the
 Firebase Emulator Suite before deployment. The repository does not contain a
-service-account IAM policy or the currently deployed ruleset; verify both in the
-target project.
+complete IAM infrastructure configuration. Recheck deployed IAM and Firestore rules
+after every release.
 
-## Dependency audit (October 2, 2026)
+## Dependency audit (October 5, 2026)
 
-`npm audit --omit=dev` reports 8 high and 8 moderate advisories in the TV
-dependency tree, 4 high in the pairing-site tree, and 8 moderate in the
-backend tree. The high findings involve transitive `@grpc/grpc-js` from the
-Firebase package and `node-forge` from Expo tooling. The backend moderate
-finding involves transitive `uuid` from Google/Firebase libraries. The audit's
+`npm audit --omit=dev` reports 19 high and 7 moderate affected packages in the TV
+tree, 4 high in the pairing-site tree, and 8 moderate in the backend tree.
+These are affected-package totals, not distinct exploitable vulnerabilities.
+The high findings include transitive `@grpc/grpc-js`, `node-forge`, and `braces`.
+The backend moderate finding involves transitive `uuid`. The [raw audit snapshot](security-review/2026-10-05/dependency-audit.json)
+preserves advisory details and dependency paths. The audit's
 automatic `--force` suggestions include breaking major version changes; do not
 apply those without compatibility testing. Track upstream fixes and repeat the
 audit before release. The pairing site uses only Firebase Auth and App; its

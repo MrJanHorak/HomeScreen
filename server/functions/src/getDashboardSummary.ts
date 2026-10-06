@@ -1,6 +1,6 @@
 import {Response} from "express";
 import {onRequest, Request} from "firebase-functions/v2/https";
-import {getDashboardCache, saveDashboardCache} from "./utils/db";
+import {getAuthorizationVersion, getDashboardCache, recordUserQuota, saveDashboardCache} from "./utils/db";
 import { authenticatedUserId } from "./utils/requestAuth";
 import {logSafeError} from "./utils/safeLog";
 import {fetchUserDashboard} from "./services/dashboardSummary";
@@ -38,11 +38,15 @@ export async function handleGetDashboardSummary(req: Request, res: Response): Pr
       return;
     }
 
+    if (!await recordUserQuota(userId, "dashboard_refresh", 6, 10 * 60 * 1000)) {
+      res.status(429).json({error: "Please wait before refreshing the dashboard again"}); return;
+    }
+    const authorizationVersion = await getAuthorizationVersion(userId);
     const responsePayload = await fetchUserDashboard(userId, req.header("X-Time-Zone") || "UTC");
 
     // Finish the write before returning; post-response work can be terminated.
     try {
-      await saveDashboardCache(userId, responsePayload);
+      await saveDashboardCache(userId, responsePayload, authorizationVersion);
     } catch {
       console.warn("Dashboard cache write failed");
     }

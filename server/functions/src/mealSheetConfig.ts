@@ -1,6 +1,7 @@
 import {onRequest} from "firebase-functions/v2/https";
 import {authenticatedUserId} from "./utils/requestAuth";
-import {clearMealSheetConnection, getStoredUserTokens, invalidateDashboardCache,
+import {clearMealSheetConnection, getAuthorizationVersion, getStoredUserTokens,
+  invalidateDashboardCache, invalidatePendingAuthorizations, recordUserQuota,
   saveMealSheetSelection} from "./utils/db";
 import {readMealSheet, spreadsheetIdFromUrl} from "./services/mealSheet";
 import {logSafeError} from "./utils/safeLog";
@@ -20,6 +21,7 @@ export const mealSheetConfigHandler = onRequest(
       return;
     }
     try {
+      const authorizationVersion = await getAuthorizationVersion(userId);
       const connection = (await getStoredUserTokens(userId)).mealSheet;
       if (req.method === "GET") {
         res.status(200).json({
@@ -30,6 +32,7 @@ export const mealSheetConfigHandler = onRequest(
         return;
       }
       if (req.method === "DELETE") {
+        await invalidatePendingAuthorizations(userId);
         if (connection) await clearMealSheetConnection(userId);
         await invalidateDashboardCache(userId);
         res.status(200).json({success: true});
@@ -50,12 +53,15 @@ export const mealSheetConfigHandler = onRequest(
         return;
       }
       try {
+        if (!await recordUserQuota(userId, "meal_selection", 10, 10 * 60 * 1000)) {
+          res.status(429).json({error: "Please wait before checking another Sheet"}); return;
+        }
         const result = await readMealSheet(connection, spreadsheetId);
         if (!result.foundHeader) {
           res.status(422).json({error: "The Sheet needs a Date column and a Main or Meal column."});
           return;
         }
-        await saveMealSheetSelection(userId, spreadsheetId, result.title);
+        await saveMealSheetSelection(userId, spreadsheetId, result.title, authorizationVersion);
         await invalidateDashboardCache(userId);
         res.status(200).json({success: true, spreadsheetTitle: result.title,
           mealCount: result.items.length});

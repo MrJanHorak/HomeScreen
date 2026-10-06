@@ -1,5 +1,5 @@
 import {onRequest, Request} from "firebase-functions/v2/https";
-import {db} from "./utils/db";
+import {db, runUserTransaction} from "./utils/db";
 import {authenticatedIdentity} from "./utils/requestAuth";
 import {logSafeError} from "./utils/safeLog";
 import type {Response} from "express";
@@ -97,7 +97,7 @@ export async function handleUserAppearance(req: Request, res: Response): Promise
         res.status(400).json({error: "Invalid appearance revision"});
         return;
       }
-      const result = await db.runTransaction(async (transaction) => {
+      const result = await runUserTransaction(identity.userId, async (transaction) => {
         const snapshot = await transaction.get(ref);
         const existing = snapshot.data();
         if (expected !== undefined && expected !== (existing?.updatedAtMs || 0)) return {conflict: true};

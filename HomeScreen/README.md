@@ -50,6 +50,10 @@ Android Studio's SDK Manager. Set `ANDROID_HOME` to that SDK directory (or use
 `android/local.properties` with `sdk.dir`). Keep the configured `.env.local`
 available: Expo embeds `EXPO_PUBLIC_*` values into the release bundle.
 
+Configure private production signing first: the script rejects the generated
+project's debug release signature by default. For internal testing, the explicit
+`-AllowDebugSigning` option described below permits a test APK.
+
 From `HomeScreen`, run:
 
 ```powershell
@@ -83,8 +87,11 @@ Enable debugging on the TV and connect it using Android Studio or ADB, then run
 & "$env:ANDROID_HOME\platform-tools\adb.exe" -s TV_SERIAL shell am start -n com.anonymous.mytvapp/.MainActivity
 ```
 
-The release build currently uses the project's debug signing key, which is
-appropriate for local TV testing. Store distribution needs a separate release
+The generated native project currently uses the project's debug signing key.
+The release script blocks that configuration by default. Configure private
+production signing before running the normal release command. For an internal
+TV test only, use `npm run android:release -- -AllowDebugSigning`.
+Store distribution needs a separate release
 key. If an existing app was signed with another key, Android rejects the update;
 uninstalling that app clears its local data, so decide whether to preserve it
 before uninstalling. Deprecation and SDK XML warnings alone do not mean the

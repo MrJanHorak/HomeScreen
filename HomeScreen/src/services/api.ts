@@ -5,20 +5,25 @@ import type { DashboardSummaryResponse, DevicePairingResponse, Weather } from '.
 import type { DashboardAppearance } from '../theme/appearance';
 import type {UserPreferences} from '../../../shared/src/types';
 import {readJsonResponse} from '../../../shared/src/http';
+import {validatedApiUrl} from '../../../shared/src/transport';
 import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Default to Firebase Local Emulator or configured remote URL
-const DEFAULT_API_URL =
+const DEFAULT_API_URL = validatedApiUrl(
   process.env.EXPO_PUBLIC_API_URL ||
-  'http://localhost:5001/tv-homescreen-backend/us-central1';
+  'http://localhost:5001/tv-homescreen-backend/us-central1',
+  typeof __DEV__ !== 'undefined' && __DEV__,
+);
 
 /** Apply authentication and revoked-session cleanup consistently to JSON endpoints. */
 async function authenticatedRequest<T>(path: string, errorMessage: string, options: Omit<RequestInit, 'headers'> & {headers?: Record<string, string>} = {}): Promise<T> {
+  const requestingUser = auth.currentUser;
   const response = await fetch(`${DEFAULT_API_URL}/${path}`, {
     ...options,
+    redirect: 'error',
     headers: {...await authHeaders(), ...options.headers},
   });
+  if (auth.currentUser !== requestingUser) throw new Error('The signed-in account changed.');
   await handleRevokedSession(response);
   return readJsonResponse<T>(response, errorMessage);
 }
@@ -69,29 +74,13 @@ export async function getCurrentDevice(): Promise<{name: string; pairedAtMs: num
   return (await getDeviceConnectionInfo()).device;
 }
 
-/** Register a pre-device-management TV session without asking the owner to pair again. */
-export async function migrateLegacyDevice(): Promise<string> {
-  const keyName = '@homescreen_device_installation_v1';
-  let installationKey = await AsyncStorage.getItem(keyName);
-  if (!installationKey) {
-    installationKey = `${Date.now().toString(36)}-${Array.from({length: 5}, () => Math.random().toString(36).slice(2, 10)).join('')}`;
-    await AsyncStorage.setItem(keyName, installationKey);
-  }
-  const response = await fetch(`${DEFAULT_API_URL}/linkedDevices?current=1`, {
-    method: 'POST', headers: await authHeaders(), body: JSON.stringify({installationKey}),
-  });
-  const body = await response.json();
-  if (!response.ok || typeof body.customToken !== 'string') throw new Error(body.error || 'Could not register this TV');
-  return body.customToken;
-}
-
 export async function disconnectCurrentDevice(): Promise<void> {
   const headers = await authHeaders();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 5000);
   try {
     const response = await fetch(`${DEFAULT_API_URL}/linkedDevices?current=1`, {
-      method: 'DELETE', headers, signal: controller.signal,
+      method: 'DELETE', headers, signal: controller.signal, redirect: 'error',
     });
     if (!response.ok) throw new Error('Could not remove this TV session');
   } finally { clearTimeout(timer); }

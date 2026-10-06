@@ -1,4 +1,4 @@
-import {onRequest} from "firebase-functions/v2/https";
+import {onRequest, Request} from "firebase-functions/v2/https";
 import * as crypto from "crypto";
 import {google} from "googleapis";
 import {CodeChallengeMethod} from "google-auth-library";
@@ -9,11 +9,13 @@ import {
   authorizeDeviceWithGoogleTokens,
   db,
   getDeviceCode,
+  getAuthorizationVersion,
+  recordUserQuota,
   recordPairingAttempt,
   saveMealSheetTokens,
   savePhotosTokens,
 } from "./utils/db";
-import {authenticatedUserId} from "./utils/requestAuth";
+import {authenticatedIdentity} from "./utils/requestAuth";
 import {logSafeError} from "./utils/safeLog";
 
 const STATE_LIFETIME_MS = 10 * 60 * 1000;
@@ -30,6 +32,8 @@ const MEALS_SCOPE = "https://www.googleapis.com/auth/spreadsheets.readonly";
 
 interface OAuthState {
   userId: string;
+  authorizationVersion: number;
+  authTimeSeconds: number;
   deviceCode?: string;
   kind?: "device" | "photos" | "meals";
   codeVerifier: string;
@@ -55,7 +59,7 @@ function pairingRedirect(result: "connected" | "denied" | "expired" | "error" |
   return url.toString();
 }
 
-async function consumeState(state: string): Promise<OAuthState | null> {
+export async function consumeState(state: string): Promise<OAuthState | null> {
   const ref = db.collection("oauth_states").doc(hash(state));
   return db.runTransaction(async (transaction) => {
     const snapshot = await transaction.get(ref);
@@ -68,74 +72,83 @@ async function consumeState(state: string): Promise<OAuthState | null> {
 
 export const beginGoogleLinkHandler = onRequest(
   {cors: true, maxInstances: 10},
-  async (req, res) => {
-    res.set("Cache-Control", "no-store");
-    if (req.method === "OPTIONS") {
-      res.status(204).send("");
-      return;
-    }
-    if (req.method !== "POST") {
-      res.status(405).json({error: "Method not allowed"});
-      return;
-    }
-    try {
-      const userId = await authenticatedUserId(req);
-      if (!userId) {
-        res.status(401).json({error: "Valid Firebase ID token required"});
-        return;
-      }
-      const code = req.body?.code;
-      if (typeof code !== "string" || !/^[A-HJ-NP-Z2-9]{6}$/.test(code.toUpperCase())) {
-        res.status(400).json({error: "Invalid TV code"});
-        return;
-      }
-      if (!await recordPairingAttempt(userId)) {
-        res.status(429).json({error: "Too many pairing attempts"});
-        return;
-      }
-      const deviceCode = code.toUpperCase();
-      const device = await getDeviceCode(deviceCode);
-      if (!device || device.status !== "pending" || Date.now() > device.expiresAt) {
-        res.status(410).json({error: "TV code expired or already used"});
-        return;
-      }
-
-      const state = crypto.randomBytes(32).toString("base64url");
-      const codeVerifier = crypto.randomBytes(48).toString("base64url");
-      const codeChallenge = crypto.createHash("sha256")
-        .update(codeVerifier).digest("base64url");
-      const stateRecord: OAuthState = {
-        userId,
-        deviceCode,
-        kind: "device",
-        codeVerifier,
-        expiresAt: Date.now() + STATE_LIFETIME_MS,
-      };
-      await db.collection("oauth_states").doc(hash(state)).create({
-        ...stateRecord, deleteAt: Timestamp.fromMillis(stateRecord.expiresAt + 60 * 60 * 1000),
-      });
-
-      const oauthClient = new google.auth.OAuth2(
-        requiredSetting("GOOGLE_CLIENT_ID"),
-        undefined,
-        requiredSetting("GOOGLE_REDIRECT_URI")
-      );
-      const authorizationUrl = oauthClient.generateAuthUrl({
-        access_type: "offline",
-        prompt: "consent",
-        scope: GOOGLE_SCOPES,
-        state,
-        code_challenge_method: CodeChallengeMethod.S256,
-        code_challenge: codeChallenge,
-      });
-
-      res.status(200).json({authorizationUrl});
-    } catch (error) {
-      logSafeError("Could not begin Google pairing", error);
-      res.status(500).json({error: "Internal server error"});
-    }
-  }
+  handleBeginGoogleLink
 );
+
+export async function handleBeginGoogleLink(req: Request, res: Response): Promise<void> {
+  res.set("Cache-Control", "no-store");
+  if (req.method === "OPTIONS") {
+    res.status(204).send("");
+    return;
+  }
+  if (req.method !== "POST") {
+    res.status(405).json({error: "Method not allowed"});
+    return;
+  }
+  try {
+    const identity = await authenticatedIdentity(req);
+    if (!identity) {
+      res.status(401).json({error: "Valid Firebase ID token required"});
+      return;
+    }
+    if (!identity.owner) {
+      res.status(403).json({error: "Sign in with Google on the companion site to pair a TV"});
+      return;
+    }
+    const userId = identity.userId;
+    const code = req.body?.code;
+    if (typeof code !== "string" || !/^[A-HJ-NP-Z2-9]{6}$/.test(code.toUpperCase())) {
+      res.status(400).json({error: "Invalid TV code"});
+      return;
+    }
+    if (!await recordPairingAttempt(userId)) {
+      res.status(429).json({error: "Too many pairing attempts"});
+      return;
+    }
+    const deviceCode = code.toUpperCase();
+    const device = await getDeviceCode(deviceCode);
+    if (!device || device.status !== "pending" || Date.now() > device.expiresAt) {
+      res.status(410).json({error: "TV code expired or already used"});
+      return;
+    }
+
+    const state = crypto.randomBytes(32).toString("base64url");
+    const codeVerifier = crypto.randomBytes(48).toString("base64url");
+    const codeChallenge = crypto.createHash("sha256")
+      .update(codeVerifier).digest("base64url");
+    const stateRecord: OAuthState = {
+      userId,
+      authTimeSeconds: identity.authTimeSeconds || 0,
+      authorizationVersion: await getAuthorizationVersion(userId),
+      deviceCode,
+      kind: "device",
+      codeVerifier,
+      expiresAt: Date.now() + STATE_LIFETIME_MS,
+    };
+    await db.collection("oauth_states").doc(hash(state)).create({
+      ...stateRecord, deleteAt: Timestamp.fromMillis(stateRecord.expiresAt + 60 * 60 * 1000),
+    });
+
+    const oauthClient = new google.auth.OAuth2(
+      requiredSetting("GOOGLE_CLIENT_ID"),
+      undefined,
+      requiredSetting("GOOGLE_REDIRECT_URI")
+    );
+    const authorizationUrl = oauthClient.generateAuthUrl({
+      access_type: "offline",
+      prompt: "consent",
+      scope: GOOGLE_SCOPES,
+      state,
+      code_challenge_method: CodeChallengeMethod.S256,
+      code_challenge: codeChallenge,
+    });
+
+    res.status(200).json({authorizationUrl});
+  } catch (error) {
+    logSafeError("Could not begin Google pairing", error);
+    res.status(500).json({error: "Internal server error"});
+  }
+}
 
 /** Incremental Photos consent for an already paired account. */
 export const beginGooglePhotosHandler = onRequest(
@@ -150,18 +163,24 @@ export const beginGooglePhotosHandler = onRequest(
       res.status(405).json({error: "Method not allowed"});
       return;
     }
-    const userId = await authenticatedUserId(req);
-    if (!userId) {
+    const identity = await authenticatedIdentity(req);
+    if (!identity) {
       res.status(401).json({error: "Valid Firebase ID token required"});
       return;
     }
+    const userId = identity.userId;
     try {
+      if (!await recordUserQuota(userId, "photos_consent", 10, STATE_LIFETIME_MS)) {
+        res.status(429).json({error: "Please wait before starting Google consent again"}); return;
+      }
       const state = crypto.randomBytes(32).toString("base64url");
       const codeVerifier = crypto.randomBytes(48).toString("base64url");
       const codeChallenge = crypto.createHash("sha256")
         .update(codeVerifier).digest("base64url");
       await db.collection("oauth_states").doc(hash(state)).create({
         userId, kind: "photos", codeVerifier,
+        authTimeSeconds: identity.authTimeSeconds || 0,
+        authorizationVersion: await getAuthorizationVersion(userId),
         expiresAt: Date.now() + STATE_LIFETIME_MS,
         deleteAt: Timestamp.fromMillis(Date.now() + STATE_LIFETIME_MS + 60 * 60 * 1000),
       } satisfies OAuthState);
@@ -198,18 +217,24 @@ export const beginGoogleMealsHandler = onRequest(
       res.status(405).json({error: "Method not allowed"});
       return;
     }
-    const userId = await authenticatedUserId(req);
-    if (!userId) {
+    const identity = await authenticatedIdentity(req);
+    if (!identity) {
       res.status(401).json({error: "Valid Firebase ID token required"});
       return;
     }
+    const userId = identity.userId;
     try {
+      if (!await recordUserQuota(userId, "meals_consent", 10, STATE_LIFETIME_MS)) {
+        res.status(429).json({error: "Please wait before starting Google consent again"}); return;
+      }
       const state = crypto.randomBytes(32).toString("base64url");
       const codeVerifier = crypto.randomBytes(48).toString("base64url");
       const codeChallenge = crypto.createHash("sha256")
         .update(codeVerifier).digest("base64url");
       await db.collection("oauth_states").doc(hash(state)).create({
         userId, kind: "meals", codeVerifier,
+        authTimeSeconds: identity.authTimeSeconds || 0,
+        authorizationVersion: await getAuthorizationVersion(userId),
         expiresAt: Date.now() + STATE_LIFETIME_MS,
         deleteAt: Timestamp.fromMillis(Date.now() + STATE_LIFETIME_MS + 60 * 60 * 1000),
       } satisfies OAuthState);
@@ -246,6 +271,9 @@ export const googleOAuthCallbackHandler = onRequest(
   },
   async (req, res) => {
     res.set("Cache-Control", "no-store");
+    res.set("Referrer-Policy", "no-referrer");
+    res.set("X-Content-Type-Options", "nosniff");
+    res.set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
     let flow: OAuthState["kind"] = "device";
     if (req.method !== "GET") {
       res.status(405).send("Method not allowed");
@@ -264,6 +292,9 @@ export const googleOAuthCallbackHandler = onRequest(
         return;
       }
       flow = record.kind;
+      if (!Number.isSafeInteger(record.authTimeSeconds) || record.authTimeSeconds <= 0) {
+        throw new Error("Start a new Google connection from a signed-in session");
+      }
       if (req.query.error) {
         if (record.kind === "photos") photosResult(res, "Google Photos access was cancelled.");
         else if (record.kind === "meals") res.redirect(303, pairingRedirect("meals_denied"));
@@ -296,7 +327,7 @@ export const googleOAuthCallbackHandler = onRequest(
       });
       const googleSubject = ticket.getPayload()?.sub;
       const firebaseUser = await auth.getUser(record.userId);
-      if (!googleSubject || !firebaseUser.providerData.some(
+      if (firebaseUser.disabled || !googleSubject || !firebaseUser.providerData.some(
         (provider) => provider.providerId === "google.com" && provider.uid === googleSubject
       )) {
         throw new Error("Google account did not match the signed-in Firebase user");
@@ -311,7 +342,7 @@ export const googleOAuthCallbackHandler = onRequest(
           refreshToken: tokens.refresh_token,
           expiryDate: tokens.expiry_date ?? undefined,
           scope: tokens.scope,
-        });
+        }, record.authorizationVersion, record.authTimeSeconds);
         photosResult(res, "Google Photos is connected.");
         return;
       }
@@ -325,7 +356,7 @@ export const googleOAuthCallbackHandler = onRequest(
           refreshToken: tokens.refresh_token,
           expiryDate: tokens.expiry_date ?? undefined,
           scope: tokens.scope,
-        });
+        }, record.authorizationVersion, record.authTimeSeconds);
         res.redirect(303, pairingRedirect("meals_connected"));
         return;
       }
@@ -344,7 +375,9 @@ export const googleOAuthCallbackHandler = onRequest(
           expiryDate: tokens.expiry_date ?? undefined,
           scope: tokens.scope,
         },
-        deviceId
+        deviceId,
+        record.authorizationVersion,
+        record.authTimeSeconds
       );
       res.redirect(303, pairingRedirect(paired ? "connected" : "expired"));
     } catch (error) {

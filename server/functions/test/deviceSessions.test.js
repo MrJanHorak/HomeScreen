@@ -84,32 +84,26 @@ test("a legacy custom-token session cannot list, rename or remove other TVs", as
   for (const method of ["GET", "PUT", "DELETE"]) {
     const res = response();
     await linkedDevicesHandler(request(method, {id, name: "Bedroom"}), res);
-    assert.equal(res.statusCode, 403);
+    assert.equal(res.statusCode, 401);
   }
 });
 
-test("a legacy TV can register its current installation and retry without duplicate records", async (t) => {
+test("legacy tokens cannot mint replacement devices by varying installation keys", async (t) => {
   stubAuth(t, {});
-  let record;
-  let created = 0;
-  let deviceId;
-  const ref = {get: async () => ({exists: Boolean(record), data: () => record})};
-  t.mock.method(db, "collection", () => ({doc: () => ({collection: () => ({doc: (id) => {deviceId = id; return ref;}})})}));
-  t.mock.method(db, "runTransaction", async (callback) => callback({
-    get: () => ref.get(), create: (_ref, value) => {record = value; created++;},
-  }));
-  t.mock.method(auth, "createCustomToken", async (_uid, claims) => {
-    assert.equal(claims.dashboardDeviceId, deviceId);
-    return "upgraded-token";
-  });
+  t.mock.method(db, "collection", () => {throw new Error("No device data may be accessed");});
+  t.mock.method(auth, "createCustomToken", () => {throw new Error("No token may be minted");});
   for (let attempt = 0; attempt < 2; attempt++) {
     const res = response();
-    await linkedDevicesHandler(request("POST", {installationKey: "stable-installation-key"}, {current: "1"}), res);
-    assert.equal(res.statusCode, 200);
-    assert.equal(res.body.customToken, "upgraded-token");
+    await linkedDevicesHandler(request("POST", {installationKey: `attacker-installation-${attempt}`}, {current: "1"}), res);
+    assert.equal(res.statusCode, 405);
   }
-  assert.equal(created, 1);
-  assert.match(deviceId, /^[0-9a-f]{32}$/);
+});
+
+test("unmanaged, anonymous and unexpected providers fail authentication", async (t) => {
+  for (const provider of ["custom", "anonymous", "password", undefined]) {
+    t.mock.method(auth, "verifyIdToken", async () => ({uid: "owner-a", firebase: {sign_in_provider: provider}}));
+    assert.equal(await authenticatedIdentity(request()), null);
+  }
 });
 
 test("owner removal revokes only the selected TV record", async (t) => {

@@ -80,6 +80,9 @@ export const authDeviceHandler = onRequest(
           res.status(400).json({error: "Invalid pairing request"});
           return;
         }
+        if (!await recordCodeRequest(req.ip || "unknown", "poll", 600, 60_000)) {
+          res.status(429).json({error: "Too many pairing polls"}); return;
+        }
 
         const result = await consumeDeviceToken(
           code.toUpperCase(),
@@ -102,7 +105,7 @@ export const authDeviceHandler = onRequest(
         return;
       }
 
-      res.status(400).json({error: `Unknown action or method: ${action}`});
+      res.status(400).json({error: "Unknown action or method"});
     } catch (error) {
       logSafeError("Error in authDeviceHandler", error);
       res.status(500).json({error: "Internal server error"});

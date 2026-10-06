@@ -1,9 +1,8 @@
 import {onRequest, Request} from "firebase-functions/v2/https";
 import type {Response} from "express";
-import {auth, db} from "./utils/db";
+import {db} from "./utils/db";
 import {authenticatedIdentity} from "./utils/requestAuth";
 import {logSafeError} from "./utils/safeLog";
-import * as crypto from "crypto";
 
 /** Only a Google owner session may rename or revoke linked TV sessions. */
 export async function handleLinkedDevices(req: Request, res: Response): Promise<void> {
@@ -12,7 +11,7 @@ export async function handleLinkedDevices(req: Request, res: Response): Promise<
     res.status(204).send("");
     return;
   }
-  if (!["GET", "POST", "PUT", "DELETE"].includes(req.method)) {
+  if (!["GET", "PUT", "DELETE"].includes(req.method)) {
     res.status(405).json({error: "Method not allowed"});
     return;
   }
@@ -23,33 +22,6 @@ export async function handleLinkedDevices(req: Request, res: Response): Promise<
   }
   const devices = db.collection("users").doc(identity.userId).collection("devices");
   try {
-    if (req.method === "POST" && req.query.current === "1") {
-      // Older TV tokens predate device claims. Upgrade the session in place so
-      // the owner can see and manage it without signing out or re-pairing.
-      const installationKey = req.body?.installationKey;
-      if (identity.owner || identity.deviceId || typeof installationKey !== "string" ||
-        !/^[a-zA-Z0-9-]{16,80}$/.test(installationKey) || JSON.stringify(req.body || {}).length > 200) {
-        res.status(400).json({error: "A legacy TV session and installation key are required"});
-        return;
-      }
-      const id = crypto.createHash("sha256").update(`${identity.userId}:${installationKey}`).digest("hex").slice(0, 32);
-      const ref = devices.doc(id);
-      await db.runTransaction(async (transaction) => {
-        const snapshot = await transaction.get(ref);
-        if (!snapshot.exists) {
-          transaction.create(ref, {
-            name: "HomeScreen TV", pairedAtMs: Date.now(), lastSeenAtMs: Date.now(), revokedAtMs: 0,
-          });
-        }
-      });
-      const snapshot = await ref.get();
-      if (snapshot.data()?.revokedAtMs !== 0) {
-        res.status(403).json({error: "This TV was removed. Pair it again to reconnect."});
-        return;
-      }
-      res.status(200).json({customToken: await auth.createCustomToken(identity.userId, {dashboardDeviceId: id})});
-      return;
-    }
     if (req.query.current === "1" && (req.method === "GET" || req.method === "DELETE")) {
       const ref = identity.deviceId ? devices.doc(identity.deviceId) : null;
       if (req.method === "DELETE") {

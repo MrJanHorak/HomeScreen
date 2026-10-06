@@ -1,5 +1,5 @@
 import { onRequest } from "firebase-functions/v2/https";
-import {recordUserQuota, saveDashboardCache} from "./utils/db";
+import {getAuthorizationVersion, recordUserQuota, saveDashboardCache} from "./utils/db";
 import { authenticatedUserId } from "./utils/requestAuth";
 import {logSafeError} from "./utils/safeLog";
 import {DashboardSummaryResponse} from "./types";
@@ -9,9 +9,10 @@ import {fetchUserDashboard} from "./services/dashboardSummary";
  * Sync and cache dashboard data in Firestore for a given user
  */
 export async function syncUserDashboard(userId: string, timeZone = "UTC"): Promise<DashboardSummaryResponse> {
+  const authorizationVersion = await getAuthorizationVersion(userId);
   const summary = await fetchUserDashboard(userId, timeZone);
 
-  await saveDashboardCache(userId, summary);
+  await saveDashboardCache(userId, summary, authorizationVersion);
   return summary;
 }
 

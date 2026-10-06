@@ -1,0 +1,32 @@
+{
+  "reviewDate": "2026-10-05",
+  "project": "tv-homescreen-backend",
+  "sourceBaseline": "760feb4",
+  "readOnlyInspection": true,
+  "functions": {
+    "count": 17,
+    "state": "ACTIVE",
+    "runtime": "nodejs22",
+    "region": "us-central1",
+    "runtimeServiceAccount": "488478409476-compute@developer.gserviceaccount.com",
+    "projectRoleObserved": "roles/editor",
+    "ingress": "ALLOW_ALL",
+    "timeoutSeconds": 60,
+    "maxInstances": {"accountSecurity": 5, "appearanceStudio": 5, "linkedDevices": 5, "syncUserData": 5, "otherFunctions": 10}
+  },
+  "firestore": {
+    "database": "(default)",
+    "deployedRulesReadFromRulesAPI": "allow read, write: if false (all document paths)",
+    "deleteProtectionState": "DELETE_PROTECTION_DISABLED",
+    "pointInTimeRecoveryEnablement": "POINT_IN_TIME_RECOVERY_DISABLED",
+    "activeDeleteAtTTLCollectionGroups": ["appearance", "cache", "code_request_limits", "device_codes", "oauth_states", "pair_attempts", "user_request_limits", "weather_cache"]
+  },
+  "existingAPK": {
+    "path": "HomeScreen/android/app/build/outputs/apk/release/app-release.apk",
+    "verifiedBy": "apksigner verify --print-certs",
+    "certificateSubject": "CN=Android Debug, OU=Android, O=Unknown, L=Unknown, ST=Unknown, C=US",
+    "certificateSHA256": "fac61745dc0903786fb9ede62a962b399f7348f0bb6f899b8332667591033b9c",
+    "rebuiltInThisReview": false
+  },
+  "notVerified": ["edge rate limit coverage and bypass prevention", "budget alert delivery", "secret entropy and key rotation", "effective IAM conditions and every resource-level grant", "real Google consent and revocation integration", "merged manifest and network configuration of a newly signed production APK", "backup schedule and tested restoration"]
+}

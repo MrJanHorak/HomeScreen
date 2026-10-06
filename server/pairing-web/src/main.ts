@@ -13,6 +13,7 @@ import './styles/style.css';
 import { createAppearanceEditor } from './features/dashboard/appearanceEditor';
 import {createDeviceManager} from './features/devices/deviceManager';
 import {createWeatherEditor} from './features/weather/weatherEditor';
+import {validatedApiUrl} from '../../../shared/src/transport';
 
 const config = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -20,7 +21,8 @@ const config = {
   projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
-const apiUrl = import.meta.env.VITE_API_URL?.replace(/\/$/, '');
+const apiUrl = import.meta.env.VITE_API_URL ?
+  validatedApiUrl(import.meta.env.VITE_API_URL, import.meta.env.DEV) : undefined;
 // Keep the auth helper on the same origin as the pairing page for redirect sign-in.
 if (window.location.hostname === `${config.projectId}.web.app` &&
     config.authDomain === `${config.projectId}.firebaseapp.com`) {
@@ -404,6 +406,7 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
     try {
       const response = await fetch(`${apiUrl}/beginGoogleLink`, {
         method: 'POST',
+        redirect: 'error',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${await user.getIdToken()}`,

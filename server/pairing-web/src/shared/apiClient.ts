@@ -16,6 +16,7 @@ export function createApiClient(apiUrl: string, getToken: GetToken, messages: Cl
 
     const response = await fetch(`${apiUrl}/${path}`, {
       method,
+      redirect: 'error',
       headers: {'Content-Type': 'application/json', Authorization: `Bearer ${token}`},
       ...(body === undefined ? {} : {body: JSON.stringify(body)}),
     });

@@ -29,7 +29,7 @@ function Root() {
 
   // DashboardProvider only mounts once signed in, so it never fetches anonymously
   return user ? (
-    <DashboardProvider>
+    <DashboardProvider key={user.uid}>
       <WatchNextProvider>
         <FavoriteAppsProvider>
           <HomeScreen />

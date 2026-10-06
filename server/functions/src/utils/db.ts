@@ -1,5 +1,5 @@
 import { getApps, initializeApp } from "firebase-admin/app";
-import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
+import { getFirestore, FieldValue, Timestamp, Transaction } from "firebase-admin/firestore";
 import { getAuth } from "firebase-admin/auth";
 import * as crypto from "crypto";
 import { StoredUserTokens, DashboardSummaryResponse, DevicePairingCode, GoogleTokens } from "../types";
@@ -11,6 +11,47 @@ if (getApps().length === 0) {
 
 export const db = getFirestore();
 export const auth = getAuth();
+
+/** Kept outside users so deletion cannot erase the barrier to in-flight OAuth. */
+export async function getAuthorizationVersion(userId: string): Promise<number> {
+  const data = (await db.collection("account_security").doc(userId).get()).data();
+  if (data?.deleted === true) throw new Error("Account has been deleted");
+  return data?.version || 0;
+}
+
+export async function invalidatePendingAuthorizations(userId: string, deleted = false, revokeSessions = false): Promise<void> {
+  const ref = db.collection("account_security").doc(userId);
+  await db.runTransaction(async (transaction) => {
+    const data = (await transaction.get(ref)).data();
+    transaction.set(ref, {version: (data?.version || 0) + 1, updatedAtMs: Date.now(),
+      sessionsRevokedAtMs: revokeSessions ? Date.now() : data?.sessionsRevokedAtMs || 0,
+      deleted: deleted || data?.deleted === true});
+  });
+}
+
+/** Read in the same transaction as credential writes, closing disconnect races. */
+export async function assertAuthorizationVersion(
+  transaction: Transaction, userId: string, expectedVersion: number, authTimeSeconds?: number
+): Promise<void> {
+  const data = (await transaction.get(db.collection("account_security").doc(userId))).data();
+  if (!Number.isSafeInteger(expectedVersion) || expectedVersion < 0 ||
+    data?.deleted === true || (data?.version || 0) !== expectedVersion ||
+    (authTimeSeconds !== undefined && (!Number.isSafeInteger(authTimeSeconds) ||
+      authTimeSeconds * 1000 <= (data?.sessionsRevokedAtMs || 0)))) {
+    throw new Error("Authorization was cancelled. Start again.");
+  }
+}
+
+/** All settings writes check the deletion tombstone in their commit transaction. */
+export async function runUserTransaction<T>(
+  userId: string, callback: (transaction: Transaction) => Promise<T>
+): Promise<T> {
+  return db.runTransaction(async (transaction) => {
+    const security = (await transaction.get(db.collection("account_security").doc(userId))).data();
+    if (security?.deleted === true) throw new Error("Account has been deleted");
+    return callback(transaction);
+  });
+}
 
 /** Photos Picker consent is stored separately from Calendar, Tasks, and Fit consent. */
 export async function getStoredPhotosTokens(userId: string): Promise<GoogleTokens | null> {
@@ -25,16 +66,19 @@ export async function getStoredPhotosTokens(userId: string): Promise<GoogleToken
   };
 }
 
-export async function savePhotosTokens(userId: string, tokens: GoogleTokens): Promise<void> {
-  await db.collection("users").doc(userId).set({
-    googlePhotos: {
-      accessToken: tokens.accessToken ? encryptToken(tokens.accessToken) : null,
-      refreshToken: tokens.refreshToken ? encryptToken(tokens.refreshToken) : null,
-      expiryDate: tokens.expiryDate ?? null,
-      scope: tokens.scope ?? null,
-    },
-    updatedAt: FieldValue.serverTimestamp(),
-  }, {merge: true});
+export async function savePhotosTokens(userId: string, tokens: GoogleTokens, authorizationVersion: number, authTimeSeconds: number): Promise<void> {
+  await db.runTransaction(async (transaction) => {
+    await assertAuthorizationVersion(transaction, userId, authorizationVersion, authTimeSeconds ?? 0);
+    transaction.set(db.collection("users").doc(userId), {
+      googlePhotos: {
+        accessToken: tokens.accessToken ? encryptToken(tokens.accessToken) : null,
+        refreshToken: tokens.refreshToken ? encryptToken(tokens.refreshToken) : null,
+        expiryDate: tokens.expiryDate ?? null,
+        scope: tokens.scope ?? null,
+      },
+      updatedAt: FieldValue.serverTimestamp(),
+    }, {merge: true});
+  });
 }
 
 /**
@@ -82,25 +126,31 @@ export async function getStoredUserTokens(userId: string): Promise<StoredUserTok
 }
 
 /** Keep optional meal consent separate from the TV's other Google grants. */
-export async function saveMealSheetTokens(userId: string, tokens: GoogleTokens): Promise<void> {
-  await db.collection("users").doc(userId).set({
-    mealSheet: {
-      accessToken: tokens.accessToken ? encryptToken(tokens.accessToken) : null,
-      refreshToken: tokens.refreshToken ? encryptToken(tokens.refreshToken) : null,
-      expiryDate: tokens.expiryDate ?? null,
-      scope: tokens.scope ?? null,
-    },
-    updatedAt: FieldValue.serverTimestamp(),
-  }, {merge: true});
+export async function saveMealSheetTokens(userId: string, tokens: GoogleTokens, authorizationVersion: number, authTimeSeconds: number): Promise<void> {
+  await db.runTransaction(async (transaction) => {
+    await assertAuthorizationVersion(transaction, userId, authorizationVersion, authTimeSeconds ?? 0);
+    transaction.set(db.collection("users").doc(userId), {
+      mealSheet: {
+        accessToken: tokens.accessToken ? encryptToken(tokens.accessToken) : null,
+        refreshToken: tokens.refreshToken ? encryptToken(tokens.refreshToken) : null,
+        expiryDate: tokens.expiryDate ?? null,
+        scope: tokens.scope ?? null,
+      },
+      updatedAt: FieldValue.serverTimestamp(),
+    }, {merge: true});
+  });
 }
 
 export async function saveMealSheetSelection(
-  userId: string, spreadsheetId: string, spreadsheetTitle: string
+  userId: string, spreadsheetId: string, spreadsheetTitle: string, authorizationVersion: number
 ): Promise<void> {
-  await db.collection("users").doc(userId).set({
-    mealSheet: {spreadsheetId, spreadsheetTitle},
-    updatedAt: FieldValue.serverTimestamp(),
-  }, {merge: true});
+  await db.runTransaction(async (transaction) => {
+    await assertAuthorizationVersion(transaction, userId, authorizationVersion);
+    transaction.set(db.collection("users").doc(userId), {
+      mealSheet: {spreadsheetId, spreadsheetTitle},
+      updatedAt: FieldValue.serverTimestamp(),
+    }, {merge: true});
+  });
 }
 
 export async function clearMealSheetConnection(userId: string): Promise<void> {
@@ -152,7 +202,9 @@ export async function saveUserTokens(
     }
   }
 
-  await db.collection("users").doc(userId).set(updateData, { merge: true });
+  await runUserTransaction(userId, async (transaction) => {
+    transaction.set(db.collection("users").doc(userId), updateData, {merge: true});
+  });
 }
 
 
@@ -161,21 +213,25 @@ export async function saveUserTokens(
  */
 export async function saveDashboardCache(
   userId: string,
-  summary: DashboardSummaryResponse
+  summary: DashboardSummaryResponse,
+  authorizationVersion: number
 ): Promise<void> {
   if (Buffer.byteLength(JSON.stringify(summary), "utf8") > 750_000) {
     throw new Error("Dashboard summary exceeds cache size limit");
   }
-  await db
+  const ref = db
     .collection("users")
     .doc(userId)
     .collection("cache")
-    .doc("dashboard")
-    .set({
+    .doc("dashboard");
+  await db.runTransaction(async (transaction) => {
+    await assertAuthorizationVersion(transaction, userId, authorizationVersion);
+    transaction.set(ref, {
       ...summary,
       cachedAtMs: Date.now(),
       deleteAt: Timestamp.fromMillis(Date.now() + 7 * 24 * 60 * 60 * 1000),
     });
+  });
 }
 
 /**
@@ -257,11 +313,14 @@ export async function authorizeDeviceWithGoogleTokens(
   userId: string,
   customToken: string,
   googleTokens: StoredUserTokens["google"],
-  deviceId: string
+  deviceId: string,
+  authorizationVersion: number,
+  authTimeSeconds: number
 ): Promise<boolean> {
   const codeRef = db.collection("device_codes").doc(code);
   const userRef = db.collection("users").doc(userId);
   return db.runTransaction(async (transaction) => {
+    await assertAuthorizationVersion(transaction, userId, authorizationVersion, authTimeSeconds ?? 0);
     const snapshot = await transaction.get(codeRef);
     if (!snapshot.exists) return false;
     const record = snapshot.data() as DevicePairingCode;
@@ -312,8 +371,8 @@ export async function recordPairingAttempt(userId: string): Promise<boolean> {
 }
 
 /** Best-effort per-IP limit for the unauthenticated code issuance endpoint. */
-export async function recordCodeRequest(address: string): Promise<boolean> {
-  const id = crypto.createHash("sha256").update(address).digest("hex");
+export async function recordCodeRequest(address: string, resource = "issue", limit = 60, windowMs = 15 * 60 * 1000): Promise<boolean> {
+  const id = crypto.createHash("sha256").update(`${resource}:${address}`).digest("hex");
   const ref = db.collection("code_request_limits").doc(id);
   const now = Date.now();
   return db.runTransaction(async (transaction) => {
@@ -321,8 +380,8 @@ export async function recordCodeRequest(address: string): Promise<boolean> {
     const data = snapshot.data();
     const inWindow = typeof data?.expiresAt === "number" && data.expiresAt > now;
     const count = inWindow ? Number(data?.count || 0) : 0;
-    if (count >= 60) return false;
-    const expiresAt = inWindow ? data?.expiresAt : now + 15 * 60 * 1000;
+    if (count >= limit) return false;
+    const expiresAt = inWindow ? data?.expiresAt : now + windowMs;
     transaction.set(ref, {count: count + 1, expiresAt,
       deleteAt: Timestamp.fromMillis(expiresAt + 60 * 60 * 1000)});
     return true;
@@ -341,7 +400,7 @@ export async function recordUserQuota(
     const count = inWindow ? Number(data?.count || 0) : 0;
     if (count >= limit) return false;
     const expiresAt = inWindow ? data?.expiresAt : now + windowMs;
-    transaction.set(ref, {count: count + 1, expiresAt,
+    transaction.set(ref, {userId, count: count + 1, expiresAt,
       deleteAt: Timestamp.fromMillis(expiresAt + 60 * 60 * 1000)});
     return true;
   });

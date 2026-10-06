@@ -12,6 +12,8 @@ const {handleGetDashboardSummary} = require('../lib/getDashboardSummary');
 const {syncUserDashboard} = require('../lib/syncUserData');
 
 function setup(t, preferences = {}) {
+  t.mock.method(db, 'getAuthorizationVersion', async () => 0);
+  t.mock.method(db, 'recordUserQuota', async () => true);
   const tokens = {google: {accessToken: 'fixture'}, ...preferences};
   t.mock.method(db, 'getStoredUserTokens', async () => tokens);
   t.mock.method(calendar, 'fetchCalendarEvents', async () => ({today: [], upcoming: []}));

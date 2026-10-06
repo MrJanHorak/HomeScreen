@@ -1,6 +1,6 @@
 import {onRequest} from "firebase-functions/v2/https";
 import {FieldValue, Timestamp} from "firebase-admin/firestore";
-import {db, getStoredPhotosTokens} from "./utils/db";
+import {assertAuthorizationVersion, db, getAuthorizationVersion, getStoredPhotosTokens, recordUserQuota} from "./utils/db";
 import {authenticatedUserId} from "./utils/requestAuth";
 import {getOAuth2Client} from "./services/googleAuth";
 import {GoogleTokens} from "./types";
@@ -39,6 +39,7 @@ async function apiRequest<T>(token: string, path: string, method = "GET", body?:
   const response = await fetch(`${API}${path}`, {
     method,
     signal: AbortSignal.timeout(15_000),
+    redirect: "error",
     headers: {
       Authorization: `Bearer ${token}`,
       ...(body ? {"Content-Type": "application/json"} : {}),
@@ -54,19 +55,21 @@ function pollMs(session: PickingSession): number {
   return Number.isFinite(seconds) ? Math.max(1500, Math.min(15000, seconds * 1000)) : 3000;
 }
 
-async function downloadPhoto(token: string, item: PickedMediaItem): Promise<string> {
+export async function downloadPhoto(token: string, item: PickedMediaItem): Promise<string> {
   if (item.type !== "PHOTO" || !item.mediaFile?.baseUrl ||
     !item.mediaFile.mimeType?.startsWith("image/")) {
     throw new Error("Choose a photo rather than a video");
   }
   const baseUrl = new URL(item.mediaFile.baseUrl);
-  if (baseUrl.protocol !== "https:" || !baseUrl.hostname.endsWith(".googleusercontent.com")) {
+  if (baseUrl.protocol !== "https:" || !baseUrl.hostname.endsWith(".googleusercontent.com") ||
+    baseUrl.username || baseUrl.password || (baseUrl.port && baseUrl.port !== "443")) {
     throw new Error("Google Photos returned an unexpected image URL");
   }
   for (const [width, height] of [[1280, 720], [960, 540], [720, 405], [640, 360], [480, 270]]) {
     const response = await fetch(`${baseUrl.toString()}=w${width}-h${height}`, {
       headers: {Authorization: `Bearer ${token}`},
       signal: AbortSignal.timeout(15_000),
+      redirect: "error",
     });
     if (!response.ok) throw new Error(`Could not download selected photo (${response.status})`);
     const mime = response.headers.get("content-type")?.split(";")[0] || "";
@@ -120,6 +123,7 @@ export const googlePhotosPickerHandler = onRequest(
     let processingSessionId: string | null = null;
 
     try {
+      const authorizationVersion = await getAuthorizationVersion(userId);
       if (action === "background" && req.method === "GET") {
         const snapshot = await photoRef.get();
         res.status(200).json({dataUrl: snapshot.data()?.dataUrl || null});
@@ -146,11 +150,16 @@ export const googlePhotosPickerHandler = onRequest(
         if (typeof id !== "string" || !/^[a-zA-Z0-9-]{1,80}$/.test(id)) {
           res.status(400).json({error: "Choose a saved photo"}); return;
         }
-        const selected = (await galleryRef.doc(id).get()).data();
-        if (!selected?.dataUrl) {
+        const selected = await db.runTransaction(async (transaction) => {
+          await assertAuthorizationVersion(transaction, userId, authorizationVersion);
+          const photo = (await transaction.get(galleryRef.doc(id))).data();
+          if (!photo?.dataUrl) return false;
+          transaction.set(photoRef, {dataUrl: photo.dataUrl, backgroundUpdatedAtMs: Date.now(), updatedAt: FieldValue.serverTimestamp()}, {merge: true});
+          return true;
+        });
+        if (!selected) {
           res.status(404).json({error: "Photo is no longer saved. Refresh photos."}); return;
         }
-        await photoRef.set({dataUrl: selected.dataUrl, backgroundUpdatedAtMs: Date.now(), updatedAt: FieldValue.serverTimestamp()}, {merge: true});
         res.status(200).json({success: true}); return;
       }
 
@@ -167,6 +176,9 @@ export const googlePhotosPickerHandler = onRequest(
       const token = await accessToken(tokens);
 
       if (action === "create" && req.method === "POST") {
+        if (!await recordUserQuota(userId, "photo_session", 10, 10 * 60 * 1000)) {
+          res.status(429).json({error: "Please wait before opening another photo picker"}); return;
+        }
         const active = (await sessionRef.get()).data();
         const purpose = req.query.purpose === "ambient" ? "ambient" : "background";
         if (active?.id) {
@@ -181,12 +193,15 @@ export const googlePhotosPickerHandler = onRequest(
         });
         if (!session.id || !session.pickerUri) throw new Error("Google Photos did not start a picker session");
         const pollIntervalMs = pollMs(session);
-        await sessionRef.set({
-          id: session.id, pickerUri: session.pickerUri, pollIntervalMs,
-          maxItemCount: MAX_PHOTOS, purpose,
-          expiresAt: session.expireTime && Number.isFinite(Date.parse(session.expireTime))
-            ? Date.parse(session.expireTime) : Date.now() + 600_000,
-          deleteAt: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000),
+        await db.runTransaction(async (transaction) => {
+          await assertAuthorizationVersion(transaction, userId, authorizationVersion);
+          transaction.set(sessionRef, {
+            id: session.id, pickerUri: session.pickerUri, pollIntervalMs,
+            maxItemCount: MAX_PHOTOS, purpose,
+            expiresAt: session.expireTime && Number.isFinite(Date.parse(session.expireTime))
+              ? Date.parse(session.expireTime) : Date.now() + 600_000,
+            deleteAt: Timestamp.fromMillis(Date.now() + 24 * 60 * 60 * 1000),
+          });
         });
         res.status(200).json({pickerUri: session.pickerUri, pollIntervalMs, sessionId: session.id});
         return;
@@ -247,6 +262,7 @@ export const googlePhotosPickerHandler = onRequest(
           id: galleryRef.doc().id, dataUrl,
         }));
         const saved = await db.runTransaction(async (transaction) => {
+          await assertAuthorizationVersion(transaction, userId, authorizationVersion);
           const current = (await transaction.get(sessionRef)).data();
           if (current?.id !== active.id) return false;
           const existing = await transaction.get(galleryRef);
@@ -283,7 +299,7 @@ export const googlePhotosPickerHandler = onRequest(
         }
       }
       logSafeError("Google Photos Picker request failed", error);
-      res.status(502).json({error: error instanceof Error ? error.message : "Google Photos is unavailable"});
+      res.status(502).json({error: "Google Photos is unavailable. Try starting a new photo selection."});
     }
   }
 );

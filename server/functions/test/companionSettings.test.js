@@ -17,6 +17,7 @@ function setup(t, data = {}, claims = {}) {
   const devices = {doc: (id) => {assert.equal(id, deviceId); return deviceRef;}};
   t.mock.method(db, 'collection', (name) => ({doc: (uid) => {
     if (name === 'users') {assert.equal(uid, 'owner'); return userRef;}
+    if (name === 'account_security') return {get: async () => ({data: () => undefined})};
     return {delete: async () => {}};
   }}));
   t.mock.method(db, 'runTransaction', async (fn) => fn({get: (ref) => ref.get(), set: (ref, value, options) => writes.push({ref, value, options}), update: (ref, value) => writes.push({ref,value})}));

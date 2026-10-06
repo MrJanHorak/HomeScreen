@@ -1,6 +1,6 @@
 import {onRequest, Request} from "firebase-functions/v2/https";
 import type {Response} from "express";
-import {db} from "./utils/db";
+import {db, runUserTransaction} from "./utils/db";
 import {authenticatedIdentity} from "./utils/requestAuth";
 import {logSafeError} from "./utils/safeLog";
 
@@ -48,7 +48,7 @@ export async function handleDeviceApps(req: Request, res: Response): Promise<voi
         !validAppPreferences(req.body.initialPreferences)) {
         res.status(400).json({error: "Only the TV can report its installed apps"}); return;
       }
-      const data = await db.runTransaction(async (transaction) => {
+      const data = await runUserTransaction(identity.userId, async (transaction) => {
         const current = (await transaction.get(ref)).data() || {};
         const record = await transaction.get(device);
         if (!record.exists || record.data()?.revokedAtMs !== 0) return null;
@@ -61,7 +61,7 @@ export async function handleDeviceApps(req: Request, res: Response): Promise<voi
     if (!validAppPreferences(req.body?.preferences) || !Number.isSafeInteger(req.body?.expectedUpdatedAtMs) || req.body.expectedUpdatedAtMs < 0) {
       res.status(400).json({error: "Invalid favorite apps"}); return;
     }
-    const result = await db.runTransaction(async (transaction) => {
+    const result = await runUserTransaction(identity.userId, async (transaction) => {
       const current = (await transaction.get(ref)).data();
       const record = await transaction.get(device);
       if (!record.exists || record.data()?.revokedAtMs !== 0) return {status: 404, error: "TV is no longer linked"};

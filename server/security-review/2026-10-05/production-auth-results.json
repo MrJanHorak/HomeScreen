@@ -1,0 +1,101 @@
+{
+  "reviewDate": "2026-10-05",
+  "target": "https://us-central1-tv-homescreen-backend.cloudfunctions.net",
+  "credentials": "none",
+  "requestBody": "{} for POST requests",
+  "passed": 15,
+  "failed": 0,
+  "results": [
+    {
+      "endpoint": "getDashboardSummary",
+      "method": "GET",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "getLocationWeather?city=New%20York",
+      "method": "GET",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "executeAction",
+      "method": "POST",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "syncUserData",
+      "method": "POST",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "beginGoogleLink",
+      "method": "POST",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "beginGooglePhotos",
+      "method": "POST",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "beginGoogleMeals",
+      "method": "POST",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "googlePhotosPicker?action=status",
+      "method": "GET",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "userAppearance",
+      "method": "GET",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "mealSheetConfig",
+      "method": "GET",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "accountSecurity",
+      "method": "GET",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "linkedDevices",
+      "method": "GET",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "appearanceStudio",
+      "method": "GET",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "userPreferences",
+      "method": "GET",
+      "status": 401,
+      "expected": 401
+    },
+    {
+      "endpoint": "deviceApps?current=1",
+      "method": "GET",
+      "status": 401,
+      "expected": 401
+    }
+  ],
+  "notes": "Deployed baseline only. Does not verify the new source fixes or authenticated authorization boundaries."
+}

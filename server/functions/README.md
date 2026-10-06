@@ -2,6 +2,12 @@
 
 This backend provides dashboard data for the Smart TV React Native client, integrating **Google Calendar**, **Google Tasks**, **Google Fit**, **OpenWeatherMap**, and an optional **Google Sheets** dinner plan. The summary reads a ten-minute Firestore cache first and awaits cache writes on a miss. Shared weather results also have a ten-minute cache. See [security and retention setup](../SECURITY.md) for rules, TTL, and account controls.
 
+The [October 5 security review](../SECURITY_REVIEW.md) records source fixes and
+remaining release gates. Unmanaged legacy TV sessions now fail with `401` and must
+pair again; installation-key migration is removed. Only a Google browser owner can
+authorize another TV. Account controls cancel pending consent and obsolete writes,
+and deleting an account requires a Google sign-in within five minutes.
+
 ---
 
 ## 🏗 Architecture & Features

@@ -10,12 +10,17 @@ const appearance = {layout: "balanced", palette: "night", background: "photo", c
 function fixture(t, initial = {}, provider = "google.com") {
   const records = structuredClone(initial);
   const writes = [];
-  t.mock.method(auth, "verifyIdToken", async () => ({uid: "owner-a", firebase: {sign_in_provider: provider}}));
+  t.mock.method(auth, "verifyIdToken", async () => ({uid: "owner-a", firebase: {sign_in_provider: provider},
+    ...(provider === "custom" ? {dashboardDeviceId: "a".repeat(32)} : {})}));
   t.mock.method(db, "collection", (name) => {
+    if (name === "account_security") return {doc: () => "security"};
     assert.equal(name, "users");
     return {doc(uid) {
       assert.equal(uid, "owner-a");
-      return {collection(child) { assert.equal(child, "appearance"); return {doc: (id) => id}; }};
+      return {collection(child) {
+        if (child === "devices") return {doc: () => ({get: async () => ({exists: true, data: () => ({revokedAtMs: 0, lastSeenAtMs: Date.now()})})})};
+        assert.equal(child, "appearance"); return {doc: (id) => id};
+      }};
     }};
   });
   t.mock.method(db, "runTransaction", async (callback) => {

@@ -1,6 +1,6 @@
 import {onRequest, Request} from "firebase-functions/v2/https";
 import type {Response} from "express";
-import {db} from "./utils/db";
+import {db, runUserTransaction} from "./utils/db";
 import {authenticatedIdentity} from "./utils/requestAuth";
 import {logSafeError} from "./utils/safeLog";
 import {validAppearance} from "./userAppearance";
@@ -53,7 +53,7 @@ export async function handleAppearanceStudio(req: Request, res: Response): Promi
       (action === "deleteDesign" && !body.id)) {
       res.status(400).json({error: "Invalid draft or saved design"}); return;
     }
-    const result = await db.runTransaction(async (transaction) => {
+    const result = await runUserTransaction(identity.userId, async (transaction) => {
       const snapshot = await transaction.get(ref);
       const library = (snapshot.data() || emptyLibrary()) as AppearanceLibrary;
       if (body.expectedUpdatedAtMs !== library.updatedAtMs) return {error: "Designs changed in another browser. Use Refresh designs and history before retrying; your edits remain on this page.", status: 409};

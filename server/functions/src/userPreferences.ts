@@ -1,6 +1,6 @@
 import {onRequest, Request} from "firebase-functions/v2/https";
 import type {Response} from "express";
-import {db, invalidateDashboardCache} from "./utils/db";
+import {db, invalidateDashboardCache, runUserTransaction} from "./utils/db";
 import {authenticatedIdentity} from "./utils/requestAuth";
 import {parsePreferences} from "./utils/validation";
 import {logSafeError} from "./utils/safeLog";
@@ -45,7 +45,7 @@ export async function handleUserPreferences(req: Request, res: Response): Promis
       !parsed.savedLocations.some((loc) => loc.id === parsed.activeLocationId)) {
       res.status(400).json({error: "Choose one default city and a saved active city"}); return;
     }
-    const result = await db.runTransaction(async (transaction) => {
+    const result = await runUserTransaction(identity.userId, async (transaction) => {
       const data = (await transaction.get(ref)).data() || {};
       if ((data.preferencesUpdatedAtMs || 0) !== expected) return null;
       const updatedAtMs = Math.max(Date.now(), expected + 1);

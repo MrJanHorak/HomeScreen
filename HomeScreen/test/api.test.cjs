@@ -17,8 +17,15 @@ function load(path, imports = {}) {
 }
 
 const http = load('../shared/src/http.ts');
+const transport = load('../shared/src/transport.ts');
 
 function setup(t) {
+  const previousApiUrl = process.env.EXPO_PUBLIC_API_URL;
+  process.env.EXPO_PUBLIC_API_URL = 'https://api.example.test';
+  t.after(() => {
+    if (previousApiUrl === undefined) delete process.env.EXPO_PUBLIC_API_URL;
+    else process.env.EXPO_PUBLIC_API_URL = previousApiUrl;
+  });
   const events = [];
   const auth = {currentUser: {uid: 'owner', getIdToken: async () => 'fixture-token'}};
   const api = load('src/services/api.ts', {
@@ -26,6 +33,7 @@ function setup(t) {
     'firebase/auth': {signOut: async () => {events.push('sign-out'); auth.currentUser = null;}},
     './localUserData': {clearLocalUserData: async (uid) => events.push(`clear:${uid}`)},
     '../../../shared/src/http': http,
+    '../../../shared/src/transport': transport,
     'react-native': {Platform: {OS: 'android'}},
     '@react-native-async-storage/async-storage': {getItem: async () => null},
   });
@@ -73,5 +81,26 @@ test('public pairing expiry does not clear a signed-in TV session', async (t) =>
     return Response.json({error: 'Expired'}, {status: 410});
   });
   assert.deepEqual(await api.pollDevicePairing({code: 'ABC234', pollSecret: 'secret'}), {status: 'expired'});
+  assert.deepEqual(events, []);
+});
+
+test('production API URLs reject cleartext, embedded credentials and non-HTTPS schemes', () => {
+  for (const url of ['http://api.example.test', 'http://localhost:5001', 'https://user:pass@api.example.test',
+    'ftp://api.example.test', 'https://api.example.test?token=x', 'https://api.example.test#x']) {
+    assert.throws(() => transport.validatedApiUrl(url), /HTTPS API URL/);
+  }
+  assert.equal(transport.validatedApiUrl('https://api.example.test/functions/'), 'https://api.example.test/functions');
+  assert.equal(transport.validatedApiUrl('http://10.0.2.2:5001/functions', true), 'http://10.0.2.2:5001/functions');
+  assert.throws(() => transport.validatedApiUrl('http://api.example.test', true), /HTTPS API URL/);
+});
+
+test('a late response from the previous account cannot clear or populate the new session', async (t) => {
+  const {api, events, auth} = setup(t);
+  t.mock.method(global, 'fetch', async () => {
+    auth.currentUser = {uid: 'new-owner', getIdToken: async () => 'new-token'};
+    return Response.json({error: 'Old TV removed'}, {status: 401});
+  });
+  await assert.rejects(api.getUserPreferences(), /account changed/);
+  assert.equal(auth.currentUser.uid, 'new-owner');
   assert.deepEqual(events, []);
 });
