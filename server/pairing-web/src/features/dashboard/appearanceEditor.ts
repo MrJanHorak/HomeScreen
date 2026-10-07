@@ -1,5 +1,5 @@
 import {createAppearanceApi} from './appearanceApi';
-import type {LibraryChange} from './appearanceApi';
+import type {HistoryChange, LibraryChange} from './appearanceApi';
 import {HttpRequestError} from '../../../../../shared/src/http';
 import {findGridSpace, gridFromCards} from '../../../../functions/src/utils/dashboardLayout';
 import {emptyLibrary} from '../../../../functions/src/utils/appearanceLibrary';
@@ -58,6 +58,7 @@ export function createAppearanceEditor(
     load: loadDesign,
     replace: (design) => void changeLibrary({action: 'saveDesign', id: design.id, name: design.name, appearance}, 'Design replaced.'),
     remove: (design) => void changeLibrary({action: 'deleteDesign', id: design.id}, 'Design deleted.'),
+    removeRevision: (entry) => void changeHistory({action: 'deleteRevision', updatedAtMs: entry.updatedAtMs}),
   });
   const cardEditor = createAppearanceCardsEditor(getElement('#card-list'), {
     visibility: changeCardVisibility,
@@ -80,6 +81,8 @@ export function createAppearanceEditor(
   const designSave = getElement<HTMLButtonElement>('#design-save');
   const designName = getElement<HTMLInputElement>('#design-name');
   const libraryRefresh = getElement<HTMLButtonElement>('#library-refresh');
+  const draftDelete = getElement<HTMLButtonElement>('#draft-delete');
+  const historyClear = getElement<HTMLButtonElement>('#history-clear');
   const gridEditor = createGridEditor(getElement('#grid-editor'), (grid) => {
     appearance.grid = grid;
     appearance.layout = 'custom';
@@ -150,6 +153,8 @@ export function createAppearanceEditor(
     designSave.disabled = busy || !designName.value.trim();
     designName.disabled = busy;
     libraryRefresh.disabled = busy;
+    draftDelete.disabled = busy || (!library.draft && !hasUnpublishedChanges());
+    historyClear.disabled = busy || !history.length;
     getElement('#draft-status').textContent = draftError || (hasUnsavedDraftChanges() ? 'Draft has changes waiting to save.' :
       hasUnpublishedChanges() ? 'Draft saved to your account. Your TV still shows the published design.' : 'No unpublished draft.');
     if (!busy) message(hasUnpublishedChanges() ? 'Unpublished changes. Save to TV when ready.' : 'Your TV settings are up to date.');
@@ -310,6 +315,30 @@ export function createAppearanceEditor(
     if (!hasUnsavedDraftChanges()) return;
     await changeLibrary({action: 'draft', draft: currentDraft()}, 'Draft saved. Use Save to TV when ready.');
   }
+  async function changeHistory(change: HistoryChange) {
+    if (busy || !loaded) return;
+    if (change.action === 'clearHistory' &&
+        !window.confirm('Clear all published history? Saved designs, your current draft and TV settings will be kept.')) return;
+    const current = generation;
+    busy = true;
+    render();
+    let errorMessage = '';
+    try {
+      const nextHistory = await api.changeHistory(change, history.map((entry) => entry.updatedAtMs));
+      if (current !== generation) return;
+      history = nextHistory;
+    } catch (error) {
+      if (current !== generation) return;
+      errorMessage = error instanceof Error ? error.message : 'Could not update history.';
+    } finally {
+      if (current === generation) {
+        busy = false;
+        render();
+        message(errorMessage || (change.action === 'clearHistory' ? 'History cleared. Saved designs kept.' : 'History entry deleted.'),
+          errorMessage ? 'error' : 'success');
+      }
+    }
+  }
   designName.addEventListener('input', updateActions);
   designSave.addEventListener('click', () => void changeLibrary({action: 'saveDesign', name: designName.value.trim(), appearance}, 'Design saved.'));
   async function refreshLibrary() {
@@ -336,6 +365,7 @@ export function createAppearanceEditor(
     }
   }
   libraryRefresh.addEventListener('click', () => void refreshLibrary());
+  historyClear.addEventListener('click', () => void changeHistory({action: 'clearHistory'}));
   draftSave.addEventListener('click', () => void saveDraft());
   function restoreSnapshot(from: string[], to: string[]) {
     if (busy) return;
@@ -443,11 +473,13 @@ export function createAppearanceEditor(
   }
   save.addEventListener('click', () => void publishAppearance());
   async function discardDraft() {
+    if (busy || !loaded) return;
     const current = generation;
     await changeLibrary({action: 'draft', draft: null}, 'Draft discarded.');
     if (current === generation && !draftError) await load();
   }
   reload.addEventListener('click', () => void discardDraft());
+  draftDelete.addEventListener('click', () => void discardDraft());
   useLatest.addEventListener('click', () => void discardDraft());
   function keepCurrentDraft() {
     if (busy || !conflict) return;

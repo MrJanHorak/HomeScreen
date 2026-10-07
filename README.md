@@ -31,6 +31,7 @@ The screenshot shows one configured TV on October 1, 2026. See the [TV app READM
 | Component | Guide |
 | --- | --- |
 | TV app and local run instructions | [HomeScreen/README.md](HomeScreen/README.md) |
+| Signed APK/AAB builds, network TV installation, and Google Play release | [HomeScreen/RELEASE.md](HomeScreen/RELEASE.md) |
 | Cloud Functions and API setup | [server/functions/README.md](server/functions/README.md) |
 | Pairing site and meal Sheet setup | [server/pairing-web/README.md](server/pairing-web/README.md) |
 

@@ -4,7 +4,7 @@ import {db, runUserTransaction} from "./utils/db";
 import {authenticatedIdentity} from "./utils/requestAuth";
 import {logSafeError} from "./utils/safeLog";
 import {validAppearance} from "./userAppearance";
-import {AppearanceLibrary, emptyLibrary, MAX_DESIGNS, validDesignName, validRevision} from "./utils/appearanceLibrary";
+import {AppearanceLibrary, emptyLibrary, MAX_DESIGNS, MAX_REVISIONS, PublishedRevision, validDesignName, validRevision} from "./utils/appearanceLibrary";
 import {randomUUID} from "crypto";
 
 /** Private owner library. Only userAppearance publishes settings read by TVs. */
@@ -41,6 +41,30 @@ export async function handleAppearanceStudio(req: Request, res: Response): Promi
       res.status(200).json(result); return;
     }
     const body = req.body || {};
+    if (["deleteRevision", "clearHistory"].includes(body.action)) {
+      if (Buffer.byteLength(JSON.stringify(body), "utf8") > 10_000 ||
+        !Array.isArray(body.expectedRevisions) || body.expectedRevisions.length > MAX_REVISIONS ||
+        !body.expectedRevisions.every(validRevision) ||
+        (body.action === "deleteRevision" && !validRevision(body.updatedAtMs))) {
+        res.status(400).json({error: "Invalid history request or revisions"}); return;
+      }
+      const historyRef = collection.doc("history");
+      const result = await runUserTransaction(identity.userId, async (transaction) => {
+        const snapshot = await transaction.get(historyRef);
+        const revisions: PublishedRevision[] = snapshot.data()?.revisions || [];
+        if (JSON.stringify(body.expectedRevisions) !== JSON.stringify(revisions.map((entry) => entry.updatedAtMs))) {
+          return {error: "History changed on another device. Refresh designs and history before retrying.", status: 409};
+        }
+        if (body.action === "deleteRevision" && !revisions.some((entry) => entry.updatedAtMs === body.updatedAtMs)) {
+          return {error: "History entry no longer exists", status: 404};
+        }
+        const history = body.action === "clearHistory" ? [] : revisions.filter((entry) => entry.updatedAtMs !== body.updatedAtMs);
+        transaction.set(historyRef, {revisions: history});
+        return {history, status: 200};
+      });
+      res.status(result.status).json(result.error ? {error: result.error} : {history: result.history});
+      return;
+    }
     if (Buffer.byteLength(JSON.stringify(body), "utf8") > 10_000 || !validRevision(body.expectedUpdatedAtMs)) {
       res.status(400).json({error: "Invalid design request or revision"}); return;
     }

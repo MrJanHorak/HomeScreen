@@ -42,60 +42,29 @@ The backend and pairing site need their own configuration and deployment. See th
 
 Keep the repository structure when building: `metro.config.js` adds the pure layout contract in `../server/functions/src/utils` to Metro's watched folders. No Firebase Admin code is imported into the TV bundle.
 
-### Build a standalone release APK on Windows
+### Build a signed release and install over the network
 
-Use Node.js 22.13 or newer and **JDK 17**. Install Android SDK Platform 36,
-Build Tools 36.0.0, NDK 27.1.12297006, CMake 3.22.1, and Platform Tools in
-Android Studio's SDK Manager. Set `ANDROID_HOME` to that SDK directory (or use
-`android/local.properties` with `sdk.dir`). Keep the configured `.env.local`
-available: Expo embeds `EXPO_PUBLIC_*` values into the release bundle.
+See [RELEASE.md](RELEASE.md) for the complete Windows PowerShell guide: one-time
+private signing setup, standalone APK builds, ADB pairing/network installation,
+troubleshooting, and signed Android App Bundles for Google Play TV distribution.
 
-Configure private production signing first: the script rejects the generated
-project's debug release signature by default. For internal testing, the explicit
-`-AllowDebugSigning` option described below permits a test APK.
-
-From `HomeScreen`, run:
+From this directory, after configuring `.env.local`:
 
 ```powershell
 $env:JAVA_HOME = 'C:\Program Files\Java\jdk-17'
+$env:ANDROID_HOME = 'D:\androidSDKs'
+# First setup only; existing signing files are never overwritten:
+npm run android:signing:init
 npm run android:release
+# For Google Play, when ready:
+npm run android:bundle
 ```
 
-The script applies the Expo plugins, sets `NODE_ENV=production`, and builds
-`android/app/build/outputs/apk/release/app-release.apk`. This APK contains the
-JavaScript bundle and runs without Metro. It includes all four default Android
-architectures; for a faster ARM-only build, use
-`npm run android:release -- -Architectures armeabi-v7a,arm64-v8a`.
-
-The `withAndroidBuildToolchain` plugin preserves Gradle 9.3.1 (the SDK 57 template
-version) and daemon Java 17 across prebuilds. The installed Android Gradle Plugin
-8.12.0 requires at least Gradle 8.13; downgrading to 8.11 is incompatible.
-`android/gradle/gradle-daemon-jvm.properties` takes priority over `JAVA_HOME` and
-`org.gradle.java.home`, so a stale `toolchainVersion=25` keeps selecting Java 25
-even after installing Java 17. `Unsupported class file major version 69` refers
-to Java 25 bytecode. In Android Studio, use the Gradle wrapper and JDK 17 in
-**Settings → Build, Execution, Deployment → Build Tools → Gradle**.
-The build script explicitly passes `--no-clean` to Expo SDK 57's prebuild so
-existing native folders, build caches, and the test signing key are retained.
-
-Enable debugging on the TV and connect it using Android Studio or ADB, then run
-(replace `TV_SERIAL` with the connected TV shown by `adb devices`):
-
-```powershell
-& "$env:ANDROID_HOME\platform-tools\adb.exe" devices
-& "$env:ANDROID_HOME\platform-tools\adb.exe" -s TV_SERIAL install -r .\android\app\build\outputs\apk\release\app-release.apk
-& "$env:ANDROID_HOME\platform-tools\adb.exe" -s TV_SERIAL shell am start -n com.anonymous.mytvapp/.MainActivity
-```
-
-The generated native project currently uses the project's debug signing key.
-The release script blocks that configuration by default. Configure private
-production signing before running the normal release command. For an internal
-TV test only, use `npm run android:release -- -AllowDebugSigning`.
-Store distribution needs a separate release
-key. If an existing app was signed with another key, Android rejects the update;
-uninstalling that app clears its local data, so decide whether to preserve it
-before uninstalling. Deprecation and SDK XML warnings alone do not mean the
-build failed; inspect the failed task and its exception.
+Private credentials live in the ignored `.release/` directory and survive Expo
+prebuilds. Back up that directory securely. The normal release commands reject
+missing private signing; `-AllowDebugSigning` is an explicit internal-APK fallback.
+A different signing key prevents upgrading an existing installation; see the guide
+before uninstalling an app and clearing its local data.
 
 ## Using the dashboard
 

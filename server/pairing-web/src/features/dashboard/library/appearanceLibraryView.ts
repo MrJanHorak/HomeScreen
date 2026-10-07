@@ -5,6 +5,7 @@ interface LibraryActions {
   load: (appearance: unknown) => void;
   replace: (design: SavedDesign) => void;
   remove: (design: SavedDesign) => void;
+  removeRevision: (entry: PublishedRevision) => void;
 }
 
 export interface AppearanceLibraryView {
@@ -59,6 +60,7 @@ export function createAppearanceLibraryView(root: HTMLElement, actions: LibraryA
     for (const entry of history) {
       revisions.append(libraryRow(revisionLabel(entry, publishedRevision), [
         ['Restore to draft', () => actions.load(entry.appearance)],
+        ['Delete', () => actions.removeRevision(entry)],
       ], busy));
     }
     if (!history.length) revisions.textContent = 'History starts with your next Save to TV or TV settings change.';

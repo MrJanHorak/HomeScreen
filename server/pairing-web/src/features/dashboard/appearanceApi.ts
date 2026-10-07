@@ -16,9 +16,12 @@ export type LibraryChange =
   | {action: 'saveDesign'; id?: string; name: string; appearance: Appearance}
   | {action: 'deleteDesign'; id: string};
 
+export type HistoryChange = {action: 'deleteRevision'; updatedAtMs: number} | {action: 'clearHistory'};
+
 export interface AppearanceApi {
   loadStudio: () => Promise<StudioResponse>;
   changeLibrary: (change: LibraryChange, expectedRevision: number) => Promise<AppearanceLibrary>;
+  changeHistory: (change: HistoryChange, expectedRevisions: number[]) => Promise<PublishedRevision[]>;
   publish: (appearance: Appearance, expectedRevision: number) => Promise<number>;
 }
 
@@ -69,5 +72,13 @@ export function createAppearanceApi(apiUrl: string, getToken: () => Promise<stri
     return result.updatedAtMs;
   }
 
-  return {loadStudio, changeLibrary, publish};
+  async function changeHistory(change: HistoryChange, expectedRevisions: number[]): Promise<PublishedRevision[]> {
+    const result = await request<unknown>('appearanceStudio', 'PUT', {...change, expectedRevisions});
+    if (!isRecord(result) || !validHistory(result.history)) {
+      throw new Error('The server returned invalid history. Refresh designs and history before retrying.');
+    }
+    return result.history;
+  }
+
+  return {loadStudio, changeLibrary, changeHistory, publish};
 }

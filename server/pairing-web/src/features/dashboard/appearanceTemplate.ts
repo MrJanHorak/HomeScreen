@@ -52,13 +52,18 @@ export const APPEARANCE_EDITOR_TEMPLATE = `
       </div>
       <p id="draft-status" class="field-hint" role="status" aria-live="polite"></p>
       <details class="studio-section"><summary>Saved designs and published history</summary><div class="studio-section-body">
+        <h3>Current draft</h3>
+        <p class="field-hint">One draft is kept as you edit. Delete it to return to the latest TV settings. Your saved designs stay in your library.</p>
+        <button id="draft-delete" class="button button-text" type="button">Delete draft</button>
+        <h3>Saved designs</h3>
         <label class="field-label" for="design-name">DESIGN NAME</label>
         <input id="design-name" type="text" maxlength="60" placeholder="Evening dashboard" />
         <button id="design-save" class="button button-secondary" type="button">Save as new design</button>
         <button id="library-refresh" class="button button-text" type="button">Refresh designs and history</button>
         <p class="field-hint">Keep up to 20 designs. Loading a design or restoring a revision edits your draft; use Save to TV to publish it.</p>
         <div id="design-list" class="design-library"></div>
-        <h3>Published history</h3><p class="field-hint">The latest 30 revisions, including TV settings changes.</p>
+        <h3>Published history</h3><p class="field-hint">The latest 30 revisions, including TV settings changes. Delete entries individually or clear the list. Saved designs and current TV settings are kept.</p>
+        <button id="history-clear" class="button button-text" type="button">Clear history</button>
         <div id="revision-list" class="design-library"></div>
       </div></details>
       <details class="studio-section studio-photos"><summary>Photos · choose images for your TV</summary><div class="studio-section-body"><div id="photo-gallery"></div></div></details>

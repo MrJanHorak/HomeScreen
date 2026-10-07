@@ -124,8 +124,8 @@ export async function handleUserAppearance(req: Request, res: Response): Promise
         }
         const history = await transaction.get(historyRef);
         const revisions: PublishedRevision[] = history.data()?.revisions || [];
-        // Preserve the pre-history configuration on the first new publish.
-        if (!revisions.length && existing?.appearance && validAppearance(existing.appearance) &&
+        // Seed only when history has never existed; an emptied history must stay deleted.
+        if (!history.data() && existing?.appearance && validAppearance(existing.appearance) &&
           Buffer.byteLength(JSON.stringify(existing.appearance), "utf8") <= 10_000) {
           revisions.push({appearance: existing.appearance, updatedAtMs: existing.updatedAtMs || 0,
             changedBy: identity.userId, source: "previous"});

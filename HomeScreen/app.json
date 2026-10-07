@@ -22,13 +22,15 @@
           ]
         }
       ],
-      "package": "com.anonymous.mytvapp"
+      "package": "com.anonymous.mytvapp",
+      "versionCode": 1
     },
     "plugins": [
       "expo-secure-store",
       "./plugins/withTvAppQueries",
       "./plugins/withNativeCleanOrder",
       "./plugins/withAndroidBuildToolchain",
+      "./plugins/withReleaseSigning",
       "./plugins/withHomeScreenSplash",
       [
         "@react-native-tvos/config-tv",

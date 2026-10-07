@@ -75,6 +75,53 @@ test("designs can be created, replaced and deleted without publishing", async (t
   assert.equal(f.records.settings, undefined);
 });
 
+test("deleting individual history entries and clearing history preserve designs, drafts and published settings", async (t) => {
+  const studio = {updatedAtMs: 3, designs: [{id: "saved", name: "Keep", appearance, updatedAtMs: 3}],
+    draft: {appearance: {...appearance, palette: "plum"}, baseUpdatedAtMs: 42}};
+  const settings = {appearance, updatedAtMs: 42};
+  const revisions = [42, 41, 40].map((updatedAtMs) => ({appearance, updatedAtMs, source: "web", changedBy: "owner-a"}));
+  const f = fixture(t, {studio, settings, history: {revisions}});
+  const deleted = await f.studio("PUT", {action: "deleteRevision", updatedAtMs: 42, expectedRevisions: [42, 41, 40]});
+  assert.equal(deleted.statusCode, 200);
+  assert.deepEqual(deleted.body.history.map((entry) => entry.updatedAtMs), [41, 40]);
+  const cleared = await f.studio("PUT", {action: "clearHistory", expectedRevisions: [41, 40]});
+  assert.equal(cleared.statusCode, 200);
+  assert.deepEqual(cleared.body.history, []);
+  assert.deepEqual((await f.studio("GET")).body.history, []);
+  assert.deepEqual(f.records.studio, studio);
+  assert.deepEqual(f.records.settings, settings);
+  assert.deepEqual(f.writes, ["history", "history"]);
+  await f.publish({appearance: {...appearance, palette: "forest"}, expectedUpdatedAtMs: 42});
+  assert.equal(f.records.history.revisions.length, 1, "a new publish must not reintroduce deleted history");
+});
+
+test("history cleanup rejects invalid requests, missing entries and stale lists without writes", async (t) => {
+  const revisions = [{appearance, updatedAtMs: 42, source: "tv", changedBy: "owner-a"}];
+  const f = fixture(t, {history: {revisions}});
+  for (const body of [
+    {action: "clearHistory"},
+    {action: "clearHistory", expectedRevisions: [-1]},
+    {action: "clearHistory", expectedRevisions: ["42"]},
+    {action: "clearHistory", expectedRevisions: Array(MAX_REVISIONS + 1).fill(42)},
+    {action: "deleteRevision", expectedRevisions: [42]},
+    {action: "deleteRevision", expectedRevisions: [42], updatedAtMs: -1},
+  ]) assert.equal((await f.studio("PUT", body)).statusCode, 400);
+  for (const action of ["deleteRevision", "clearHistory"]) {
+    assert.equal((await f.studio("PUT", {action, updatedAtMs: 42, expectedRevisions: []})).statusCode, 409);
+  }
+  assert.equal((await f.studio("PUT", {action: "deleteRevision", updatedAtMs: 41, expectedRevisions: [42]})).statusCode, 404);
+  assert.deepEqual(f.writes, []);
+  assert.deepEqual(f.records.history.revisions, revisions);
+});
+
+test("TV credentials cannot delete or clear owner history", async (t) => {
+  const f = fixture(t, {}, "custom");
+  for (const action of ["deleteRevision", "clearHistory"]) {
+    assert.equal((await f.studio("PUT", {action, updatedAtMs: 42, expectedRevisions: []})).statusCode, 403);
+  }
+  assert.deepEqual(f.writes, []);
+});
+
 test("invalid names, settings, revisions, oversized UTF-8 input and unknown designs fail without writes", async (t) => {
   const f = fixture(t);
   for (const body of [

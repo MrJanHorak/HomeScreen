@@ -20,6 +20,14 @@ async function setup(t, initial = {}) {
     if (request.url().includes('googlePhotosPicker')) result = {photos: []};
     else if (request.url().endsWith('appearanceStudio')) {
       if (request.method() === 'GET') result = state;
+      else if (['deleteRevision', 'clearHistory'].includes(body.action)) {
+        if (JSON.stringify(body.expectedRevisions) !== JSON.stringify(state.history.map((entry) => entry.updatedAtMs))) {
+          status = 409; result = {error: 'History changed on another device. Refresh designs and history before retrying.'};
+        } else {
+          state.history = body.action === 'clearHistory' ? [] : state.history.filter((entry) => entry.updatedAtMs !== body.updatedAtMs);
+          result = {history: state.history};
+        }
+      }
       else if (body.expectedUpdatedAtMs !== state.library.updatedAtMs) { status = 409; result = {error: 'Designs changed in another browser. Refresh designs and history before retrying.'}; }
       else {
         if (body.action === 'draft') state.library.draft = body.draft;
@@ -85,6 +93,61 @@ test('saved designs and revision restoration edit a draft with an undo path', as
     await page.setViewportSize({width: 1440, height: 1000});
     await page.screenshot({path: `${process.env.STUDIO_SCREENSHOT_DIR}/studio-desktop.png`, fullPage: true});
   }
+});
+
+test('history cleanup keeps saved designs and the current draft, including after reopening', async (t) => {
+  const designs = [{id: 'saved', name: 'Evening', appearance: base, updatedAtMs: 1}];
+  const draft = {appearance: {...base, palette: 'forest'}, baseUpdatedAtMs: 10};
+  const history = [10, 5].map((updatedAtMs) => ({appearance: base, updatedAtMs, source: 'web', changedBy: 'fixture'}));
+  const {page, state, waitIdle, open} = await setup(t, {library: {updatedAtMs: 1, designs: structuredClone(designs), draft}, history});
+  await page.getByText('Saved designs and published history', {exact: true}).click();
+  await page.locator('#revision-list').getByRole('button', {name: 'Delete', exact: true}).first().click();
+  await waitIdle();
+  assert.deepEqual(state.history.map((entry) => entry.updatedAtMs), [5]);
+  assert.equal(await page.locator('#revision-list .design-library-row').count(), 1);
+  page.once('dialog', (dialog) => dialog.dismiss());
+  await page.locator('#history-clear').click();
+  assert.equal(state.history.length, 1);
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.locator('#history-clear').click();
+  await waitIdle();
+  assert.deepEqual(state.history, []);
+  assert.equal(await page.locator('#history-clear').isDisabled(), true);
+  assert.deepEqual(state.library.designs, designs);
+  assert.deepEqual(state.library.draft, draft);
+  assert.equal(state.appearance.palette, 'night');
+  assert.equal(state.publishes, 0);
+  await open();
+  assert.equal(await page.locator('#palette-select').inputValue(), 'forest');
+  await page.getByText('Saved designs and published history', {exact: true}).click();
+  assert.equal(await page.locator('#revision-list .design-library-row').count(), 0);
+  await page.locator('#draft-delete').click();
+  await page.waitForFunction(() => document.querySelector('#palette-select').value === 'night' && !document.querySelector('#appearance-reload').disabled);
+  await page.waitForTimeout(1700);
+  assert.equal(state.library.draft, null, 'autosave must not recreate the deleted draft');
+  assert.deepEqual(state.library.designs, designs);
+  assert.equal(state.publishes, 0);
+  assert.equal(await page.locator('#draft-delete').isDisabled(), true);
+});
+
+test('stale history cleanup reports a conflict and refresh allows retry without losing edits', async (t) => {
+  const history = [{appearance: base, updatedAtMs: 5, source: 'web', changedBy: 'fixture'}];
+  const {page, state, waitIdle} = await setup(t, {history});
+  await page.locator('#palette-select').selectOption('forest');
+  await page.getByText('Saved designs and published history', {exact: true}).click();
+  state.history = [...history, {...history[0], updatedAtMs: 11}];
+  await page.locator('#revision-list').getByRole('button', {name: 'Delete', exact: true}).click();
+  await waitIdle();
+  assert.match(await page.locator('#appearance-status').textContent(), /History changed/);
+  assert.equal(state.history.length, 2);
+  assert.equal(await page.locator('#palette-select').inputValue(), 'forest');
+  await page.locator('#library-refresh').click();
+  await waitIdle();
+  await page.locator('#revision-list').getByRole('button', {name: 'Delete', exact: true}).first().click();
+  await waitIdle();
+  assert.deepEqual(state.history.map((entry) => entry.updatedAtMs), [11]);
+  assert.equal(await page.locator('#palette-select').inputValue(), 'forest');
+  assert.equal(state.publishes, 0);
 });
 
 test('stale drafts offer recovery before saving; discard loads the published revision', async (t) => {
