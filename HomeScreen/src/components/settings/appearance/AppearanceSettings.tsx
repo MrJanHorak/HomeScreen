@@ -605,7 +605,7 @@ export default function AppearanceSettings({
           <Text
             style={[styles.description, { color: theme.colors.textSecondary }]}
           >
-            {appearance.widgetLayout ? 'Use Settings → Companion site to add, arrange, and style poll widgets.' : appearance.grid
+            {appearance.widgetLayout ? 'Use Settings → People to show activity cards, or Companion site to arrange and style activity and poll widgets.' : appearance.grid
               ? 'Use Settings → Companion site to edit this free layout. Choose a preset in Layout to use the TV card controls again.'
               : 'Change card order, visibility, and size. The preview updates as you go.'}
           </Text>

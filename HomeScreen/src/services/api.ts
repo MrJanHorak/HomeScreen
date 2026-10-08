@@ -8,6 +8,21 @@ import {readJsonResponse} from '../../../shared/src/http';
 import {validatedApiUrl} from '../../../shared/src/transport';
 import { Platform } from 'react-native';
 import type {PollView} from '../../../server/functions/src/utils/polls';
+import type {PeopleActivityFeed, PeopleSettings, PeopleInvitation} from '../../../shared/src/people';
+
+export async function fetchPeopleActivity(signal?: AbortSignal): Promise<PeopleActivityFeed> {
+  return authenticatedRequest('peopleActivity', 'Could not refresh shared activity', {signal,
+    headers: {'X-Time-Zone': Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'}});
+}
+export async function getPeopleSettings(): Promise<PeopleSettings> {
+  return authenticatedRequest('people', 'Could not load people');
+}
+export async function createPeopleInvitation(): Promise<PeopleInvitation> {
+  return authenticatedRequest('people', 'Could not invite a person', {method: 'POST', body: JSON.stringify({action: 'invite'})});
+}
+export async function peopleAction(action: 'remove' | 'cancelInvitation', id: string): Promise<void> {
+  await authenticatedRequest('people', 'Could not update people', {method: 'POST', body: JSON.stringify({action, id})});
+}
 
 export async function fetchPollFeed(signal?: AbortSignal): Promise<{rounds: PollView[]; serverNowMs: number}> {
   return authenticatedRequest('pollFeed', 'Could not refresh polls', {signal,

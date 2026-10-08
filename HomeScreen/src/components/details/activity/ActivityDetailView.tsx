@@ -3,6 +3,7 @@ import { View, StyleSheet, Text, ScrollView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme/ThemeContext';
 import { useDashboard } from '../../../context/DashboardContext';
+import {usePeople} from '../../../context/PeopleContext';
 import TVProgressRing from '../../shared/TVProgressRing';
 import {activityBarPercent, activityChartPeak, summarizeActivityWeek} from '../../../helpers/activitySummary';
 
@@ -13,13 +14,15 @@ function recordTime(value?: string): string | null {
     date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
 }
 
-export default function ActivityDetailView() {
+export default function ActivityDetailView({personId}: {personId?: string} = {}) {
   const theme = useTheme();
-  const { health: act, isLoading } = useDashboard();
+  const { health, isLoading } = useDashboard();
+  const {people} = usePeople();
+  const act = personId ? people.find((person) => person.id === personId)?.health : health;
 
   if (!act) {
     return <Text style={{ color: theme.colors.textSecondary }}>
-      {isLoading ? 'Loading activity…' : 'Activity data is unavailable.'}
+      {personId ? 'Shared activity is unavailable. Check People settings or ask this person to reconnect.' : isLoading ? 'Loading activity…' : 'Activity data is unavailable.'}
     </Text>;
   }
 

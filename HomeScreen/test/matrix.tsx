@@ -10,6 +10,7 @@ import type {FixtureDashboard, FixtureWatch} from './fixtureHooks';
 import PollDashboardCard from '../src/components/dashboard/polls/PollDashboardCard';
 import type {PollView} from '../../server/functions/src/utils/polls';
 import {DEFAULT_APPEARANCE} from '../src/theme/appearance';
+import type {PeopleActivityFeed} from '../../shared/src/people';
 const poll: PollView = {id: 'a'.repeat(32), revision: 1, question: 'What should we watch Friday?', description: '', answerMode: 'mixed',
   options: [{id:'a',label:'Comedy'},{id:'b',label:'Adventure'},{id:'c',label:'Mystery'}], resultsVisibility:'live',protection:'browser',moderate:true,defaultDurationMinutes:60,
   total:12,pendingCount:1,writtenCount:1,results:[{id:'a',label:'Comedy',count:6},{id:'b',label:'Adventure',count:3},{id:'c',label:'Mystery',count:2}],
@@ -21,6 +22,7 @@ declare global {
     updateFixture: (patch: Partial<FixtureDashboard>) => void;
     updateWatchFixture: (patch: Partial<FixtureWatch>) => void;
     updatePollFixture: (patch: Partial<PollView>) => void;
+    updatePeopleFixture: (people: PeopleActivityFeed['people']) => void;
   }
 }
 const date = (days: number) => {const d = new Date(); d.setDate(d.getDate() + days); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
@@ -39,6 +41,11 @@ const data: FixtureDashboard = {
 };
 const watch: FixtureWatch = {status: 'ready', items: Array.from({length: 15}, (_, i) => ({id: i, title: i ? `Queued program ${i}` : 'Only Murders in the Building', appName: 'Hulu', packageName: 'hulu', episodeTitle: 'Rigor', season: null, episode: null, lastEngagementMs: null, positionMs: i ? null : 0, durationMs: 10000, posterUri: null}))};
 function Matrix() {
+  const [people, setPeople] = useState<PeopleActivityFeed['people']>([
+    {id: 'a'.repeat(32), name: 'Alex', health: {...data.health!, steps: 8123, stepGoal: 9000}},
+    {id: 'b'.repeat(32), name: 'Sam', health: {...data.health!, steps: 3456, stepGoal: 5000}},
+  ]);
+  window.updatePeopleFixture = setPeople;
   const [revision, setRevision] = useState(0);
   window.updateFixture = (patch) => {Object.assign(data, patch); setRevision((n) => n+1);};
   window.updateWatchFixture = (patch) => {Object.assign(watch, patch); setRevision((n) => n+1);};
@@ -46,7 +53,12 @@ function Matrix() {
   data.setActiveLocation = (location) => {data.activeLocation = location; setRevision((n) => n+1);};
   const compact = new URLSearchParams(location.search).get('mode') !== 'full';
   const [areaWidth, areaHeight, gap, padding] = compact ? [900, 340, 8, 12] : [1800, 740, 12, 20];
-  return <FixtureProvider value={{data, watch, compact, polls:{[poll.id]:poll,[secondPoll.id]:secondPoll}, appearance:DEFAULT_APPEARANCE}}><main data-revision={revision}>
+  return <FixtureProvider value={{data, watch, compact, people, polls:{[poll.id]:poll,[secondPoll.id]:secondPoll}, appearance:DEFAULT_APPEARANCE}}><main data-revision={revision}>
+    {new URLSearchParams(location.search).has('people') && <section data-multiple-activity style={{display: 'flex', flexDirection: 'column', width: areaWidth, height: areaHeight}}>
+      <DashboardLayout cards={DEFAULT_APPEARANCE.cards} grid={null} widgetLayout={{version: 1, grid: null,
+        widgets: ['a', 'b'].map((id) => ({id: `activity_${id.repeat(32)}`, kind: 'activity', personId: id.repeat(32), visible: true, size: 'standard'}))}}
+        onOpen={(id) => document.querySelector('[data-multiple-activity]')?.setAttribute('data-opened', id)}/>
+    </section>}
     {new URLSearchParams(location.search).has('polls') && <section data-card="poll"><h2>Polls</h2><div style={{display:'flex',flexWrap:'wrap',gap:16}}>
       {Array.from({length:50},(_,i) => [3+Math.floor(i/5),2+i%5]).map(([w,h]) => {const r=gridRect({x:0,y:0,width:w,height:h},areaWidth,areaHeight,gap);
         return <article key={`${w}x${h}`} data-size={`${w}x${h}`} style={{background:'#192638',border:'1px solid #57657c',padding:12}}><p>{w} × {h}</p>

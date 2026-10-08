@@ -14,7 +14,7 @@ interface ActivityMetric {
   color: string;
 }
 
-export default function ActivityMetricsContent({health, width, height, scale}: ActivitySummaryProps) {
+export default function ActivityMetricsContent({health, width, height, scale, title}: ActivitySummaryProps) {
   const theme = useTheme();
   const type = cardTypography(height, scale);
   const weekly = health.weekly || [];
@@ -39,7 +39,7 @@ export default function ActivityMetricsContent({health, width, height, scale}: A
 
   return (
     <View testID="adaptive-activity" style={{height, width, gap: type.gap, overflow: 'hidden'}}>
-      <CardHeader id="activity" scale={scale} height={type.header} badge={`Goal ${health.stepGoal.toLocaleString()}`} />
+      <CardHeader id="activity" title={title} scale={scale} height={type.header} badge={`Goal ${health.stepGoal.toLocaleString()}`} />
       <View style={{flexDirection: 'row', flexWrap: 'wrap', rowGap: 4 * scale, columnGap: 6 * scale}}>
         {stats.map((stat) => (
           <View key={stat.icon} testID="activity-metric" style={{

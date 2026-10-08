@@ -18,6 +18,7 @@ import AmbientSettings from './ambient/AmbientSettings';
 import CompanionSiteSettings from './companion/CompanionSiteSettings';
 import WeatherSettings from './weather/WeatherSettings';
 import DeviceSettings from './device/DeviceSettings';
+import PeopleSettings from './people/PeopleSettings';
 import { useControlFocus } from '../../hooks/useControlFocus';
 
 type SettingsSection =
@@ -27,13 +28,15 @@ type SettingsSection =
   | 'apps'
   | 'device'
   | 'ambient'
-  | 'companion';
+  | 'companion'
+  | 'people';
 const SECTIONS: {
   id: SettingsSection;
   label: string;
   icon: keyof typeof MaterialCommunityIcons.glyphMap;
 }[] = [
   { id: 'companion', label: 'Companion site', icon: 'qrcode-scan' },
+  { id: 'people', label: 'People', icon: 'account-group-outline' },
   { id: 'colors', label: 'Colors', icon: 'palette-outline' },
   { id: 'background', label: 'Background', icon: 'image-outline' },
   { id: 'ambient', label: 'Ambient', icon: 'weather-night' },
@@ -119,6 +122,7 @@ export default function SettingsDetailView({
           <AmbientSettings onPreview={onPreviewAmbient} />
         )}
         {section === 'companion' && <CompanionSiteSettings />}
+        {section === 'people' && <PeopleSettings />}
         {section === 'meals' && <MealConnectionSettings />}
         {section === 'apps' && <FavoriteAppsSettings />}
         <View style={section === 'weather' ? undefined : styles.hiddenSection}>

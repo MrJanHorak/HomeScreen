@@ -6,6 +6,7 @@ import type {useDashboard as useDashboardContract} from '../src/context/Dashboar
 import type {useWatchNext as useWatchNextContract} from '../src/hooks/useWatchNext';
 import type {PollView} from '../../server/functions/src/utils/polls';
 import type {DashboardAppearance} from '../src/theme/appearance';
+import type {PeopleActivityFeed} from '../../shared/src/people';
 
 export type FixtureDashboard = Pick<ReturnType<typeof useDashboardContract>,
   'isLoading' | 'activeLocation' | 'savedLocations' | 'getWeatherForLoc' | 'setActiveLocation' |
@@ -18,6 +19,7 @@ interface FixtureState {
   compact: boolean;
   polls?: Record<string, PollView>;
   appearance?: DashboardAppearance;
+  people?: PeopleActivityFeed['people'];
 }
 
 const Fixture = createContext<FixtureState | null>(null);
@@ -30,6 +32,7 @@ function useFixture(): FixtureState {
 }
 
 export function useDashboard() {return useFixture().data;}
+export function usePeople() {return {people: useFixture().people || [], error: null};}
 export function useWatchNext() {return useFixture().watch;}
 export function useTheme() {return TVTheme;}
 export function useAppearance() {return {appearance: useFixture().appearance || DEFAULT_APPEARANCE};}

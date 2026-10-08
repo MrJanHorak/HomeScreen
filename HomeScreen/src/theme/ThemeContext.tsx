@@ -8,6 +8,8 @@ import React, {
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
+import {validWidgetLayout, legacyWidgetProjection} from '../../../server/functions/src/utils/widgets';
+import type {WidgetLayout} from '../../../server/functions/src/utils/widgets';
 import {
   getSavedGooglePhoto,
   getSavedGooglePhotos,
@@ -50,6 +52,7 @@ interface AppearanceContextValue {
   toggleCard: (id: CardId) => void;
   toggleCardSize: (id: CardId) => void;
   resetAppearance: () => void;
+  setWidgetLayout: (layout: WidgetLayout) => void;
 }
 
 const AppearanceContext = createContext<AppearanceContextValue | null>(null);
@@ -315,6 +318,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
               : item,
           ),
         })),
+      setWidgetLayout: (widgetLayout) => {
+        if (validWidgetLayout(widgetLayout)) setAppearance((current) => ({...current, widgetLayout,
+          ...legacyWidgetProjection(widgetLayout), layout: 'custom'}));
+      },
       resetAppearance: () => setAppearance((current) => ({...DEFAULT_APPEARANCE, ...(current.widgetLayout ? {widgetLayout: current.widgetLayout} : {})})),
     }),
     [ambientPhotos, appearance, photoDataUrl, ready],

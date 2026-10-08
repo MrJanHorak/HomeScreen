@@ -49,8 +49,8 @@ function WeeklyChart({ weekly, peak, width, scale, showTotals }: {
 }
 
 /** Use the free-layout card's extra height or width for the last seven days. */
-export default function ActivityWeeklyCard({ health, width, height, sideBySide }: {
-  health: Activity; width: number; height: number; sideBySide: boolean;
+export default function ActivityWeeklyCard({ health, width, height, sideBySide, title }: {
+  health: Activity; width: number; height: number; sideBySide: boolean; title?: string;
 }) {
   const theme = useTheme();
   const compact = useCompactTVLayout();
@@ -76,7 +76,7 @@ export default function ActivityWeeklyCard({ health, width, height, sideBySide }
   </>;
 
   return <View testID="adaptive-activity" style={{ height, width, minWidth: 0, gap: 7 * scale, overflow: 'hidden' }}>
-    <CardHeader id='activity' scale={scale} height={24 * scale} badge='Today' />
+    <CardHeader id='activity' title={title} scale={scale} height={24 * scale} badge='Today' />
 
     {sideBySide ? <View style={{ flex: 1, minHeight: 0, flexDirection: 'row', gap: 16 * scale }}>
       <View style={{ width: overviewWidth, minWidth: 0, gap: 7 * scale }}>{today}</View>

@@ -20,6 +20,7 @@ interface CardHeaderProps {
   scale: number;
   height: number;
   badge?: string;
+  title?: string;
 }
 
 export default function CardHeader({
@@ -27,6 +28,7 @@ export default function CardHeader({
   scale,
   height,
   badge,
+  title,
 }: CardHeaderProps) {
   const theme = useTheme();
   return (
@@ -54,7 +56,7 @@ export default function CardHeader({
           fontWeight: '700',
         }}
       >
-        {id === 'poll' ? 'Poll' : CARD_LABELS[id]}
+        {title || (id === 'poll' ? 'Poll' : CARD_LABELS[id])}
       </Text>
       {badge && (
         <Text

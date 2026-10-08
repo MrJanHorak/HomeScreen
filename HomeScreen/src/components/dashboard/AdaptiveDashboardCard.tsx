@@ -11,12 +11,14 @@ import type {CardDimensions} from './shared/types';
 
 interface AdaptiveDashboardCardProps extends CardDimensions {
   id: CardId;
+  personId?: string;
 }
 
 /** The canvas and automatic rows select the same domain components. */
-export default function AdaptiveDashboardCard({id, width, height}: AdaptiveDashboardCardProps) {
+export default function AdaptiveDashboardCard({id, width, height, personId}: AdaptiveDashboardCardProps) {
   const {isLoading} = useDashboard();
   const dimensions = {width, height};
+  if (id === 'activity' && personId) return <ActivityDashboardCard {...dimensions} personId={personId} />;
   // Play Next loads independently of the remote dashboard summary.
   if (id === 'media') return <MediaDashboardCard {...dimensions} />;
   if (isLoading) return <CardContent {...dimensions} id={id} title="Loading…" subtitle="Your dashboard is updating" />;

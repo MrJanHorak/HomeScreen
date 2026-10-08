@@ -1,0 +1,26 @@
+const {test, before, after} = require('node:test');
+const assert = require('node:assert/strict');
+const {chromium} = require('playwright');
+const baseUrl = process.env.TV_TEST_URL || 'http://127.0.0.1:5174';
+let browser;
+before(async () => {browser = await chromium.launch({headless: true, ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? {executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE} : {})});});
+after(async () => {await browser?.close();});
+for (const mode of ['compact', 'full']) test(`named activity cards retain their person's data and clear after sharing stops: ${mode}`, async (t) => {
+  const page = await browser.newPage({viewport: {width: mode === 'compact' ? 960 : 1920, height: 1080}}); t.after(() => page.close());
+  const errors = []; page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto(`${baseUrl}/?people=1&mode=${mode}`);
+  const area = page.locator('[data-multiple-activity]');
+  await area.getByRole('button', {name: 'Activity for Alex. Open details', exact: true}).waitFor();
+  const alex = area.getByRole('button', {name: 'Activity for Alex. Open details', exact: true});
+  const sam = area.getByRole('button', {name: 'Activity for Sam. Open details', exact: true});
+  assert.match(await alex.innerText(), /8,123/); assert.match(await sam.innerText(), /3,456/);
+  assert.match(await alex.innerText(), /Activity · Alex/); assert.match(await sam.innerText(), /Activity · Sam/);
+  await alex.focus(); await page.keyboard.press('Enter');
+  assert.equal(await area.getAttribute('data-opened'), `activity_${'a'.repeat(32)}`);
+  await sam.focus(); await page.keyboard.press('Enter');
+  assert.equal(await area.getAttribute('data-opened'), `activity_${'b'.repeat(32)}`);
+  await page.evaluate(() => window.updatePeopleFixture([]));
+  await area.getByText('Activity · Person unavailable', {exact: true}).first().waitFor();
+  assert.doesNotMatch(await area.innerText(), /8,123|3,456|1,843|Alex|Sam/);
+  assert.deepEqual(errors, []);
+});

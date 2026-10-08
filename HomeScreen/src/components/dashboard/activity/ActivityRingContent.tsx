@@ -7,7 +7,7 @@ import {ActivityWeeklySummary} from './ActivityWeeklyCard';
 import CardHeader from '../shared/CardHeader';
 import type {ActivitySummaryProps} from './types';
 
-export default function ActivityRingContent({health, width, height, scale}: ActivitySummaryProps) {
+export default function ActivityRingContent({health, width, height, scale, title}: ActivitySummaryProps) {
   const theme = useTheme();
   const type = cardTypography(height, scale);
   const weekly = health.weekly || [];
@@ -30,7 +30,7 @@ export default function ActivityRingContent({health, width, height, scale}: Acti
 
   return (
     <View testID="adaptive-activity" style={{height, width, gap: type.gap, overflow: 'hidden'}}>
-      <CardHeader id="activity" scale={scale} height={type.header} badge='Today' />
+      <CardHeader id="activity" title={title} scale={scale} height={type.header} badge='Today' />
       <View style={{flexDirection: 'row', alignItems: 'center', gap: 6 * scale}}>
         <View style={{width: ringSize + 12 * scale, alignItems: 'center', gap: 3 * scale}}>
           <TVProgressRing progress={progress} size={ringSize} strokeWidth={6 * scale} />
