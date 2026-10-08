@@ -9,6 +9,8 @@ maps grouped agenda families and device-clock behavior across those sizes.
 The implemented [Tasks design](TASKS_LAYOUT_DESIGN.md) maps the bounded checklist;
 [Meals/Media/Activity refinements](PREVIEW_WIDGET_REFINEMENTS.md) document shared
 grouping and enlargement.
+The [poll widget design](POLLS_LAYOUT_DESIGN.md) documents all 50 families;
+[the implementation guide](../server/pairing-web/POLLS.md) records shipped scope.
 
 Automatic rows and the free canvas both render `AdaptiveDashboardCard` inside a
 measured content box. Padding and the actual configured border width are excluded
@@ -141,6 +143,15 @@ Narrow Media cards cap the featured title at 19 dp and allow four lines from
 Provider progress appears from height 70 dp when supplied.
 
 ## Verification
+
+Polls use normalized measured dimensions: summary below 120 dp height; wide
+question/results from width 650 below height 260; join/results from width 500
+and height 260; tall below width 500 from height 250; standard otherwise.
+Question type is 18–28 dp, with at most four result rows. Inline QR appears only
+with at least 184 dp remaining after the question/status budget, and reserves
+160–220 dp plus 24 dp for its caption. Results-first omits inline QR. The card
+always opens a full poll detail view. `test/pollCardLayout.test.cjs` verifies the
+budgets; `test/pollMatrix.test.cjs` checks actual rendering across all 100 boxes.
 
 - `npm run test:cards` checks all legal dimensions, initial estimates, measured
   height refinement, row budgets, weather growth/fallbacks/formatting, and the

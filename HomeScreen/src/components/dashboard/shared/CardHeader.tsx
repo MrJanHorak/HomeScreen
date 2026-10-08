@@ -5,7 +5,8 @@ import { CARD_LABELS } from '../../../theme/appearance';
 import type { CardId } from '../../../theme/appearance';
 import type { DashboardIcon } from './types';
 
-export const CARD_ICONS: Record<CardId, DashboardIcon> = {
+export const CARD_ICONS: Record<CardId | 'poll', DashboardIcon> = {
+  poll: 'vote-outline',
   weather: 'weather-partly-cloudy',
   schedule: 'calendar-month-outline',
   activity: 'heart-pulse',
@@ -15,7 +16,7 @@ export const CARD_ICONS: Record<CardId, DashboardIcon> = {
 };
 
 interface CardHeaderProps {
-  id: CardId;
+  id: CardId | 'poll';
   scale: number;
   height: number;
   badge?: string;
@@ -53,7 +54,7 @@ export default function CardHeader({
           fontWeight: '700',
         }}
       >
-        {CARD_LABELS[id]}
+        {id === 'poll' ? 'Poll' : CARD_LABELS[id]}
       </Text>
       {badge && (
         <Text

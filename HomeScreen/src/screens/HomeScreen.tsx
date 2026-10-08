@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import TVText from '../components/shared/TVText';
 import HeaderBar from '../components/dashboard/header/HeaderBar';
@@ -8,6 +8,7 @@ import DashboardDetailModal from '../components/details/DashboardDetailModal';
 import type {DetailTopic} from '../components/details/DashboardDetailModal';
 
 import { useDashboard } from '../context/DashboardContext';
+import {usePollVisibility} from '../context/PollsContext';
 import { useAppearance, useTheme } from '../theme/ThemeContext';
 import useCompactTVLayout from '../hooks/useCompactTVLayout';
 import useAmbientMode from '../components/ambient/useAmbientMode';
@@ -22,6 +23,8 @@ function HomeScreen() {
   const ambient = useAmbientMode(
     appearance.ambient.enabled, appearance.ambient.idleMinutes, activeModal !== null
   );
+  const setVisible = usePollVisibility();
+  useEffect(() => {setVisible(!ambient.active);}, [ambient.active, setVisible]);
   const closeModal = useCallback(() => setActiveModal(null), []);
   const previewAmbient = () => {
     setActiveModal(null);
@@ -58,7 +61,7 @@ function HomeScreen() {
         </View>
       )}
 
-      <DashboardLayout cards={appearance.cards} grid={appearance.grid} onOpen={setActiveModal} />
+      <DashboardLayout cards={appearance.cards} grid={appearance.grid} widgetLayout={appearance.widgetLayout} onOpen={setActiveModal} />
 
       <FavoriteAppsCarousel />
 

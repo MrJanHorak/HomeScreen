@@ -18,6 +18,7 @@ import {
   cardSurface,
 } from '../../../../server/functions/src/utils/cardStyle';
 import useCompactTVLayout from '../../hooks/useCompactTVLayout';
+import type {CardStyle} from '../../../../server/functions/src/utils/cardStyle';
 
 interface TVCardProps {
   title?: string;
@@ -26,6 +27,7 @@ interface TVCardProps {
   style?: ViewStyle;
   accessibilityLabel?: string;
   cardId?: CardId;
+  widgetStyle?: CardStyle;
 }
 
 export default function TVCard({
@@ -35,12 +37,13 @@ export default function TVCard({
   style,
   accessibilityLabel,
   cardId,
+  widgetStyle,
 }: TVCardProps) {
   const theme = useTheme();
   const { appearance } = useAppearance();
   const compact = useCompactTVLayout();
   const [isFocused, setIsFocused] = useState(false);
-  const custom = cardId ? appearance.cardStyles[cardId] : undefined;
+  const custom = widgetStyle || (cardId ? appearance.cardStyles[cardId] : undefined);
   const ink =
     custom && !custom.useThemeSurface
       ? cardInk(custom, theme.colors.background, theme.colors.focusRing)

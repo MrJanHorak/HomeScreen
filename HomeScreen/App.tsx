@@ -9,6 +9,7 @@ import PairingScreen from './src/screens/PairingScreen';
 import { WatchNextProvider } from './src/hooks/useWatchNext';
 import { FavoriteAppsProvider } from './src/hooks/useFavoriteApps';
 import ExitConfirmationModal from './src/components/layout/ExitConfirmationModal';
+import {PollsProvider} from './src/context/PollsContext';
 
 import backgroundImage from './assets/media/wp8860764-nasa-4k-wallpapers.jpg';
 
@@ -32,7 +33,7 @@ function Root() {
     <DashboardProvider key={user.uid}>
       <WatchNextProvider>
         <FavoriteAppsProvider>
-          <HomeScreen />
+          <PollsProvider><HomeScreen /></PollsProvider>
         </FavoriteAppsProvider>
       </WatchNextProvider>
     </DashboardProvider>

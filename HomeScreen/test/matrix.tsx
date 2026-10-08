@@ -7,10 +7,20 @@ import WeatherDetailView from '../src/components/details/weather/WeatherDetailVi
 import {gridRect, DASHBOARD_CARD_IDS} from '../../server/functions/src/utils/dashboardLayout';
 import {FixtureProvider} from './fixtureHooks';
 import type {FixtureDashboard, FixtureWatch} from './fixtureHooks';
+import PollDashboardCard from '../src/components/dashboard/polls/PollDashboardCard';
+import type {PollView} from '../../server/functions/src/utils/polls';
+import {DEFAULT_APPEARANCE} from '../src/theme/appearance';
+const poll: PollView = {id: 'a'.repeat(32), revision: 1, question: 'What should we watch Friday?', description: '', answerMode: 'mixed',
+  options: [{id:'a',label:'Comedy'},{id:'b',label:'Adventure'},{id:'c',label:'Mystery'}], resultsVisibility:'live',protection:'browser',moderate:true,defaultDurationMinutes:60,
+  total:12,pendingCount:1,writtenCount:1,results:[{id:'a',label:'Comedy',count:6},{id:'b',label:'Adventure',count:3},{id:'c',label:'Mystery',count:2}],
+  state:'open',endsAtMs:Date.now()+3600000,timeZone:'America/New_York',joinUrl:'https://demo-polls.firebaseapp.com/vote/'+ 'a'.repeat(48)};
+const pollWidget = {id: 'poll_'+ 'a'.repeat(32), kind:'poll' as const, roundId:poll.id,visible:true,size:'standard' as const};
+const secondPoll = {...poll,id:'b'.repeat(32),question:'What is for dinner?'};
 declare global {
   interface Window {
     updateFixture: (patch: Partial<FixtureDashboard>) => void;
     updateWatchFixture: (patch: Partial<FixtureWatch>) => void;
+    updatePollFixture: (patch: Partial<PollView>) => void;
   }
 }
 const date = (days: number) => {const d = new Date(); d.setDate(d.getDate() + days); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
@@ -32,10 +42,18 @@ function Matrix() {
   const [revision, setRevision] = useState(0);
   window.updateFixture = (patch) => {Object.assign(data, patch); setRevision((n) => n+1);};
   window.updateWatchFixture = (patch) => {Object.assign(watch, patch); setRevision((n) => n+1);};
+  window.updatePollFixture = (patch) => {Object.assign(poll, patch); setRevision((n) => n+1);};
   data.setActiveLocation = (location) => {data.activeLocation = location; setRevision((n) => n+1);};
   const compact = new URLSearchParams(location.search).get('mode') !== 'full';
   const [areaWidth, areaHeight, gap, padding] = compact ? [900, 340, 8, 12] : [1800, 740, 12, 20];
-  return <FixtureProvider value={{data, watch, compact}}><main data-revision={revision}>
+  return <FixtureProvider value={{data, watch, compact, polls:{[poll.id]:poll,[secondPoll.id]:secondPoll}, appearance:DEFAULT_APPEARANCE}}><main data-revision={revision}>
+    {new URLSearchParams(location.search).has('polls') && <section data-card="poll"><h2>Polls</h2><div style={{display:'flex',flexWrap:'wrap',gap:16}}>
+      {Array.from({length:50},(_,i) => [3+Math.floor(i/5),2+i%5]).map(([w,h]) => {const r=gridRect({x:0,y:0,width:w,height:h},areaWidth,areaHeight,gap);
+        return <article key={`${w}x${h}`} data-size={`${w}x${h}`} style={{background:'#192638',border:'1px solid #57657c',padding:12}}><p>{w} × {h}</p>
+          <PollDashboardCard widget={pollWidget} width={r.width-padding*2-3} height={r.height-padding*2-3}/></article>;
+      })}</div><section data-multiple-polls style={{display:'flex',flexDirection:'column',width:areaWidth,height:areaHeight}}><DashboardLayout cards={DEFAULT_APPEARANCE.cards} grid={null}
+        widgetLayout={{version:1,widgets:[pollWidget,{...pollWidget,id:'poll_'+secondPoll.id,roundId:secondPoll.id,style:{backgroundColor:'#412b42',opacity:1}}],grid:null}}
+        onOpen={(id)=>document.querySelector('[data-multiple-polls]')?.setAttribute('data-opened',id)}/></section></section>}
     {new URLSearchParams(location.search).has('small-visuals') && <section data-small-visuals style={{display:'flex',gap:16,alignItems:'flex-start'}}>
       {([['media',265,80],['activity',346,200]] as const).map(([id,width,height]) => <article key={id} data-visual={id}
         style={{padding:12,border:'1px solid #57657c',borderRadius:14,background:'#192638'}}>

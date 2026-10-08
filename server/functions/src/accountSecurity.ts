@@ -114,6 +114,7 @@ export async function handleAccountSecurity(req: Request, res: Response): Promis
         deleteUserRecords("oauth_states", userId),
         deleteUserRecords("device_codes", userId),
         deleteUserRecords("user_request_limits", userId),
+        deleteUserRecords("poll_links", userId),
         db.collection("pair_attempts").doc(userId).delete(),
         db.collection("user_request_limits").doc(`${userId}_sync`).delete(),
         db.collection("user_request_limits").doc(`${userId}_weather`).delete(),

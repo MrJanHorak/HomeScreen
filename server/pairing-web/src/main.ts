@@ -11,6 +11,14 @@ import {createPairingController} from './features/pairing/pairingController';
 import {createMealController} from './features/meals/mealController';
 import {createAccountController} from './features/account/accountController';
 import './styles/style.css';
+import {mountPollParticipant} from './features/polls/PollParticipant';
+import {createPollManager} from './features/polls/PollManager';
+
+if (window.location.pathname.startsWith('/vote/')) {
+  mountPollParticipant(requiredElement<HTMLDivElement>(document, '#app'), window.location.pathname.slice('/vote/'.length));
+} else startCompanion();
+
+function startCompanion() {
 
 const config = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -54,6 +62,7 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
       case 'account': return createAccountController(app, apiUrl, getUser, signOutAccount, showStatus);
       case 'dashboard': return createAppearanceEditor(requiredElement(app, '#appearance-editor'), apiUrl, getToken);
       case 'settings': return createWeatherEditor(requiredElement(app, '#weather-editor'), apiUrl, getToken);
+      case 'polls': return createPollManager(requiredElement(app, '#poll-manager'), apiUrl, getToken);
     }
   })();
 
@@ -119,4 +128,5 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
   if (result === 'expired') showStatus('The TV code expired. Request a new one on your TV.', 'error');
   if (result === 'error') showStatus('Pairing could not finish. Please request a new TV code.', 'error');
   if (result) window.history.replaceState({}, '', window.location.pathname);
+}
 }

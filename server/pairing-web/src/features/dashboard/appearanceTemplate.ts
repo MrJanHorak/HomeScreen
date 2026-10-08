@@ -7,6 +7,7 @@ export const APPEARANCE_EDITOR_TEMPLATE = `
         <div class="studio-preview">
           <div class="studio-preview-heading"><span class="field-label">TV PREVIEW</span><span>Updates as you edit</span></div>
           <div id="grid-editor"></div>
+          <div id="widget-preview"></div>
           <div id="tv-preview" class="tv-preview" aria-label="Approximate dashboard layout preview"></div>
         </div>
         <div class="studio-controls">
@@ -18,6 +19,7 @@ export const APPEARANCE_EDITOR_TEMPLATE = `
             <p id="cards-hint" class="field-hint">Drag to reorder, or use the arrow buttons. Wide cards take twice the row space.</p>
             <div id="card-list" class="card-list"></div>
             <div id="grid-position-controls"></div>
+            <div id="widget-studio"></div>
           </div></details>
           <details class="studio-section"><summary>2 · Colors and background</summary><div class="studio-section-body">
             <div class="editor-columns">

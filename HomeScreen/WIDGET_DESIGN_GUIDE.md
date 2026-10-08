@@ -10,6 +10,10 @@ agendas and clock-aware previews. See [other widget opportunities](WIDGET_LAYOUT
 and the implemented [Tasks checklist](TASKS_LAYOUT_DESIGN.md) and
 [Meals/Media/Activity refinements](PREVIEW_WIDGET_REFINEMENTS.md)
 for the applicability and reuse assessment.
+The [poll widget plan](POLLS_LAYOUT_DESIGN.md) proposes reusable poll rounds,
+multiple widget instances, protected participant access, and all 50 footprint
+mappings. Core behavior is implemented; see the
+[poll implementation guide](../server/pairing-web/POLLS.md) for release scope.
 
 ## Size contract
 

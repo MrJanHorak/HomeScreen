@@ -13,7 +13,7 @@ export function restoreSignInPath(): void {
     window.sessionStorage.removeItem('homescreen:signin-path');
   } catch { /* Private browsers may block storage; the URL still identifies the flow. */ }
 
-  if (url.pathname === '/pair' && (returnPath === '/settings' || returnPath === '/account')) {
+  if (url.pathname === '/pair' && (returnPath === '/settings' || returnPath === '/account' || returnPath === '/polls')) {
     url.pathname = returnPath;
   }
   if (url.pathname === '/pair' && returningToDashboard) {

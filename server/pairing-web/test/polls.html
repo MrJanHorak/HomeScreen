@@ -1,0 +1,7 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Poll fixture</title></head><body><div id="fixture"></div><script type="module">
+import '/src/styles/style.css';
+import {createPollManager} from '/src/features/polls/PollManager.tsx';
+import {mountPollParticipant} from '/src/features/polls/PollParticipant.tsx';
+if(new URLSearchParams(location.search).has('guest')) mountPollParticipant(document.querySelector('#fixture'),'a'.repeat(48));
+else {window.manager=createPollManager(document.querySelector('#fixture'),'/__fixture-api',async()=> 'test-token');window.manager.load();}
+</script></body></html>

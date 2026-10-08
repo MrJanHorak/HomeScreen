@@ -9,15 +9,17 @@ import MediaDetailView from './media/MediaDetailView';
 import MealDetailView from './meals/MealDetailView';
 import ToDoDetailView from './tasks/ToDoDetailView';
 import SettingsDetailView from '../settings/SettingsDetailView';
+import PollDetailView from './polls/PollDetailView';
+import {useAppearance} from '../../theme/ThemeContext';
 
-export type DetailTopic = CardId | 'settings';
+export type DetailTopic = CardId | 'settings' | `poll_${string}`;
 
 type DetailDefinition = Pick<TVDetailModalProps,
   'title' | 'subtitle' | 'icon' | 'iconColor' | 'badgeText'> & {
   View: React.ComponentType;
 };
 
-const DETAILS: Record<DetailTopic, DetailDefinition> = {
+const DETAILS: Record<CardId | 'settings', DetailDefinition> = {
   weather: {
     title: 'Weather Forecast', subtitle: 'Hourly conditions and the extended forecast',
     icon: 'weather-partly-cloudy', iconColor: '#38BDF8', badgeText: 'Forecast',
@@ -61,8 +63,15 @@ export default function DashboardDetailModal({topic, onClose, onPreviewAmbient}:
   onClose: () => void;
   onPreviewAmbient: () => void;
 }) {
+  const {appearance} = useAppearance();
   if (!topic) return null;
-  const {View: DetailView, ...header} = DETAILS[topic];
+  if (topic.startsWith('poll_')) {
+    const widget = appearance.widgetLayout?.widgets.find((w) => w.id === topic);
+    return <TVDetailModal visible onClose={onClose} title="Household poll" subtitle="Scan to join the decision" icon="vote-outline" iconColor="#38BDF8">
+      <PollDetailView roundId={widget?.roundId || ''}/>
+    </TVDetailModal>;
+  }
+  const {View: DetailView, ...header} = DETAILS[topic as CardId | 'settings'];
   return (
     <TVDetailModal visible onClose={onClose} {...header} spacious={topic === 'settings'}>
       {topic === 'settings'

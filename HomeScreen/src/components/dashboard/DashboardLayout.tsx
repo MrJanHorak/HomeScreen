@@ -4,14 +4,31 @@ import {getCardRows} from '../../theme/appearance';
 import useCompactTVLayout from '../../hooks/useCompactTVLayout';
 import DashboardCard from './DashboardCard';
 import DashboardGrid from './DashboardGrid';
+import {widgetRows, widgetRowWidths} from '../../../../server/functions/src/utils/widgets';
+import type {WidgetLayout} from '../../../../server/functions/src/utils/widgets';
+import {gridRect} from '../../../../server/functions/src/utils/dashboardLayout';
+import {useState} from 'react';
 
-export default function DashboardLayout({cards, grid, onOpen}: {
+export default function DashboardLayout({cards, grid, widgetLayout, onOpen}: {
   cards: CardPreference[];
   grid: DashboardAppearance['grid'];
-  onOpen: (id: CardId) => void;
+  widgetLayout?: WidgetLayout | null;
+  onOpen: (id: CardId | `poll_${string}`) => void;
 }) {
   const compact = useCompactTVLayout();
+  const [area, setArea] = useState({width: 0, height: 0});
   const rows = getCardRows(cards);
+  if (widgetLayout) return <View style={[styles.rows, compact && styles.compactRows]}>
+    {widgetLayout.grid ? <View style={{flex: 1}} onLayout={({nativeEvent: {layout}}) => setArea({width: layout.width, height: layout.height})}>
+      {area.width > 0 && [...widgetLayout.grid.items].sort((a, b) => a.y - b.y || a.x - b.x).map((item) => {
+        const widget = widgetLayout.widgets.find((w) => w.id === item.id)!;
+        return <DashboardCard key={item.id} id={item.id as CardId | `poll_${string}`} widget={widget} onOpen={onOpen}
+          style={{position: 'absolute', ...gridRect(item, area.width, area.height, compact ? 8 : 12), padding: compact ? 12 : 20, minHeight: 0, justifyContent: 'flex-start'}}/>;
+      })}
+    </View> : widgetRows(widgetLayout.widgets).map((row, index) => <View key={index} style={[styles.row, compact && styles.compactRow]}>
+      {row.map((widget, column) => <DashboardCard key={widget.id} id={widget.id as CardId | `poll_${string}`} widget={widget} onOpen={onOpen} style={{flex: widgetRowWidths(row)[column], height: '100%'}}/>)}
+    </View>)}
+  </View>;
   return (
     <View style={[styles.rows, compact && styles.compactRows]}>
       {grid ? <DashboardGrid grid={grid} onOpen={onOpen} /> : rows.map((row, index) => (

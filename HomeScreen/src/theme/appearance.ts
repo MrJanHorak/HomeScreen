@@ -4,6 +4,8 @@ import { validGrid } from '../../../server/functions/src/utils/dashboardLayout';
 import type { DashboardGridLayout } from '../../../server/functions/src/utils/dashboardLayout';
 import { validCardStyles } from '../../../server/functions/src/utils/cardStyle';
 import type { CardStyles } from '../../../server/functions/src/utils/cardStyle';
+import {validWidgetLayout} from '../../../server/functions/src/utils/widgets';
+import type {WidgetLayout} from '../../../server/functions/src/utils/widgets';
 import {
   DEFAULT_PHOTO_ZOOM,
   normalizePhotoZoom,
@@ -28,6 +30,7 @@ export interface CardPreference {
 }
 
 export interface DashboardAppearance {
+  widgetLayout?: WidgetLayout | null;
   layout: LayoutId;
   palette: PaletteChoice;
   customAccent: string;
@@ -276,5 +279,6 @@ export function normalizeAppearance(value: unknown): DashboardAppearance {
     ambient,
     grid,
     cardStyles,
+    ...(validWidgetLayout(raw.widgetLayout) ? {widgetLayout: raw.widgetLayout} : raw.widgetLayout === null ? {widgetLayout: null} : {}),
   };
 }

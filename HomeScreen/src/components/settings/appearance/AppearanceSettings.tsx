@@ -290,7 +290,7 @@ export default function AppearanceSettings({
             <Option
               label='Up'
               accessibilityLabel={`Move ${CARD_LABELS[card.id]} up`}
-              disabled={!ready || Boolean(appearance.grid) || index === 0}
+              disabled={!ready || Boolean(appearance.widgetLayout || appearance.grid) || index === 0}
               onPress={() => moveCard(card.id, -1)}
             />
             <Option
@@ -298,7 +298,7 @@ export default function AppearanceSettings({
               accessibilityLabel={`Move ${CARD_LABELS[card.id]} down`}
               disabled={
                 !ready ||
-                Boolean(appearance.grid) ||
+                Boolean(appearance.widgetLayout || appearance.grid) ||
                 index === appearance.cards.length - 1
               }
               onPress={() => moveCard(card.id, 1)}
@@ -309,7 +309,7 @@ export default function AppearanceSettings({
               accessibilityLabel={`${CARD_LABELS[card.id]} ${card.visible ? 'shown' : 'hidden'}`}
               disabled={
                 !ready ||
-                Boolean(appearance.grid) ||
+                Boolean(appearance.widgetLayout || appearance.grid) ||
                 (card.visible && visibleCount === 1)
               }
               onPress={() => toggleCard(card.id)}
@@ -317,7 +317,7 @@ export default function AppearanceSettings({
             <Option
               label={card.size === 'wide' ? 'Wide' : 'Standard'}
               accessibilityLabel={`${CARD_LABELS[card.id]} ${card.size} size`}
-              disabled={!ready || Boolean(appearance.grid)}
+              disabled={!ready || Boolean(appearance.widgetLayout || appearance.grid)}
               onPress={() => toggleCardSize(card.id)}
             />
           </View>
@@ -572,6 +572,7 @@ export default function AppearanceSettings({
 
       {section === 'layout' && (
         <>
+          {appearance.widgetLayout && <Text style={[styles.description, {color: theme.colors.textSecondary}]}>Your poll widget layout is managed in Settings → Companion site. TV color and background controls remain available.</Text>}
           {appearance.grid && (
             <Text
               style={[
@@ -591,7 +592,7 @@ export default function AppearanceSettings({
                 subtitle={LAYOUTS[id].description}
                 preview={<LayoutPreview cards={LAYOUTS[id].cards} />}
                 selected={appearance.layout === id}
-                disabled={!ready}
+                disabled={!ready || Boolean(appearance.widgetLayout)}
                 onPress={() => selectLayout(id)}
               />
             ))}
@@ -604,7 +605,7 @@ export default function AppearanceSettings({
           <Text
             style={[styles.description, { color: theme.colors.textSecondary }]}
           >
-            {appearance.grid
+            {appearance.widgetLayout ? 'Use Settings → Companion site to add, arrange, and style poll widgets.' : appearance.grid
               ? 'Use Settings → Companion site to edit this free layout. Choose a preset in Layout to use the TV card controls again.'
               : 'Change card order, visibility, and size. The preview updates as you go.'}
           </Text>
@@ -628,7 +629,7 @@ export default function AppearanceSettings({
           </View>
           <View style={styles.reset}>
             <Option
-              label='Restore default appearance'
+              label={appearance.widgetLayout ? 'Restore default colors and background' : 'Restore default appearance'}
               disabled={!ready}
               onPress={resetAppearance}
             />

@@ -7,6 +7,30 @@ const {MAX_DESIGNS, MAX_REVISIONS} = require("../lib/utils/appearanceLibrary");
 const appearance = {layout: "balanced", palette: "night", background: "photo", customAccent: "#38BDF8", backgroundColor: "#0F172A",
   cards: ["weather", "schedule", "activity", "media", "meal", "todo"].map((id) => ({id, visible: true, size: "standard"}))};
 
+test("old TV palette saves preserve widget instances; incompatible legacy arrangements cannot erase polls", async (t) => {
+  const widgetLayout = {version: 1, grid: null, widgets: [...appearance.cards.map((c) => ({...c, kind: c.id})),
+    {id: "poll_" + "a".repeat(32), kind: "poll", roundId: "b".repeat(32), visible: true, size: "standard"}]};
+  const f = fixture(t, {settings: {appearance: {...appearance, widgetLayout}, updatedAtMs: 42}}, "custom");
+  const saved = await f.publish({appearance: {...appearance, palette: "forest"}, expectedUpdatedAtMs: 42});
+  assert.equal(saved.statusCode, 200);
+  assert.deepEqual(f.records.settings.appearance.widgetLayout, widgetLayout);
+  const incompatible = {...appearance, cards: appearance.cards.map((c) => c.id === "weather" ? {...c, visible: false} : c)};
+  const rejected = await f.publish({appearance: incompatible, expectedUpdatedAtMs: saved.body.updatedAtMs});
+  assert.equal(rejected.statusCode, 400);
+  assert.deepEqual(f.records.settings.appearance.widgetLayout, widgetLayout);
+});
+
+test("poll widget layouts survive draft, named design, and published-history storage", async (t) => {
+  const widgetLayout = {version: 1, grid: null, widgets: [{id: "poll_" + "a".repeat(32), kind: "poll", roundId: "b".repeat(32), visible: true, size: "standard"}]};
+  const settings = {...appearance, widgetLayout}; const f = fixture(t);
+  const saved = await f.studio("PUT", {action: "saveDesign", name: "Poll night", appearance: settings, expectedUpdatedAtMs: 0});
+  assert.equal(saved.statusCode, 200); assert.deepEqual(saved.body.library.designs[0].appearance.widgetLayout, widgetLayout);
+  const draft = await f.studio("PUT", {action: "draft", draft: {appearance: settings, baseUpdatedAtMs: 0}, expectedUpdatedAtMs: saved.body.library.updatedAtMs});
+  assert.deepEqual(draft.body.library.draft.appearance.widgetLayout, widgetLayout);
+  const published = await f.publish({appearance: settings, expectedUpdatedAtMs: 0}); assert.equal(published.statusCode, 200);
+  assert.deepEqual(f.records.history.revisions[0].appearance.widgetLayout, widgetLayout);
+});
+
 function fixture(t, initial = {}, provider = "google.com") {
   const records = structuredClone(initial);
   const writes = [];

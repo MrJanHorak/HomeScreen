@@ -7,6 +7,12 @@ import type {UserPreferences} from '../../../shared/src/types';
 import {readJsonResponse} from '../../../shared/src/http';
 import {validatedApiUrl} from '../../../shared/src/transport';
 import { Platform } from 'react-native';
+import type {PollView} from '../../../server/functions/src/utils/polls';
+
+export async function fetchPollFeed(signal?: AbortSignal): Promise<{rounds: PollView[]; serverNowMs: number}> {
+  return authenticatedRequest('pollFeed', 'Could not refresh polls', {signal,
+    headers: {'X-Time-Zone': Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'}});
+}
 
 // Default to Firebase Local Emulator or configured remote URL
 const DEFAULT_API_URL = validatedApiUrl(

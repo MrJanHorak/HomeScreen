@@ -8,12 +8,16 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test:browser": "node --test test/appearanceEditor.test.cjs test/companion.test.cjs"
+    "test:browser": "node --test test/appearanceEditor.test.cjs test/companion.test.cjs test/polls.test.cjs"
   },
   "dependencies": {
-    "firebase": "^12.19.0"
+    "firebase": "^12.19.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3"
   },
   "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "typescript": "^6.0.3",
     "vite": "^8.0.0"
   }

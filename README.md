@@ -35,7 +35,7 @@ The screenshot shows one configured TV on October 1, 2026. See the [TV app READM
 | Cloud Functions and API setup | [server/functions/README.md](server/functions/README.md) |
 | Pairing site and meal Sheet setup | [server/pairing-web/README.md](server/pairing-web/README.md) |
 
-The sections below describe the product vision as well as implemented features. Family profiles, household polls, universal search, and cross-app deep links beyond supported Play Next intents remain future ideas.
+The sections below describe the product vision as well as implemented features. Family profiles, universal search, and cross-app deep links beyond supported Play Next intents remain future ideas.
 
 ---
 
@@ -258,6 +258,12 @@ Where supported by the platform and streaming provider, cross-app deep linking c
 This would allow HomeScreen to function as an alternative starting point to the default Smart TV launcher.
 
 ---
+
+Household polls now have reusable saved templates, independent voting rounds,
+QR participation, private names, browser/invitation duplicate protection, live
+results, TV-timezone deadlines, and multiple independently styled widgets.
+See the [poll implementation and release guide](server/pairing-web/POLLS.md).
+These source changes require Functions/Hosting/index deployment and an updated TV.
 
 # Architecture
 

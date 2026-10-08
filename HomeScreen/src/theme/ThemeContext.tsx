@@ -315,7 +315,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
               : item,
           ),
         })),
-      resetAppearance: () => setAppearance(DEFAULT_APPEARANCE),
+      resetAppearance: () => setAppearance((current) => ({...DEFAULT_APPEARANCE, ...(current.widgetLayout ? {widgetLayout: current.widgetLayout} : {})})),
     }),
     [ambientPhotos, appearance, photoDataUrl, ready],
   );

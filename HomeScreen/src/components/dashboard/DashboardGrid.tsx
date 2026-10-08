@@ -18,7 +18,7 @@ export default function DashboardGrid({ grid, onOpen }: {
         const rect = gridRect(item, size.width, size.height, compact ? 8 : 12);
         const padding = compact ? 12 : 20;
         return (
-          <DashboardCard key={item.id} id={item.id} onOpen={onOpen}
+          <DashboardCard key={item.id} id={item.id} onOpen={(id) => onOpen(id as CardId)}
             style={{ position: 'absolute', ...rect, minHeight: 0, padding, justifyContent: 'flex-start' }}
           />
         );

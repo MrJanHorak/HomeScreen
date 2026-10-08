@@ -8,6 +8,7 @@ import {validCardStyles} from "./utils/cardStyle";
 import {validPhotoZoom} from "./utils/photoFraming";
 import {MAX_REVISIONS, PublishedRevision} from "./utils/appearanceLibrary";
 import {isDeepStrictEqual} from "node:util";
+import {validWidgetLayout, legacyWidgetProjection} from "./utils/widgets";
 
 const CARD_IDS = ["weather", "schedule", "activity", "media", "meal", "todo"];
 const LAYOUTS = ["balanced", "agenda", "wellness", "calm", "custom"];
@@ -18,6 +19,7 @@ const AMBIENT_INFO_IDS = ["weather", "calendar", "activity", "tasks", "meals"];
 export function validAppearance(value: unknown): boolean {
   if (!value || typeof value !== "object") return false;
   const appearance = value as Record<string, unknown>;
+  if (appearance.widgetLayout !== undefined && appearance.widgetLayout !== null && !validWidgetLayout(appearance.widgetLayout)) return false;
   if (appearance.cardStyles !== undefined && !validCardStyles(appearance.cardStyles)) return false;
   if (appearance.backgroundZoom !== undefined && !validPhotoZoom(appearance.backgroundZoom)) return false;
   const ambient = appearance.ambient;
@@ -102,6 +104,13 @@ export async function handleUserAppearance(req: Request, res: Response): Promise
         const existing = snapshot.data();
         if (expected !== undefined && expected !== (existing?.updatedAtMs || 0)) return {conflict: true};
         const appearance = {...req.body.appearance};
+        if (appearance.widgetLayout === undefined && existing?.appearance?.widgetLayout) {
+          const previous = existing.appearance;
+          if (!isDeepStrictEqual(appearance.cards, previous.cards) ||
+            (appearance.grid !== undefined && !isDeepStrictEqual(appearance.grid, previous.grid))) return {invalid: true};
+          appearance.widgetLayout = previous.widgetLayout;
+        }
+        if (validWidgetLayout(appearance.widgetLayout)) Object.assign(appearance, legacyWidgetProjection(appearance.widgetLayout));
         if (appearance.backgroundZoom === undefined && existing?.appearance?.backgroundZoom !== undefined) {
           appearance.backgroundZoom = existing.appearance.backgroundZoom;
         }

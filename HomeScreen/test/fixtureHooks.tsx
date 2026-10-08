@@ -4,6 +4,8 @@ import {DEFAULT_APPEARANCE} from '../src/theme/appearance';
 import type {ReactNode} from 'react';
 import type {useDashboard as useDashboardContract} from '../src/context/DashboardContext';
 import type {useWatchNext as useWatchNextContract} from '../src/hooks/useWatchNext';
+import type {PollView} from '../../server/functions/src/utils/polls';
+import type {DashboardAppearance} from '../src/theme/appearance';
 
 export type FixtureDashboard = Pick<ReturnType<typeof useDashboardContract>,
   'isLoading' | 'activeLocation' | 'savedLocations' | 'getWeatherForLoc' | 'setActiveLocation' |
@@ -14,6 +16,8 @@ interface FixtureState {
   data: FixtureDashboard;
   watch: FixtureWatch;
   compact: boolean;
+  polls?: Record<string, PollView>;
+  appearance?: DashboardAppearance;
 }
 
 const Fixture = createContext<FixtureState | null>(null);
@@ -28,6 +32,8 @@ function useFixture(): FixtureState {
 export function useDashboard() {return useFixture().data;}
 export function useWatchNext() {return useFixture().watch;}
 export function useTheme() {return TVTheme;}
-export function useAppearance() {return {appearance: DEFAULT_APPEARANCE};}
+export function useAppearance() {return {appearance: useFixture().appearance || DEFAULT_APPEARANCE};}
+export function usePolls() {return {rounds: useFixture().polls || {}, loading: false, stale: false, offsetMs: 0, updatedAtMs: Date.now(), setVisible: () => undefined};}
+export const usePollVisibility = () => () => undefined;
 export function CardThemeProvider({children}: {children: ReactNode}) {return <>{children}</>;}
 export default function useCompactTVLayout() {return useFixture().compact;}

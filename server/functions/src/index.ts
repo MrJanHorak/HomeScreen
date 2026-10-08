@@ -24,6 +24,7 @@ import {linkedDevicesHandler} from "./linkedDevices";
 import {appearanceStudioHandler} from "./appearanceStudio";
 import {userPreferencesHandler} from "./userPreferences";
 import {deviceAppsHandler} from "./deviceApps";
+import {pollsHandler, pollFeedHandler, pollParticipantHandler, pollRetention} from "./polls";
 
 
 // import {onRequest} from "firebase-functions/https";
@@ -66,3 +67,7 @@ export const linkedDevices = linkedDevicesHandler;
 export const appearanceStudio = appearanceStudioHandler;
 export const userPreferences = userPreferencesHandler;
 export const deviceApps = deviceAppsHandler;
+export const polls = pollsHandler;
+export const pollFeed = pollFeedHandler;
+export const pollParticipant = pollParticipantHandler;
+export {pollRetention};

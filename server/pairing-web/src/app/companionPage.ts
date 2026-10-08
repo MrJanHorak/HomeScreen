@@ -2,7 +2,7 @@ import {pairingTemplate} from '../features/pairing/pairingTemplate';
 import {mealTemplate} from '../features/meals/mealTemplate';
 import {accountTemplate} from '../features/account/accountTemplate';
 
-export type CompanionPage = 'pair' | 'dashboard' | 'settings' | 'meals' | 'account';
+export type CompanionPage = 'pair' | 'dashboard' | 'settings' | 'meals' | 'account' | 'polls';
 
 interface PageCopy {
   title: string;
@@ -13,6 +13,9 @@ interface PageCopy {
 }
 
 const PAGE_COPY: Record<CompanionPage, PageCopy> = {
+  polls: {title: 'Polls · HomeScreen', eyebrow: 'HOUSEHOLD POLLS', heading: 'Make the next decision together.',
+    intro: 'Save questions, start fresh voting rounds, and add independently styled poll cards to your TV.',
+    privacy: 'Participant names and ballots are visible only to you. Archived private ballots are removed after 90 days.'},
   pair: {
     title: 'Pair your TV · HomeScreen',
     eyebrow: 'TV SETUP',
@@ -52,6 +55,7 @@ const PAGE_COPY: Record<CompanionPage, PageCopy> = {
 
 export function companionPageForPath(path: string): CompanionPage {
   switch (path) {
+    case '/polls': return 'polls';
     case '/dashboard': return 'dashboard';
     case '/settings': return 'settings';
     case '/meals': return 'meals';
@@ -62,6 +66,7 @@ export function companionPageForPath(path: string): CompanionPage {
 
 function siteNavigation(page: CompanionPage): string {
   const links: [CompanionPage, string][] = [
+    ['polls', 'Polls'],
     ['dashboard', 'Dashboard'], ['settings', 'Weather & goals'],
     ['meals', 'Meals'], ['account', 'TVs & account'], ['pair', 'Pair TV'],
   ];
@@ -99,6 +104,7 @@ function pageGuide(page: CompanionPage): string {
 
 function pageContent(page: CompanionPage): string {
   switch (page) {
+    case 'polls': return '<section id="poll-manager" aria-label="Manage household polls"></section>';
     case 'pair': return pairingTemplate();
     case 'meals': return mealTemplate();
     case 'account': return accountTemplate();

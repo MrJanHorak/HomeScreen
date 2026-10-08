@@ -6,8 +6,10 @@ Dashboard Studio at `/dashboard` offers automatic rows or a free layout canvas
 for weather, schedule, activity, media, meals, and tasks. The linked account
 owner signs in with Google; appearance needs no additional Google OAuth scope.
 All TVs paired to that account share the configuration. The header and favorite
-apps are outside the editable area. Polls and additional widget types are future
-work; see [the roadmap](COMPANION_ROADMAP.md).
+apps are outside the editable area. See [the roadmap](COMPANION_ROADMAP.md)
+for further widget types. Poll widgets are implemented
+through the additive instance contract described in [the poll guide](POLLS.md);
+the six-card legacy contract below remains the fallback for older TVs.
 
 Free layout supports pointer/touch movement and corner resizing, numeric position
 and size controls, and keyboard arrow movement. Changes autosave to an account

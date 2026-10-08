@@ -16,6 +16,7 @@ import {createAppearanceLibraryView} from './library/appearanceLibraryView';
 import {createAppearancePreview} from './preview/appearancePreview';
 import {createAppearanceCardsEditor} from './cards/appearanceCardsEditor';
 import {requiredElement} from '../../shared/dom';
+import {createWidgetStudio, applyWidgetLayout} from '../polls/WidgetStudio';
 
 export interface AppearanceEditor {
   load: () => Promise<void>;
@@ -88,6 +89,9 @@ export function createAppearanceEditor(
     appearance.layout = 'custom';
     render();
   }, (text) => message(text, 'error'), getElement('#grid-position-controls'));
+  const widgetStudio = createWidgetStudio(getElement('#widget-studio'), apiUrl, getToken, (widgetLayout) => {
+    appearance = applyWidgetLayout(appearance, widgetLayout); render();
+  }, getElement('#widget-preview'));
   const surfaces = createCardStyleEditor(getElement('#card-style-editor'), (id, style) => {
     appearance.cardStyles = {...appearance.cardStyles};
     if (style) appearance.cardStyles[id] = style;
@@ -166,7 +170,8 @@ export function createAppearanceEditor(
     preview.updateStyles(appearance, savedPhoto);
   }
   function loadDesign(value: unknown) {
-    appearance = normalizeAppearance(structuredClone(value));
+    const next = normalizeAppearance(structuredClone(value));
+    appearance = !next.widgetLayout && appearance.widgetLayout ? {...next, widgetLayout: appearance.widgetLayout} : next;
     render();
   }
   function changeCardVisibility(id: CardId, visible: boolean) {
@@ -219,6 +224,13 @@ export function createAppearanceEditor(
     backgroundColor.disabled = busy || appearance.background !== 'solid';
     cardEditor.render(appearance.cards, Boolean(appearance.grid), busy);
     preview.render(appearance, savedPhoto);
+    widgetStudio.render(appearance, busy);
+    if (appearance.widgetLayout) {
+      for (const selector of ['#card-list', '#grid-editor', '#tv-preview', '#card-style-editor', '#grid-position-controls', '#cards-hint']) getElement(selector).hidden = true;
+      mode.disabled = true; layout.disabled = true;
+    } else {
+      for (const selector of ['#card-list', '#tv-preview', '#card-style-editor', '#cards-hint']) getElement(selector).hidden = false;
+    }
     renderLibrary();
     updateActions();
   }
@@ -501,6 +513,7 @@ export function createAppearanceEditor(
     surfaces.clear();
     photos.clear();
     preview.clear();
+    widgetStudio.clear();
     libraryView.clear();
     busy = false;
     loaded = false;

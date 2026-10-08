@@ -1,6 +1,6 @@
 /** Public site links contain no pairing secret or account credentials. */
 export function companionSiteUrl(
-  path: '/dashboard' | '/meals',
+  path: '/dashboard' | '/meals' | '/polls',
   serverUrl?: string,
 ): string | null {
   const projectId = process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID;

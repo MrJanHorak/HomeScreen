@@ -3,6 +3,8 @@ import {validGrid} from '../../../../functions/src/utils/dashboardLayout';
 import type {DashboardGridLayout} from '../../../../functions/src/utils/dashboardLayout';
 import {validCardStyles} from '../../../../functions/src/utils/cardStyle';
 import type {CardStyles} from '../../../../functions/src/utils/cardStyle';
+import {validWidgetLayout} from '../../../../functions/src/utils/widgets';
+import type {WidgetLayout} from '../../../../functions/src/utils/widgets';
 import {DEFAULT_PHOTO_ZOOM, normalizePhotoZoom} from '../../../../functions/src/utils/photoFraming';
 import {normalizeAmbient} from './ambient/ambientPreferences';
 import type {Ambient} from './ambient/ambientPreferences';
@@ -14,6 +16,7 @@ export interface Card {
   size: 'standard' | 'wide';
 }
 export type Appearance = {
+  widgetLayout?: WidgetLayout | null;
   layout: 'balanced' | 'agenda' | 'wellness' | 'calm' | 'custom';
   palette: 'night' | 'forest' | 'plum' | 'contrast' | 'custom';
   customAccent: string;
@@ -97,6 +100,7 @@ export function normalizeAppearance(value: unknown): Appearance {
   if (!unique.some((card) => card.visible)) unique[0].visible = true;
   return {
     layout: validLayout(value.layout) ? value.layout : 'balanced',
+    ...(validWidgetLayout(value.widgetLayout) ? {widgetLayout: structuredClone(value.widgetLayout)} : value.widgetLayout === null ? {widgetLayout: null} : {}),
     palette: validPalette(value.palette) ? value.palette : 'night',
     customAccent: colorOrDefault(value.customAccent, defaults.customAccent),
     backgroundColor: colorOrDefault(value.backgroundColor, defaults.backgroundColor),
@@ -111,7 +115,7 @@ export function normalizeAppearance(value: unknown): Appearance {
 
 export function appearanceDifferences(draft: Appearance, published: Appearance): string[] {
   const groups: [string, (keyof Appearance)[]][] = [
-    ['layout and cards', ['layout', 'cards', 'grid']],
+    ['layout and cards', ['layout', 'cards', 'grid', 'widgetLayout']],
     ['colors', ['palette', 'customAccent']],
     ['background', ['background', 'backgroundColor', 'backgroundZoom']],
     ['card styles', ['cardStyles']],

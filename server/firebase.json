@@ -18,7 +18,8 @@
     }
   ],
   "firestore": {
-    "rules": "firestore.rules"
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
   },
   "hosting": {
     "public": "pairing-web/dist",
@@ -40,6 +41,9 @@
       { "source": "/", "destination": "/pair", "type": 302 }
     ],
     "rewrites": [
+      { "source": "/api/pollParticipant/**", "function": {"functionId": "pollParticipant", "region": "us-central1"} },
+      { "source": "/vote/**", "destination": "/index.html" },
+      { "source": "/polls", "destination": "/index.html" },
       { "source": "/pair", "destination": "/index.html" },
       { "source": "/dashboard", "destination": "/index.html" },
       { "source": "/settings", "destination": "/index.html" },

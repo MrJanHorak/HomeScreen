@@ -36,9 +36,9 @@
     "android:signing:init": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/init-android-signing.ps1",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "test:cards": "node --test test/cardContentLayout.test.cjs test/weatherCardLayout.test.cjs test/scheduleCardLayout.test.cjs test/tasksCardLayout.test.cjs",
+    "test:cards": "node --test test/cardContentLayout.test.cjs test/weatherCardLayout.test.cjs test/scheduleCardLayout.test.cjs test/tasksCardLayout.test.cjs test/pollCardLayout.test.cjs",
     "typecheck": "tsc --noEmit",
-    "test": "node --test test/api.test.cjs test/cardContentLayout.test.cjs test/activitySummary.test.cjs test/weatherCardLayout.test.cjs test/scheduleCardLayout.test.cjs test/tasksCardLayout.test.cjs",
+    "test": "node --test test/api.test.cjs test/cardContentLayout.test.cjs test/activitySummary.test.cjs test/weatherCardLayout.test.cjs test/scheduleCardLayout.test.cjs test/tasksCardLayout.test.cjs test/pollCardLayout.test.cjs",
     "test:browser": "node --test test/cardMatrix.test.cjs"
   },
   "private": true,

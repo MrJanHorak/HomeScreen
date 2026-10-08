@@ -82,7 +82,7 @@ export function findGridSpace(grid: DashboardGridLayout, id: DashboardCardId): G
 }
 
 /** Identical cell/gap geometry in the TV renderer and browser canvas. */
-export function gridRect(item: GridItem, width: number, height: number, gap: number) {
+export function gridRect(item: Pick<GridItem, "x" | "y" | "width" | "height">, width: number, height: number, gap: number) {
   const cellWidth = Math.max(0, (width - 11 * gap) / 12);
   const cellHeight = Math.max(0, (height - 5 * gap) / 6);
   return {
