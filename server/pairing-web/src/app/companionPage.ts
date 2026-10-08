@@ -13,41 +13,41 @@ interface PageCopy {
 }
 
 const PAGE_COPY: Record<CompanionPage, PageCopy> = {
-  polls: {title: 'Polls · HomeScreen', eyebrow: 'HOUSEHOLD POLLS', heading: 'Make the next decision together.',
-    intro: 'Save questions, start fresh voting rounds, and add independently styled poll cards to your TV.',
+  polls: {title: 'Polls · HomeScreen', eyebrow: 'CREATE & SHARE', heading: 'Polls',
+    intro: 'Ask a question, invite everyone to vote, and share the results on your TV.',
     privacy: 'Participant names and ballots are visible only to you. Archived private ballots are removed after 90 days.'},
   pair: {
     title: 'Pair your TV · HomeScreen',
     eyebrow: 'TV SETUP',
-    heading: 'Bring your dashboard to the big screen.',
+    heading: 'Connect a TV',
     intro: 'Sign in on this device, then enter the code shown on your TV. Your Google password stays off the TV.',
     privacy: 'Google will ask you to approve Calendar, Tasks, and activity access. You can revoke access in your Google account at any time.',
   },
   dashboard: {
     title: 'Dashboard studio · HomeScreen',
     eyebrow: 'DASHBOARD STUDIO',
-    heading: 'Shape your home screen.',
-    intro: 'Arrange cards, choose photos, and customize ambient mode. Drafts save privately until you publish to your TVs.',
+    heading: 'Your dashboard',
+    intro: 'Arrange your cards and make it yours. Preview your changes, then save them to your TVs.',
     privacy: 'Editing a design needs no additional Google permission. Choosing personal images asks for Google Photos access.',
   },
   settings: {
     title: 'TV settings · HomeScreen',
     eyebrow: 'TV SETTINGS',
-    heading: 'Set the right location.',
+    heading: 'Weather & activity',
     intro: 'Manage weather cities and activity goals with the Google account linked to your TVs.',
     privacy: 'Settings stay private to your linked Google account. Review or remove service connections in TVs & account.',
   },
   meals: {
     title: 'Connect your meal Sheet · HomeScreen',
     eyebrow: 'MEAL PLAN SETUP',
-    heading: 'Connect your dinner plan.',
+    heading: 'Meal plan',
     intro: 'Sign in with the Google account paired to your TV, then connect the Sheet you update with Gemini.',
     privacy: 'Google will ask you to approve Sheets access when you connect a meal plan. You can remove the connection here at any time.',
   },
   account: {
     title: 'TVs and account · HomeScreen',
     eyebrow: 'TVS & ACCOUNT',
-    heading: 'Your TVs and connections.',
+    heading: 'TVs & account',
     intro: 'Manage each TV’s name, favorite apps, and access. Review connected services and your saved data.',
     privacy: 'Settings stay private to your linked Google account. Review or remove service connections in TVs & account.',
   },
@@ -55,6 +55,7 @@ const PAGE_COPY: Record<CompanionPage, PageCopy> = {
 
 export function companionPageForPath(path: string): CompanionPage {
   switch (path) {
+    case '/': return 'dashboard';
     case '/polls': return 'polls';
     case '/dashboard': return 'dashboard';
     case '/settings': return 'settings';
@@ -65,14 +66,13 @@ export function companionPageForPath(path: string): CompanionPage {
 }
 
 function siteNavigation(page: CompanionPage): string {
-  const links: [CompanionPage, string][] = [
-    ['polls', 'Polls'],
-    ['dashboard', 'Dashboard'], ['settings', 'Weather & goals'],
-    ['meals', 'Meals'], ['account', 'TVs & account'], ['pair', 'Pair TV'],
-  ];
-  const items = links.map(([target, label]) =>
-    `<a href="/${target}" ${page === target ? 'aria-current="page"' : ''}>${label}</a>`);
-  return `<nav class="site-nav" aria-label="Companion site">${items.join('')}</nav>`;
+  const link = (target: CompanionPage, label: string, symbol: string) =>
+    `<a href="/${target}" ${page === target ? 'aria-current="page"' : ''}><span class="nav-symbol" aria-hidden="true">${symbol}</span>${label}</a>`;
+  return `<nav class="site-nav" aria-label="Companion site">
+    <div class="nav-group"><p class="nav-label">Your home screen</p>${link('dashboard', 'Dashboard', '▦')}${link('polls', 'Polls', '◷')}</div>
+    <div class="nav-group"><p class="nav-label">On your TV</p>${link('settings', 'Weather & goals', '☀')}${link('meals', 'Meals', '◉')}</div>
+    <div class="nav-group nav-manage"><p class="nav-label">Manage</p>${link('account', 'TVs & account', '▣')}${link('pair', 'Connect a TV', '+')}</div>
+  </nav>`;
 }
 
 function pageGuide(page: CompanionPage): string {
@@ -121,28 +121,23 @@ export function renderCompanionPage(root: HTMLElement, page: CompanionPage): voi
   const dashboardMode = page === 'dashboard';
   root.innerHTML = `
   <a class="skip-link" href="#page-content">Skip to controls</a>
-  <main class="layout companion-mode ${dashboardMode ? 'dashboard-mode' : ''} ${pairMode ? 'pair-mode' : ''}">
-    <div class="ambient ambient-one" aria-hidden="true"></div>
-    <div class="ambient ambient-two" aria-hidden="true"></div>
-    <section class="card" aria-labelledby="page-title">
-      <div class="brand"><span class="brand-mark">H</span><span>HomeScreen</span></div>
-      <p class="eyebrow">${copy.eyebrow} <span class="eyebrow-line"></span></p>
-      <h1 id="page-title">${copy.heading}</h1>
-      <p class="intro">${copy.intro}</p>
+  <div class="layout companion-mode ${dashboardMode ? 'dashboard-mode' : ''} ${pairMode ? 'pair-mode' : ''}">
+    <aside class="companion-sidebar">
+      <a class="brand" href="/dashboard" aria-label="HomeScreen dashboard"><span class="brand-mark">H</span><span>HomeScreen<small>TV companion</small></span></a>
       ${siteNavigation(page)}
-
-      ${!pairMode ? '' : `<div class="steps" aria-hidden="true">
-        <span class="step active"><span class="step-number">1</span> Sign in</span>
-        <span class="step-rule"></span>
-        <span class="step"><span class="step-number">2</span> Enter code</span>
-      </div>`}
-
+      <p class="sidebar-note">A little more home<br/>on your home screen.</p>
+    </aside>
+    <div class="companion-main">
+      <header class="companion-topbar"><span class="topbar-label">Your home, connected</span>
       <div class="account-panel">
-        <div class="account-copy"><span class="field-label">GOOGLE ACCOUNT</span><strong id="account-name">Not signed in</strong></div>
+        <div class="account-copy"><strong id="account-name">Not signed in</strong></div>
         <button id="signin-button" class="button button-secondary" type="button">Sign in with Google</button>
         <button id="signout-button" class="button button-text" type="button" hidden>Switch account</button>
       </div>
-
+      </header>
+    <main class="card" aria-labelledby="page-title">
+      <header class="page-heading"><p class="eyebrow">${copy.eyebrow}</p><h1 id="page-title">${copy.heading}</h1><p class="intro">${copy.intro}</p></header>
+      ${!pairMode ? '' : `<div class="steps" aria-hidden="true"><span class="step active"><span class="step-number">1</span> Sign in</span><span class="step-rule"></span><span class="step"><span class="step-number">2</span> Enter code</span></div>`}
       <div id="page-content" tabindex="-1" class="page-workspace">
       <div class="page-primary">
       ${pairMode ? pageContent(page) : ''}
@@ -154,8 +149,9 @@ export function renderCompanionPage(root: HTMLElement, page: CompanionPage): voi
       ${pageGuide(page)}
       </div>
       <div class="privacy-note"><span class="privacy-icon" aria-hidden="true">✦</span><span>${copy.privacy}</span></div>
-    </section>
-    <footer>Private by design <span>·</span> Made for your TV</footer>
-  </main>
+    </main>
+    <footer>HomeScreen <span>·</span> Made for your home</footer>
+    </div>
+  </div>
 `;
 }

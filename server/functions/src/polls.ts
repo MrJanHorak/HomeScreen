@@ -144,11 +144,20 @@ export async function handlePolls(req: Request, res: Response): Promise<void> {
     }
     if (action === "startRound") {
       if (!validPollId(body.templateId) || !validPollId(body.referenceDeviceId)) fail(400, "Choose a saved poll and linked TV");
-      const roundId = id(); const access = randomBytes(24).toString("hex"); const accessHash = hash(access);
+      if (body.requestId !== undefined && !validPollId(body.requestId)) fail(400, "Invalid start request");
+      const roundId = body.requestId || id(); const access = randomBytes(24).toString("hex"); const accessHash = hash(access);
+      // Validate configuration before committing a round. A failed response must
+      // not leave behind an inaccessible round or cause duplicate rounds on retry.
+      const encryptedAccess = encryptToken(access); linkUrl(access);
       const round = await runUserTransaction(uid, async (tx) => {
-        const [snapshot, device, all] = await Promise.all([tx.get(templates.doc(body.templateId)), tx.get(user.collection("devices").doc(body.referenceDeviceId)), tx.get(rounds.limit(100))]);
+        const [snapshot, device, all, previous] = await Promise.all([tx.get(templates.doc(body.templateId)), tx.get(user.collection("devices").doc(body.referenceDeviceId)), tx.get(rounds.limit(100)), tx.get(rounds.doc(roundId))]);
         const template = snapshot.data() as PollTemplate | undefined;
         if (!template || device.data()?.revokedAtMs !== 0) fail(404, "Saved poll or TV no longer exists");
+        if (previous.exists) {
+          const existing = previous.data() as PollRound;
+          if (existing.templateId !== body.templateId || existing.referenceDeviceId !== body.referenceDeviceId) fail(409, "Start request changed. Choose your poll again.");
+          return existing;
+        }
         if (all.size >= 100) fail(400, "Keep up to 100 rounds. Delete an old round first.");
         const reportedTimeZone = device.data()?.timeZone;
         const companionTimeZone = body.clientTimeZone ?? body.timeZone;
@@ -174,7 +183,7 @@ export async function handlePolls(req: Request, res: Response): Promise<void> {
         const definition = parsePollDefinition(template)!;
         const next: PollRound = {...definition, id: roundId, templateId: template!.id, referenceDeviceId: body.referenceDeviceId, timeZone,
           endsAtMs: endsAtMs!, state: "open", createdAtMs: Date.now(), revision: 1, total: 0, counts: {}, writtenCount: 0, pendingCount: 0,
-          accessHash, encryptedAccess: encryptToken(access), invitationCount: 0};
+          accessHash, encryptedAccess, invitationCount: 0};
         tx.create(rounds.doc(roundId), next);
         tx.create(db.collection("poll_links").doc(accessHash), {userId: uid, roundId, referenceDeviceId: body.referenceDeviceId});
         return next;
@@ -362,6 +371,6 @@ export const pollRetention = onSchedule("every 24 hours", async () => {
     await d.ref.update({purgedAtMs: Date.now(), archivedAtMs: FieldValue.delete()});
   }
 });
-export const pollsHandler = onRequest({cors: true, maxInstances: 5}, handlePolls);
-export const pollFeedHandler = onRequest({cors: true, maxInstances: 10}, handlePollFeed);
-export const pollParticipantHandler = onRequest({cors: false, maxInstances: 10}, handlePollParticipant);
+export const pollsHandler = onRequest({cors: true, maxInstances: 5, secrets: ["TOKEN_ENCRYPTION_KEY"]}, handlePolls);
+export const pollFeedHandler = onRequest({cors: true, maxInstances: 10, secrets: ["TOKEN_ENCRYPTION_KEY"]}, handlePollFeed);
+export const pollParticipantHandler = onRequest({cors: false, maxInstances: 10, secrets: ["TOKEN_ENCRYPTION_KEY"]}, handlePollParticipant);

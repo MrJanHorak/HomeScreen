@@ -35,6 +35,22 @@ integration('duration and open-ended rounds start before the TV reports a timezo
   const started=await f.owner({action:'startRound',templateId:saved.body.template.id,referenceDeviceId:'d'.repeat(32)});
   assert.equal(started.statusCode,200,JSON.stringify(started.body));assert.equal(started.body.round.endsAtMs,null);
 });
+integration('retrying the same start request creates one round and one voting link',async(t)=>{
+  const f=await fixture(t);const requestId=randomBytes(16).toString('hex');
+  const body={action:'startRound',requestId,templateId:f.template.id,referenceDeviceId:'d'.repeat(32)};
+  const starts=await Promise.all([f.owner(body),f.owner(body)]);
+  assert.ok(starts.every(r=>r.statusCode===200),JSON.stringify(starts));
+  assert.equal(starts[0].body.round.id,starts[1].body.round.id);assert.equal(starts[0].body.round.joinUrl,starts[1].body.round.joinUrl);
+  assert.equal((await f.user.collection('pollRounds').get()).size,2);
+  assert.equal((await db.collection('poll_links').where('userId','==',f.uid).get()).size,2);
+});
+integration('missing link configuration fails before writing an inaccessible round',async(t)=>{
+  const f=await fixture(t);const previous=process.env.PAIRING_URL;delete process.env.PAIRING_URL;
+  try {
+    const res=await f.owner({action:'startRound',templateId:f.template.id,referenceDeviceId:'d'.repeat(32)});
+    assert.equal(res.statusCode,500);assert.equal((await f.user.collection('pollRounds').get()).size,1);
+  } finally {process.env.PAIRING_URL=previous;}
+});
 integration('local deadlines use automatic companion fallback then TV reports without moving existing deadlines',async(t)=>{
   const f=await fixture(t,{}, {timeZone:null});
   const body={action:'startRound',templateId:f.template.id,referenceDeviceId:'d'.repeat(32),endsLocal:'2030-10-07T18:30',clientTimeZone:'Pacific/Honolulu'};

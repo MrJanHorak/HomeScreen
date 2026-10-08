@@ -7,20 +7,25 @@ index, then update the TV app, to make these source changes available to users.
 ## Owner workflow
 
 1. Sign into `/polls` with the Google account linked to the TV.
-2. Under Saved polls, enter a question and choices, enable Other, or choose
-   written-only answers. Save the poll for reuse. Editing a template affects
+2. Choose New poll, enter a question and choices, enable Other, or choose
+   written-only answers. Save the poll for reuse. The next step opens immediately.
+   Editing a saved question affects
    future rounds; existing rounds retain their question/options snapshot.
-3. Start a round under Active rounds. Select a reference TV and optional closing
-   date/time in its timezone. Blank uses the saved duration; blank duration means
+3. Choose the TV and when voting closes, then Start voting. The saved duration
+   is selected by default; At a specific date and time reveals the closing-date
+   input. A blank saved duration means
    no deadline. The TV's timezone is detected automatically from authenticated
    dashboard requests, including existing TV clients and cached responses. There
    is no manual timezone field. Before the first TV report, the closing-date field
    explicitly uses the companion device's local timezone. Duration/open-ended
    rounds can start without a timezone report.
-4. Open Dashboard Studio, enable poll widgets, select a round, and Add poll.
+4. Choose Add to dashboard on the success panel or any voting round. The dashboard
+   opens with that round selected in the visible Add a poll panel. Choose Add poll;
+   the existing card layout upgrades automatically without a separate enable step.
    Hide/move cards as needed. Rows support eight visible widgets; free layout
    supports twelve minimum-size widgets and all 50 existing footprints.
-5. Edit each widget's color, opacity, borders, accent, and presentation. Save to
+5. Edit each widget's color, opacity, borders, accent, and presentation. The draft
+   status, undo/redo, and Save to TV controls sit above the workspace. Save to
    TV publishes the draft. Placement uses the existing 45-second appearance
    refresh; open-poll counts refresh every three seconds independently of other
    dashboard services.
@@ -34,6 +39,9 @@ link, and participant eligibility.
 Owners can privately review ballots, approve/hide write-ins, export CSV, close
 now, extend an open deadline, rotate a voting link, archive, and delete completed
 rounds. CSV export checks revisions across pages and escapes spreadsheet formulas.
+Secondary round actions live under Manage this voting round. Invitation polls
+show code creation beside their results. Live owner views refresh every 15 seconds
+while visible and idle; manual Refresh polls remains available.
 
 ## Participant access and uniqueness
 
@@ -142,6 +150,12 @@ NODE_PATH/PLAYWRIGHT_CHROMIUM_EXECUTABLE overrides support bundled tooling.
 
 Deploy Functions/Hosting/indexes together using the existing TOKEN_ENCRYPTION_KEY
 and canonical PAIRING_URL configuration, then distribute an updated TV binary.
+All three HTTP poll triggers explicitly bind TOKEN_ENCRYPTION_KEY; otherwise a
+deployed function cannot create/decrypt links or sign browser cookies even when
+emulator tests supply a local environment value. The endpoint-manifest regression
+test checks these bindings. Starting validates link/encryption configuration before
+any writes. The companion retains a start request ID across retries, and server
+transactions return the original round instead of creating duplicate rounds.
 Staging/physical checks still required: actual Hosting cookie forwarding, Google
 sign-in return to `/polls`, native D-pad/return focus, ten-foot readability, and QR
 scan distance. No production deployment or physical-TV verification was performed.

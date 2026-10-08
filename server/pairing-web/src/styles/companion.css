@@ -1,0 +1,121 @@
+/* Shared companion surfaces and hierarchy. Participant pages keep their own shell. */
+.companion-mode {
+  --surface: #1b252b;
+  --surface-soft: #172127;
+  --border: #34434a;
+  --muted: #acbdc3;
+  --ink: #edf5f2;
+  --accent: #b9e6d1;
+  display: grid;
+  grid-template-columns: 212px minmax(0, 1fr);
+  align-items: stretch;
+  padding: 0;
+  background: #121b20;
+  overflow: clip;
+  color: var(--ink);
+}
+.companion-sidebar { padding: 30px 18px; background: #10191e; border-right: 1px solid #29363d; }
+.companion-sidebar .brand { color: var(--ink); text-decoration: none; font-size: 19px; padding: 0 8px; }
+.brand small { display: block; font: 400 11px/1.8 'DM Sans', sans-serif; color: var(--muted); letter-spacing: .03em; }
+.companion-mode .site-nav { display: grid; gap: 24px; margin: 38px 0; }
+.nav-group { display: grid; gap: 4px; }
+.nav-label { margin: 0 10px 6px; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #8eaaa7; }
+.companion-mode .site-nav a { gap: 12px; border: 0; background: transparent; color: #b6c6c9; border-radius: 10px; padding: 12px; font-size: 14px; text-decoration: none; }
+.companion-mode .site-nav a:hover { background: #ffffff07; color: #edf5f2; }
+.companion-mode .site-nav a[aria-current=page] { background: #244038; color: #d1f2e1; font-weight: 600; box-shadow: none; }
+.nav-symbol { font-size: 19px; width: 20px; text-align: center; }
+.sidebar-note { margin: 60px 12px 0; color: #819a9b; font-size: 12px; line-height: 1.8; }
+.companion-main { min-width: 0; }
+.companion-topbar { min-height: 78px; padding: 16px 36px; border-bottom: 1px solid #29363d; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.topbar-label { font-size: 12px; color: var(--muted); }
+.companion-mode .account-panel { min-height: 0; margin: 0; padding: 0; border: 0; background: none; gap: 14px; flex-direction: row; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.companion-mode .account-copy { min-width: 0; }
+.companion-mode #account-name { color: #b6c6c9; font-size: 12px; max-width: 240px; overflow-wrap: anywhere; }
+.companion-mode .card { max-width: 1280px; width: 100%; padding: 36px 40px; margin: 0 auto; border: 0; border-radius: 0; background: none; box-shadow: none; }
+.companion-mode .page-heading { margin-bottom: 30px; }
+.companion-mode .eyebrow { margin: 0 0 10px; font-size: 10px; letter-spacing: .12em; color: #91b8ab; }
+.companion-mode h1 { font-size: clamp(28px, 3vw, 36px); line-height: 1.2; letter-spacing: -.03em; font-weight: 500; }
+.companion-mode .intro { font-size: 14px; margin: 12px 0 0; max-width: 680px; line-height: 1.7; }
+.companion-mode .privacy-note { margin-top: 36px; padding-top: 18px; border-top: 1px solid #29363d; font-size: 11px; line-height: 1.7; }
+.companion-mode footer { padding: 0 32px 24px; margin: 0; font-size: 11px; text-align: center; color: #839b9c; }
+.companion-mode .page-workspace { gap: 24px; }
+.companion-mode .page-guide { background: var(--surface-soft); border-color: #293b42; border-radius: 16px; padding: 22px; }
+.companion-mode :is(.studio-section, .poll-panel, .widget-row, .device-card, .help-panel) { background: var(--surface-soft); border-color: var(--border); box-shadow: none; }
+.companion-mode :is(input:not([type=checkbox]):not([type=radio]):not([type=range]), select, textarea) { background: #111c22; color: var(--ink); border: 1px solid #485c64; border-radius: 10px; font: inherit; min-width: 0; }
+.companion-mode :is(input:not([type=checkbox]):not([type=radio]):not([type=range]), select) { min-height: 44px; }
+.companion-mode :is(input, textarea)::placeholder { color: #879da5; }
+.companion-mode .button { border-radius: 10px; min-height: 44px; font-weight: 600; font-size: 13px; width: auto; }
+.companion-mode a { color: var(--accent); }
+.companion-mode #connect-button { width: 100%; }
+.companion-mode .button-primary { background: var(--accent); color: #17352b; border: 1px solid var(--accent); box-shadow: none; }
+.companion-mode .button-secondary { background: #24343a; color: #e0eeea; border: 1px solid #506369; }
+.companion-mode .button-text { color: #b9cec9; background: transparent; border-color: transparent; }
+.companion-mode .button:hover:not(:disabled) { transform: none; filter: brightness(1.06); }
+.companion-mode .studio-workspace { gap: 24px; }
+.companion-mode .studio-preview { top: 24px; border-color: var(--border); background: #10191e; padding: 18px; border-radius: 16px; order: 0; }
+.companion-mode .studio-controls { order: 1; }
+.studio-actionbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding: 18px 0; margin-bottom: 20px; border-block: 1px solid #34434a; }
+.studio-actionbar > div { min-width: 0; }
+.studio-actionbar #draft-status { margin: 0; max-width: 320px; }
+.companion-mode .studio-actionbar .draft-actions, .companion-mode .studio-actionbar .editor-actions { margin: 0; }
+.companion-mode .studio-add-poll .widget-add-controls { align-items: center; }
+.companion-mode .studio-add-poll .widget-add-controls select { flex-basis: 180px; }
+.companion-mode .poll-empty .button { min-width: 200px; }
+.companion-mode .studio-preview-heading { margin-bottom: 14px; }
+.companion-mode .studio-section { border-radius: 14px; margin-top: 12px; }
+.companion-mode .studio-controls > .studio-section:first-child { margin-top: 0; }
+.companion-mode .studio-section > summary { min-height: 52px; padding: 16px 18px; font-size: 14px; font-weight: 600; color: #deece7; }
+.companion-mode .studio-section-body { padding: 0 18px 18px; }
+.companion-mode .studio-photos { padding: 12px 0; margin-top: 16px; border-top: 1px solid var(--border); }
+.companion-mode .studio-photos > summary { min-height: 44px; cursor: pointer; font-size: 13px; }
+.companion-mode .draft-actions { margin-top: 24px; gap: 8px; }
+.companion-mode .editor-actions { gap: 10px; }
+.companion-mode .field-hint { color: var(--muted); }
+.companion-mode .status { font-size: 13px; line-height: 1.6; }
+.companion-mode .status[data-kind=error]:not(:empty) { padding: 12px 16px; background: #452d2d; border: 1px solid #775150; color: #ffe0d9; border-radius: 10px; }
+.companion-mode .poll-manager button:not(.button) { border-color: #4b6267; background: #26373d; }
+.companion-mode .poll-tabs button[aria-selected=true] { border-color: #7eac9b; background: #28473d; color: #d6f4e5; }
+.companion-mode .poll-track { background: #34484e; }
+.companion-mode .poll-track > div { background: #aadbc4; }
+.companion-mode .poll-panel { padding: 24px; border-radius: 16px; }
+.companion-mode .poll-page-toolbar > .editor-actions { flex-direction: row; align-items: center; }
+.companion-mode .poll-page-toolbar .button-primary { flex: initial; }
+.poll-editor .poll-section-heading, .poll-start .poll-section-heading { flex-wrap: nowrap; align-items: flex-start; }
+.poll-editor .poll-section-heading > div, .poll-start .poll-section-heading > div { flex: 1; min-width: 0; }
+.poll-editor .poll-section-heading .button, .poll-start .poll-section-heading .button { flex-shrink: 0; }
+@media (min-width: 1050px) {
+  .companion-sidebar { position: sticky; top: 0; align-self: start; height: 100vh; }
+  .companion-mode .studio-workspace { grid-template-columns: minmax(0, 1.12fr) minmax(340px, .88fr); }
+  .companion-mode .studio-preview { grid-column: 1; grid-row: 1; }
+  .companion-mode .studio-controls { grid-column: 2; grid-row: 1; }
+}
+@media (max-width: 1049px) {
+  .companion-mode { grid-template-columns: 1fr; }
+  .companion-sidebar { border-right: 0; border-bottom: 1px solid #29363d; padding: 18px 24px 12px; }
+  .companion-mode .site-nav { display: flex; flex-wrap: wrap; margin: 18px 0 0; gap: 6px; }
+  .nav-group { display: contents; }
+  .nav-label, .sidebar-note { display: none; }
+  .companion-mode .site-nav a { padding: 10px 12px; font-size: 13px; }
+  .nav-symbol { display: none; }
+  .companion-topbar { min-height: 60px; padding: 12px 24px; }
+  .companion-mode .card { padding: 28px 24px; }
+  .companion-mode .studio-workspace { display: flex; flex-direction: column; }
+  .companion-mode .studio-preview, .companion-mode .studio-controls { width: 100%; }
+}
+@media (max-width: 599px) {
+  .companion-mode .studio-add-poll .widget-add-controls select { flex-basis: 100%; }
+  .companion-sidebar { padding: 18px 16px 12px; }
+  .companion-mode .brand { padding: 0; }
+  .companion-mode .site-nav { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .companion-mode .site-nav a { justify-content: center; text-align: center; padding: 8px 4px; font-size: 12px; line-height: 1.4; }
+  .companion-topbar { padding: 12px 16px; }
+  .topbar-label { display: none; }
+  .companion-mode .account-panel { width: 100%; justify-content: space-between; gap: 8px; }
+  .companion-mode #account-name { max-width: 180px; font-size: 11px; }
+  .companion-mode .card { padding: 24px 16px; }
+  .companion-mode .page-heading { margin-bottom: 24px; }
+  .companion-mode .poll-panel { padding: 18px; }
+  .companion-mode .studio-preview { position: static; padding: 12px; }
+  .companion-mode .page-workspace { grid-template-columns: 1fr; }
+  .companion-mode .studio-workspace { grid-template-columns: 1fr; }
+}

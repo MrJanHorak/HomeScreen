@@ -13,6 +13,7 @@ import {createAccountController} from './features/account/accountController';
 import './styles/style.css';
 import {mountPollParticipant} from './features/polls/PollParticipant';
 import {createPollManager} from './features/polls/PollManager';
+import './styles/companion.css';
 
 if (window.location.pathname.startsWith('/vote/')) {
   mountPollParticipant(requiredElement<HTMLDivElement>(document, '#app'), window.location.pathname.slice('/vote/'.length));

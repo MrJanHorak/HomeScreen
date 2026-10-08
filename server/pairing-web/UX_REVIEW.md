@@ -1,5 +1,43 @@
 # Companion UX review and settings parity
 
+## October 7 update: navigation and poll workflow
+
+The companion now uses a shared application shell instead of a large setup card
+on every route. Desktop navigation groups Dashboard and Polls, TV content, and
+account/setup actions. Phones use the same links in a compact grid. Account identity
+and switching sit in the header. Page titles describe the destination; explanatory
+copy stays short and the controls follow directly. The root URL opens Dashboard.
+
+Polls have one editing step at a time: New poll → save question → choose TV and
+closing rule → Start voting → Add to dashboard. Saved questions, live voting, and
+history use separate library views. Reusable React components own question editing,
+starting, saved-question cards, and voting-result cards. Advanced privacy settings
+and round-management actions use disclosure; invitation codes and pending review
+stay visible where the owner needs them. Tabs support arrow-key navigation.
+
+Dashboard provides Add a poll above the editor, with the requested voting round
+preselected from a poll's link. Adding automatically preserves/upgrades the existing
+layout. The preview and controls remain together; draft status, undo/redo, and Save
+to TV appear above them. Photo selection lives beside background settings. Linked
+TVs precede connected services in account management. Data deletion remains inside
+its explicit management disclosure and confirmation flow.
+
+The reported startup failure exposed missing secret bindings in all three poll
+HTTP trigger definitions. These are now explicit and checked in the deployment
+manifest test, following [Firebase's secret binding requirements](https://firebase.google.com/docs/functions/config-env).
+Configuration is validated before a round is committed; start retries carry one
+request ID. A successful mutation followed by a failed library refresh is reported
+as saved, keeping its next-step link, rather than inviting another submission.
+
+Browser checks cover all six pages at 320, 390, 768, 1024, and 1440 pixels, along
+with draft recovery, saving, account isolation, Photos, poll setup, repeat-start
+recovery, and independent widget styles. Phone/desktop screenshots are inspected
+to adjust hierarchy, control widths, and save placement. These are local source
+and fixture checks; production logs, deployment, real Google consent, physical TV
+scanning, and user usability sessions have not been verified in this update.
+
+The October 4 review below records the earlier settings-parity work.
+
 Reviewed October 4, 2026 against the companion source, TV settings, authenticated API contracts, and local browser screenshots. The browser runs use mocked sign-in and API responses. Production Google consent, Photos downloads, and physical TV interaction still require a release smoke test.
 
 The existing dark palette, restrained accent, clear labels, and live dashboard preview were a good visual foundation. The original companion did not yet offer complete settings parity: weather cities and favorite apps were local to the TV, photo selection started on the TV, and ambient preferences had no companion controls. Pairing and meal setup stayed in a narrow phone card on larger screens. Repeated account sections and prominent destructive actions also competed with the main task.

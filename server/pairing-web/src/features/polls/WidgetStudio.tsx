@@ -10,12 +10,18 @@ import {pollApi} from './pollApi';
 import type {PollRequest, PollLibrary, RoundSummary} from './pollApi';
 import './polls.css';
 
-function WidgetStudio({appearance, busy, request, update, previewRoot}: {appearance: Appearance; busy: boolean; request: PollRequest; update: (layout: WidgetLayout) => void; previewRoot: HTMLElement}) {
+function WidgetStudio({appearance, busy, request, update, previewRoot, addRoot}: {appearance: Appearance; busy: boolean; request: PollRequest; update: (layout: WidgetLayout) => void; previewRoot: HTMLElement; addRoot: HTMLElement}) {
   const layout = appearance.widgetLayout;
   const [rounds, setRounds] = useState<RoundSummary[]>([]); const [roundId, setRoundId] = useState(''); const [selected, setSelected] = useState(''); const [message, setMessage] = useState('');
-  const enabled = !!layout;
-  useEffect(() => {let active = true; if (enabled) void request<PollLibrary>('polls').then((library) => {if (active) {setRounds(library.rounds.filter((r) => r.state !== 'archived')); setMessage('');}}).catch((e) => {if (active) setMessage(e.message);});
-    return () => {active = false;};}, [request, enabled]);
+  const [loading, setLoading] = useState(true); const [refresh, setRefresh] = useState(0);
+  useEffect(() => {let active = true; setLoading(true);
+    void request<PollLibrary>('polls').then((library) => {if (active) {
+      const available = library.rounds.filter((r) => r.state !== 'archived'); setRounds(available);
+      const requested = new URLSearchParams(window.location.search).get('poll');
+      setRoundId((current) => available.some((r) => r.id === current) ? current : available.find((r) => r.id === requested)?.id || available.find((r) => r.state === 'open')?.id || available[0]?.id || '');
+      setMessage(requested && !available.some((r) => r.id === requested) ? 'That poll is no longer available. Choose another voting round below.' : '');
+    }}).catch((e) => {if (active) setMessage(e.message);}).finally(() => {if (active) setLoading(false);});
+    return () => {active = false;};}, [request, refresh]);
   const label = (widget: Widget) => widget.kind === 'poll' ? rounds.find((r) => r.id === widget.roundId)?.question || 'Poll' : CARD_LABELS[widget.kind];
   function commit(next: WidgetLayout) {if (!validWidgetLayout(next)) {setMessage('Keep at least one widget visible, up to eight in rows, or twelve fitting the free canvas. Widgets cannot overlap.'); return;} setMessage(''); update(next);}
   function change(id: string, changes: Partial<Widget>) {if (layout) commit({...layout, widgets: layout.widgets.map((w) => w.id === id ? {...w, ...changes} : w)});}
@@ -29,23 +35,29 @@ function WidgetStudio({appearance, busy, request, update, previewRoot}: {appeara
     commit({...layout, grid, widgets: layout.widgets.map((w) => w.id === widget.id ? {...w, visible} : w)});
   }
   function addPoll() {
-    if (!layout || !roundId) return;
+    if (!roundId) return;
+    const current = layout || widgetsFromLegacy(appearance.cards, appearance.grid, appearance.cardStyles);
     const widget: Widget = {id: `poll_${crypto.randomUUID().replaceAll('-', '')}`, kind: 'poll', roundId, visible: true, size: 'standard', presentation: 'auto'};
-    let grid = layout.grid;
+    let grid = current.grid;
     if (grid) {const space = freeWidgetSpace(grid, widget.id); if (!space) {setMessage('The canvas is full. Shrink or hide a widget first.'); return;} grid = {...grid, items: [...grid.items, space]};}
-    commit({...layout, grid, widgets: [...layout.widgets, widget]}); setSelected(widget.id);
+    const next = {...current, grid, widgets: [...current.widgets, widget]};
+    if (!validWidgetLayout(next)) {setMessage('Your automatic rows are full. Hide a card or switch to Free layout before adding another poll.'); return;}
+    commit(next); setSelected(widget.id);
   }
   return <section className="widget-studio" aria-label="Poll widgets and arrangement">
-    {!layout ? <><p className="widget-note">Add independently styled poll cards to your existing dashboard.</p><button type="button" className="button button-secondary" disabled={busy} onClick={() => update(widgetsFromLegacy(appearance.cards, appearance.grid, appearance.cardStyles))}>Enable poll widgets</button><a href="/polls" className="guide-link">Create and reuse polls →</a></> : <>
+    {createPortal(<section className="studio-add-poll" aria-labelledby="studio-add-poll-title"><div className="poll-section-heading"><div><h2 id="studio-add-poll-title">Add a poll to your dashboard</h2><p className="field-hint">Choose a voting round, then arrange and style its card below.</p></div><a className="guide-link" href="/polls">Manage polls →</a></div>
+      <div className="widget-add-controls"><select aria-label="Poll round to add" disabled={busy || loading || !rounds.length} value={roundId} onChange={(e) => setRoundId(e.target.value)}><option value="">{loading ? 'Loading polls…' : 'Choose a voting round'}</option>{rounds.map((r) => <option key={r.id} value={r.id}>{r.question} · {r.state === 'open' ? 'Voting open' : 'Results'}</option>)}</select><button type="button" className="button button-primary" disabled={busy || loading || !roundId} onClick={addPoll}>Add poll</button><button type="button" className="button button-text" disabled={busy || loading} onClick={() => setRefresh((n) => n + 1)}>Refresh</button></div>
+      {!loading && !rounds.length && <p className="field-hint">No voting rounds yet. <a href="/polls">Create a poll and start voting →</a></p>}
+      <p role="status" className="status" data-kind="error">{message}</p>
+    </section>, addRoot)}
+    {!layout ? null : <>
       <label>Arrangement<select disabled={busy} value={layout.grid ? 'grid' : 'rows'} onChange={(e) => commit({...layout, grid: e.target.value === 'grid' ? widgetGridFromRows(layout.widgets) : null})}><option value="rows">Automatic rows</option><option value="grid">Free layout · all 50 sizes</option></select></label>
-      <div className="widget-toolbar"><select aria-label="Poll round to add" disabled={busy} value={roundId} onChange={(e) => setRoundId(e.target.value)}><option value="">Choose a voting round</option>{rounds.map((r) => <option key={r.id} value={r.id}>{r.question} · {r.state}</option>)}</select><button type="button" className="button button-secondary" disabled={busy || !roundId} onClick={addPoll}>Add poll</button></div>
-      <a href="/polls" className="guide-link">Create or manage saved polls →</a>
       {createPortal(<div className="widget-canvas" aria-label="Widget layout preview">{(layout.grid || widgetGridFromRows(layout.widgets)).items.map((item) => {const widget = layout.widgets.find((w) => w.id === item.id)!;
         const custom = widget.style && !widget.style.useThemeSurface ? widget.style : null;
         return <button type="button" key={item.id} disabled={busy} aria-pressed={selected === item.id} onClick={() => setSelected(item.id)} style={{gridColumn: `${item.x + 1}/span ${item.width}`, gridRow: `${item.y + 1}/span ${item.height}`, background: custom ? cardSurface(custom) : '#24344d', color: custom ? cardInk(custom, appearance.backgroundColor, appearance.customAccent).primary : '#fff', borderRadius: custom?.borderRadius, borderWidth: custom?.borderWidth}}>{label(widget)}<small>{item.width} × {item.height}{widget.kind === 'poll' ? ` · ${rounds.find((r) => r.id === widget.roundId)?.total ?? 0} votes` : ''}</small></button>;
       })}</div>, previewRoot)}
       <p className="widget-note">Select a widget for precise positioning. Changes remain in your draft until Save to TV. Small polls open a larger QR when selected on the TV.</p>
-      {layout.widgets.map((widget, index) => <article className="widget-row" key={widget.id}>
+      {layout.widgets.map((widget, index) => <article className={`widget-row ${selected === widget.id ? 'is-selected' : ''}`} key={widget.id}>
         <div className="widget-toolbar"><h3>{label(widget)}</h3><button type="button" disabled={busy} onClick={() => setSelected(selected === widget.id ? '' : widget.id)}>{selected === widget.id ? 'Hide controls' : 'Edit widget'}</button></div>
         <div className="widget-toolbar"><label><input type="checkbox" disabled={busy} checked={widget.visible} onChange={(e) => visibility(widget, e.target.checked)}/>Visible</label>
           {!layout.grid && <><button type="button" disabled={busy || index === 0} onClick={() => {const widgets = [...layout.widgets]; [widgets[index - 1], widgets[index]] = [widgets[index], widgets[index - 1]]; commit({...layout, widgets});}}>↑</button><button type="button" disabled={busy || index === layout.widgets.length - 1} onClick={() => {const widgets = [...layout.widgets]; [widgets[index], widgets[index + 1]] = [widgets[index + 1], widgets[index]]; commit({...layout, widgets});}}>↓</button></>}
@@ -72,13 +84,12 @@ function WidgetStudio({appearance, busy, request, update, previewRoot}: {appeara
         </fieldset>}
       </article>)}
     </>}
-    <p role="status" className="status" data-kind="error">{message}</p>
   </section>;
 }
-export function createWidgetStudio(root: HTMLElement, apiUrl: string, getToken: () => Promise<string | null>, update: (layout: WidgetLayout) => void, previewRoot: HTMLElement) {
+export function createWidgetStudio(root: HTMLElement, apiUrl: string, getToken: () => Promise<string | null>, update: (layout: WidgetLayout) => void, previewRoot: HTMLElement, addRoot: HTMLElement) {
   const reactRoot = createRoot(root); let generation = 0;
   const request = pollApi(apiUrl, async () => {const current = generation; const token = await getToken(); if (current !== generation) throw new Error('Account changed.'); return token;});
-  return {render(appearance: Appearance, busy: boolean) {reactRoot.render(<WidgetStudio key={generation} appearance={appearance} busy={busy} request={request} update={update} previewRoot={previewRoot}/>);},
+  return {render(appearance: Appearance, busy: boolean) {reactRoot.render(<WidgetStudio key={generation} appearance={appearance} busy={busy} request={request} update={update} previewRoot={previewRoot} addRoot={addRoot}/>);},
     clear() {generation++; reactRoot.render(null);}};
 }
 export function applyWidgetLayout(appearance: Appearance, widgetLayout: WidgetLayout): Appearance {return {...appearance, widgetLayout, ...legacyWidgetProjection(widgetLayout), layout: 'custom'};}

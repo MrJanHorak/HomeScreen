@@ -4,6 +4,13 @@ const {parsePollDefinition, parseBallot, pollState, pollLocalDeadline, resultsAl
 const {validWidgetLayout, validWidgetGrid, widgetGridFromRows, legacyWidgetProjection, widgetRowWidths} = require('../lib/utils/widgets');
 const definition = {question:'Movie night?', description:'', answerMode:'choices', options:[{id:'a',label:'Comedy'},{id:'b',label:'Drama'}], resultsVisibility:'after-vote', protection:'browser', moderate:true, defaultDurationMinutes:60};
 const poll = (n) => ({id:`poll_${String(n).padStart(32,'0')}`,kind:'poll',roundId:'a'.repeat(32),visible:true,size:'standard'});
+
+test('all deployed poll endpoints receive the secret required for voting links and cookies', () => {
+  const triggers = require('../lib/polls');
+  for (const name of ['pollsHandler', 'pollFeedHandler', 'pollParticipantHandler']) {
+    assert.ok(triggers[name].__endpoint.secretEnvironmentVariables.some((secret) => secret.key === 'TOKEN_ENCRYPTION_KEY'), name);
+  }
+});
 test('poll definitions reject duplicates, invalid modes, oversized text and ambiguous ballots', () => {
   assert.deepEqual(parsePollDefinition(definition),definition);
   assert.equal(parsePollDefinition({...definition, options:[{id:'a',label:'Comedy'},{id:'b',label:'comedy'}]}),null);

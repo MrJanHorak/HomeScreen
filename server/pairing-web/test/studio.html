@@ -1,8 +1,11 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>Studio test fixture</title></head>
-<body><main class="layout dashboard-mode"><section id="studio" class="card appearance-editor"></section></main>
+<body><div id="app"></div>
 <script type="module">
 import '/src/styles/style.css';
+import '/src/styles/companion.css';
+import {renderCompanionPage} from '/src/app/companionPage.ts';
 import {createAppearanceEditor} from '/src/features/dashboard/appearanceEditor.ts';
-window.editor = createAppearanceEditor(document.querySelector('#studio'), '/__fixture-api', async () => 'fixture-token');
+renderCompanionPage(document.querySelector('#app'), 'dashboard');
+window.editor = createAppearanceEditor(document.querySelector('#appearance-editor'), '/__fixture-api', async () => 'fixture-token');
 await window.editor.load();
 </script></body></html>

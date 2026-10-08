@@ -38,7 +38,7 @@
       }
     ],
     "redirects": [
-      { "source": "/", "destination": "/pair", "type": 302 }
+      { "source": "/", "destination": "/dashboard", "type": 302 }
     ],
     "rewrites": [
       { "source": "/api/pollParticipant/**", "function": {"functionId": "pollParticipant", "region": "us-central1"} },

@@ -91,7 +91,7 @@ export function createAppearanceEditor(
   }, (text) => message(text, 'error'), getElement('#grid-position-controls'));
   const widgetStudio = createWidgetStudio(getElement('#widget-studio'), apiUrl, getToken, (widgetLayout) => {
     appearance = applyWidgetLayout(appearance, widgetLayout); render();
-  }, getElement('#widget-preview'));
+  }, getElement('#widget-preview'), getElement('#widget-add'));
   const surfaces = createCardStyleEditor(getElement('#card-style-editor'), (id, style) => {
     appearance.cardStyles = {...appearance.cardStyles};
     if (style) appearance.cardStyles[id] = style;
@@ -225,6 +225,8 @@ export function createAppearanceEditor(
     cardEditor.render(appearance.cards, Boolean(appearance.grid), busy);
     preview.render(appearance, savedPhoto);
     widgetStudio.render(appearance, busy);
+    getElement('#legacy-layout-controls').hidden = Boolean(appearance.widgetLayout);
+    getElement('#legacy-card-style-section').hidden = Boolean(appearance.widgetLayout);
     if (appearance.widgetLayout) {
       for (const selector of ['#card-list', '#grid-editor', '#tv-preview', '#card-style-editor', '#grid-position-controls', '#cards-hint']) getElement(selector).hidden = true;
       mode.disabled = true; layout.disabled = true;

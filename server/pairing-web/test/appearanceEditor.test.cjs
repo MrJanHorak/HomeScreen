@@ -17,7 +17,8 @@ async function setup(t, initial = {}) {
   await page.route('**/__fixture-api/**', async (route) => {
     const request = route.request(); const body = request.postDataJSON();
     let status = 200; let result;
-    if (request.url().includes('googlePhotosPicker')) result = {photos: []};
+    if (request.url().endsWith('/polls')) result = {templates:[],rounds:[],devices:[]};
+    else if (request.url().includes('googlePhotosPicker')) result = {photos: []};
     else if (request.url().endsWith('appearanceStudio')) {
       if (request.method() === 'GET') result = state;
       else if (['deleteRevision', 'clearHistory'].includes(body.action)) {
@@ -51,7 +52,7 @@ async function setup(t, initial = {}) {
     await page.goto(`${process.env.STUDIO_TEST_URL || 'http://127.0.0.1:5173'}/test/studio.html`);
     await page.locator('#appearance-content').waitFor({state: 'visible'});
     await page.waitForFunction(() => !document.querySelector('#appearance-reload').disabled);
-    await page.getByText('2 · Colors and background', {exact: true}).click();
+    await page.getByText('Colors & background', {exact: true}).click();
   };
   await open();
   const waitIdle = () => page.waitForFunction(() => !document.querySelector('#appearance-reload').disabled);
@@ -289,7 +290,7 @@ test('malformed appearance fields fall back to usable controls and are not saved
   const {page, state, waitIdle} = await setup(t, {appearance: {...base, palette: 'invalid',
     extraField: 'unrecognized', ambient: {idleMinutes: -1, plasmaColors: 42, info: {weather: 'false'}}}});
   assert.equal(await page.locator('#palette-select').inputValue(), 'night');
-  await page.getByText('4 · Ambient mode', {exact: true}).click();
+  await page.getByText('Ambient mode', {exact: true}).click();
   assert.equal(await page.locator('#ambient-idle').inputValue(), '10');
   assert.equal(await page.locator('[data-info=weather]').isChecked(), true);
   await page.getByText('Saved designs and published history', {exact: true}).click();

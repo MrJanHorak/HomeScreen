@@ -57,6 +57,7 @@ async function setup(t, {signedOut = false} = {}) {
       state.writes.push(body); status=state.pairStatus || 200;
       result={authorizationUrl:state.authorizationUrl || 'https://accounts.google.com/mock-consent'};
     } else if (endpoint === 'beginGoogleMeals') result={authorizationUrl:state.authorizationUrl || 'https://accounts.google.com/mock-consent'};
+    else if (endpoint === 'polls') result={templates:[],rounds:[],devices:[{id:'a'.repeat(32),name:'Living room',timeZone:'America/New_York',pollCapable:true}]};
     else if (endpoint === 'linkedDevices') result={devices:[{id:'a'.repeat(32),name:'Living room',pairedAtMs:1,lastSeenAtMs:Date.now()}]};
     else if (endpoint === 'deviceApps') {if (body) {state.apps.preferences=body.preferences;state.apps.updatedAtMs++;state.writes.push(body);}result=state.apps;}
     else throw new Error(`Unexpected API: ${endpoint}`);
@@ -68,18 +69,18 @@ async function setup(t, {signedOut = false} = {}) {
 }
 test('every companion page reflows at phone, tablet and laptop widths', async (t) => {
   const {page} = await setup(t);
-  for (const route of ['pair','dashboard','settings','meals','account']) {
+  for (const route of ['pair','dashboard','polls','settings','meals','account']) {
     for (const width of [320,390,768,1024,1440]) {
       await page.setViewportSize({width,height:900}); await page.goto(`${baseUrl}/${route}`);
       await page.waitForFunction(()=>document.querySelector('#account-name')?.textContent === 'owner@example.com');
       if (route === 'dashboard') await page.locator('#appearance-content').waitFor({state:'visible'});
-      if (route === 'dashboard') assert.equal(await page.evaluate(() => document.querySelector('.editor-actions').getBoundingClientRect().top >= document.querySelector('.studio-workspace').getBoundingClientRect().bottom),true,'Publish controls must not cover the editing workspace');
+      if (route === 'dashboard') assert.equal(await page.evaluate(() => document.querySelector('.studio-actionbar').getBoundingClientRect().bottom <= document.querySelector('.studio-workspace').getBoundingClientRect().top),true,'Publish controls must remain visible before the workspace without covering it');
       if (route === 'settings') await page.locator('.weather-content').waitFor({state:'visible'});
       const dimensions = await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,width:window.innerWidth}));
       assert.ok(dimensions.scroll <= dimensions.width+1, `${route} overflows at ${width}: ${dimensions.scroll}`);
       assert.equal(await page.locator('.site-nav [aria-current=page]').count(),1);
       assert.equal(await page.locator('.site-nav [aria-current=page]').getAttribute('href'), `/${route}`);
-      const featureRoots = ['#pair-form', '#appearance-editor', '#weather-editor', '#meal-form', '#account-controls'];
+      const featureRoots = ['#pair-form', '#appearance-editor', '#poll-manager', '#weather-editor', '#meal-form', '#account-controls'];
       assert.equal(await page.locator(featureRoots.join(',')).count(), 1, 'only the active feature is mounted');
       if (process.env.COMPANION_SCREENSHOTS && [390,768,1440].includes(width)) {
         await fs.mkdir(process.env.COMPANION_SCREENSHOTS,{recursive:true});
@@ -228,10 +229,10 @@ test('weather adds cities, sets the default, saves and keeps changes on a confli
 });
 test('ambient edits join dashboard drafts and photo pickers work for both purposes', async (t) => {
   const {page,state} = await setup(t); await page.goto(`${baseUrl}/dashboard`); await page.locator('#appearance-content').waitFor({state:'visible'});
-  await page.getByText('4 · Ambient mode',{exact:true}).click(); await page.locator('#ambient-idle').selectOption('20'); await page.locator('#ambient-source').selectOption('plasma'); await page.locator('#ambient-preset').selectOption('Sunset');
+  await page.getByText('Ambient mode',{exact:true}).click(); await page.locator('#ambient-idle').selectOption('20'); await page.locator('#ambient-source').selectOption('plasma'); await page.locator('#ambient-preset').selectOption('Sunset');
   await page.locator('#appearance-save').click(); await page.getByText('Saved to TV. Your draft is clear.',{exact:true}).waitFor();
   assert.equal(state.appearance.ambient.idleMinutes,20); assert.equal(state.appearance.ambient.plasmaColors[0],'#E8795B');
-  await page.getByText('Photos · choose images for your TV',{exact:true}).click();
+  await page.getByText('Colors & background',{exact:true}).click();await page.getByText('Your photo library',{exact:true}).click();
   for (const purpose of ['background','ambient']) {
     await page.getByRole('button',{name:purpose==='background'?'Choose dashboard photos':'Choose ambient photos',exact:true}).click();
     await page.getByRole('button',{name:'Check selection',exact:true}).click();
@@ -244,12 +245,12 @@ test('ambient edits join dashboard drafts and photo pickers work for both purpos
 });
 test('expired Photos sessions show restart guidance and retain the saved design', async (t) => {
   const {page,state}=await setup(t);state.failPickerAction='poll';await page.goto(`${baseUrl}/dashboard`);await page.locator('#appearance-content').waitFor({state:'visible'});
-  await page.getByText('Photos · choose images for your TV',{exact:true}).click();await page.getByRole('button',{name:'Choose dashboard photos',exact:true}).click();await page.getByRole('button',{name:'Check selection',exact:true}).click();
+  await page.getByText('Colors & background',{exact:true}).click();await page.getByText('Your photo library',{exact:true}).click();await page.getByRole('button',{name:'Choose dashboard photos',exact:true}).click();await page.getByRole('button',{name:'Check selection',exact:true}).click();
   await page.getByText('Photo selection expired. Start again.',{exact:true}).waitFor();assert.equal(state.appearance.background,'photo');assert.equal(await page.getByRole('button',{name:'Choose dashboard photos',exact:true}).isEnabled(),true);
 });
 test('signing out stops pending photo polls and clears editor data', async (t) => {
   const {page,state}=await setup(t);state.pending=true;await page.goto(`${baseUrl}/dashboard`);await page.locator('#appearance-content').waitFor({state:'visible'});
-  await page.getByText('Photos · choose images for your TV',{exact:true}).click();await page.getByRole('button',{name:'Choose ambient photos',exact:true}).click();await page.getByRole('button',{name:'Check selection',exact:true}).click();
+  await page.getByText('Colors & background',{exact:true}).click();await page.getByText('Your photo library',{exact:true}).click();await page.getByRole('button',{name:'Choose ambient photos',exact:true}).click();await page.getByRole('button',{name:'Check selection',exact:true}).click();
   await page.getByRole('button',{name:'Switch account',exact:true}).click();await page.locator('#appearance-content').waitFor({state:'hidden'});
   const count=state.polls;await page.waitForTimeout(1700);assert.equal(state.polls,count);assert.equal(await page.locator('.saved-photo').count(),0);assert.equal(await page.locator('.picker-link').getAttribute('href'),null);
 });
