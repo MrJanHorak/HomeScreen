@@ -12,7 +12,8 @@ function PollManager({request}: {request: PollRequest}) {
   const [library, setLibrary] = useState<PollLibrary>({templates: [], rounds: [], devices: []});
   const [draft, setDraft] = useState<PollDefinition>(structuredClone(empty)); const [editing, setEditing] = useState<PollTemplate | null>(null);
   const [busy, setBusy] = useState(false); const [message, setMessage] = useState('Loading your polls…'); const [failed, setFailed] = useState(false);
-  const [selected, setSelected] = useState(''); const [device, setDevice] = useState(''); const [timeZone, setTimeZone] = useState(''); const [endsLocal, setEndsLocal] = useState('');
+  const [selected, setSelected] = useState(''); const [device, setDevice] = useState(''); const [endsLocal, setEndsLocal] = useState('');
+  const [clientTimeZone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
   const [review, setReview] = useState<RoundReview | null>(null); const [codes, setCodes] = useState<string[]>([]); const [tab, setTab] = useState<'active' | 'saved' | 'history'>('active');
   const reload = useCallback(async () => {const result = await request<PollLibrary>('polls'); setLibrary(result);
     setSelected((current) => current || result.templates[0]?.id || ''); setDevice((current) => current || result.devices[0]?.id || ''); return result;}, [request]);
@@ -87,10 +88,10 @@ function PollManager({request}: {request: PollRequest}) {
       {tab === 'active' && <section className="poll-panel"><h2>Start a fresh round</h2><fieldset disabled={busy} className="poll-start-grid">
         <label>Saved poll<select value={selected} onChange={(e) => setSelected(e.target.value)}><option value="">Choose a poll</option>{library.templates.map((t) => <option key={t.id} value={t.id}>{t.question}</option>)}</select></label>
         <label>Reference TV<select value={device} onChange={(e) => setDevice(e.target.value)}><option value="">Choose your TV</option>{library.devices.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></label>
-        <label>TV timezone{selectedDevice?.timeZone ? <input readOnly value={selectedDevice.timeZone}/> : <input value={timeZone} onChange={(e) => setTimeZone(e.target.value)} placeholder="America/New_York"/>}</label>
-        <label>Closing time on TV <span className="field-hint">Optional override</span><input type="datetime-local" value={endsLocal} onChange={(e) => setEndsLocal(e.target.value)}/></label>
-        <p className="field-hint">Blank uses the poll's default duration. All your synced TVs share this round. {selectedDevice && !selectedDevice.pollCapable ? 'Update and open this TV to enable poll widgets.' : ''}</p>
-        <button className="button button-primary" disabled={!selected || !device} onClick={() => void action(() => request('polls', 'POST', {action: 'startRound', templateId: selected, referenceDeviceId: device, timeZone, endsLocal}), 'Round started. Add it in Dashboard Studio, then Save to TV.')}>Start round</button>
+        <label>Closing date and time <span className="field-hint">Optional override</span><input type="datetime-local" value={endsLocal} onChange={(e) => setEndsLocal(e.target.value)} aria-describedby="poll-closing-clock"/></label>
+        <p id="poll-closing-clock" className="field-hint">{selectedDevice?.timeZone ? `Uses ${selectedDevice.name}'s local time (${selectedDevice.timeZone}), detected automatically.` : `Until your TV connects, a specific closing date uses this device's local time (${clientTimeZone}). Saved durations work in any timezone.`}</p>
+        <p className="field-hint">Blank uses the poll's default duration. Voting closes on time even when your TV is asleep. All your synced TVs share this round. {selectedDevice && !selectedDevice.pollCapable ? 'Update and open this TV to enable poll widgets.' : ''}</p>
+        <button className="button button-primary" disabled={!selected || !device} onClick={() => void action(() => request('polls', 'POST', {action: 'startRound', templateId: selected, referenceDeviceId: device, clientTimeZone, deadlineTimeZone: selectedDevice?.timeZone || clientTimeZone, endsLocal}), 'Round started. Add it in Dashboard Studio, then Save to TV.')}>Start round</button>
       </fieldset><a href="/dashboard" className="guide-link">Add and style polls in Dashboard Studio →</a></section>}
       <div className="poll-round-grid">{filtered.map((r) => <section key={r.id} className="poll-panel"><h2>{r.question}</h2><p className="field-hint">{closingLabel(r)} · {r.displayed ? 'On dashboard' : 'Not displayed'}{!r.linked ? ' · Reference TV disconnected' : ''}</p>
         <PollResults poll={r}/>{r.joinUrl && <a className="guide-link" href={r.joinUrl} target="_blank" rel="noreferrer">Open participant page ↗</a>}

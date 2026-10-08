@@ -21,6 +21,27 @@ test('owner saves, edits, reuses a template and starts a round without publishin
   await page.getByRole('tab',{name:'Active rounds'}).click();await page.getByRole('button',{name:'Start round',exact:true}).click();await page.getByText('Round started. Add it in Dashboard Studio, then Save to TV.').waitFor();assert.equal(rounds.length,1);assert.equal(bodies.filter(b=>b.action==='startRound').length,1);assert.ok(bodies.every(b=>b.action!=='publish'));
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth),false);
 });
+test('owner closing time detects the TV clock or labels the automatic companion fallback without a timezone field',async(t)=>{
+  const context=await browser.newContext({timezoneId:'Pacific/Honolulu'});t.after(()=>context.close());
+  for(const timeZone of [null,'America/New_York']){
+    const page=await context.newPage();let sent;
+    await page.route('**/__fixture-api/polls',async route=>{
+      const body=route.request().postDataJSON();
+      if(body){sent=body;await route.fulfill({json:{round}});}
+      else await route.fulfill({json:{templates:[{...definition,id:'f'.repeat(32),revision:1}],rounds:[],devices:[{id:'d'.repeat(32),name:'Living room TV',timeZone,pollCapable:true}]}});
+    });
+    await page.goto('http://127.0.0.1:5173/test/polls.html');
+    await page.getByLabel('Closing date and time').waitFor();
+    assert.equal(await page.getByLabel('TV timezone',{exact:true}).count(),0);
+    assert.match(await page.locator('#poll-closing-clock').innerText(),timeZone?/Living room TV's local time \(America\/New_York\)/:/this device's local time \(Pacific\/Honolulu\)/);
+    await page.getByLabel('Closing date and time').fill('2030-10-07T18:30');
+    await page.getByRole('button',{name:'Start round',exact:true}).click();
+    await page.getByText('Round started. Add it in Dashboard Studio, then Save to TV.').waitFor();
+    assert.equal(sent.clientTimeZone,'Pacific/Honolulu');assert.equal(sent.endsLocal,'2030-10-07T18:30');
+    assert.equal(sent.deadlineTimeZone,timeZone||'Pacific/Honolulu');
+    await page.close();
+  }
+});
 test('dashboard draft supports two independently styled poll instances and restores them from a saved design',async(t)=>{
   const page=await browser.newPage({viewport:{width:390,height:844}});t.after(()=>page.close());
   const base={layout:'balanced',palette:'night',customAccent:'#38BDF8',background:'solid',backgroundColor:'#0F172A',cards:['weather','schedule','activity','media','meal','todo'].map(id=>({id,visible:true,size:'standard'})),grid:null,cardStyles:{}};

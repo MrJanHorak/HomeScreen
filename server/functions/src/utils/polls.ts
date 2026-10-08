@@ -1,4 +1,5 @@
 import {validPollId} from "./widgets";
+export {validTimeZone} from "./zonedTime";
 
 export interface PollOption {id: string; label: string}
 export interface PollDefinition {
@@ -109,12 +110,4 @@ export function pollLocalDeadline(value: unknown, timeZone: string): number | nu
   const matches = [...offsets].map((offset) => target - offset).filter((t) => format(t) === value);
   if (matches.length !== 1) throw new Error("This time is ambiguous or skipped by daylight saving. Choose a different time.");
   return matches[0];
-}
-export function validTimeZone(value: unknown): value is string {
-  if (typeof value !== "string" || value.length > 80) return false;
-  try {
-    new Intl.DateTimeFormat("en", {timeZone: value}).format(); return true;
-  } catch {
-    return false;
-  }
 }

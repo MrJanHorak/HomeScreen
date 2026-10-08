@@ -12,8 +12,11 @@ index, then update the TV app, to make these source changes available to users.
    future rounds; existing rounds retain their question/options snapshot.
 3. Start a round under Active rounds. Select a reference TV and optional closing
    date/time in its timezone. Blank uses the saved duration; blank duration means
-   no deadline. Updated TVs report their timezone when opened. If unavailable,
-   enter the intended TV timezone explicitly rather than guessing from the phone.
+   no deadline. The TV's timezone is detected automatically from authenticated
+   dashboard requests, including existing TV clients and cached responses. There
+   is no manual timezone field. Before the first TV report, the closing-date field
+   explicitly uses the companion device's local timezone. Duration/open-ended
+   rounds can start without a timezone report.
 4. Open Dashboard Studio, enable poll widgets, select a round, and Add poll.
    Hide/move cards as needed. Rows support eight visible widgets; free layout
    supports twelve minimum-size widgets and all 50 existing footprints.
@@ -66,8 +69,14 @@ matches share an answer count; near matches are not silently merged.
 
 ## Time, availability, and cleanup
 
-Translate the chosen closing wall time in the reference TV's IANA timezone and
-store absolute UTC time. Reject skipped/ambiguous DST times. Later TV timezone
+Translate the chosen closing wall time in the automatically reported reference
+TV's IANA timezone (or the labelled companion-device fallback) and store absolute
+UTC time. Durations are measured from server creation time and require no timezone.
+Older companion requests without any timezone can still start duration/open-ended
+rounds; a local closing date requires an automatic TV or companion report.
+The submitted clock matches the label beside the closing-date input, so a TV
+report arriving while the owner edits cannot silently reinterpret the entered time.
+Reject skipped/ambiguous DST times. Later TV timezone
 changes do not reinterpret an existing deadline. The server enforces eligibility
 even while TVs sleep; feed responses calibrate the TV display clock. A deadline
 cannot be extended after it closes to quietly reopen an old round.

@@ -1,3 +1,12 @@
+export function validTimeZone(value: unknown): value is string {
+  if (typeof value !== "string" || value.length > 80) return false;
+  try {
+    new Intl.DateTimeFormat("en", {timeZone: value}).format(); return true;
+  } catch {
+    return false;
+  }
+}
+
 function dayParts(instant: Date, timeZone: string) {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone, year: "numeric", month: "2-digit", day: "2-digit",

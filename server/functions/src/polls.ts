@@ -150,8 +150,19 @@ export async function handlePolls(req: Request, res: Response): Promise<void> {
         const template = snapshot.data() as PollTemplate | undefined;
         if (!template || device.data()?.revokedAtMs !== 0) fail(404, "Saved poll or TV no longer exists");
         if (all.size >= 100) fail(400, "Keep up to 100 rounds. Delete an old round first.");
-        const timeZone = device.data()?.timeZone || body.timeZone;
-        if (!validTimeZone(timeZone)) fail(400, "Select the TV timezone; it has not reported one yet");
+        const reportedTimeZone = device.data()?.timeZone;
+        const companionTimeZone = body.clientTimeZone ?? body.timeZone;
+        const deadlineTimeZone = body.endsLocal ? body.deadlineTimeZone : undefined;
+        if (deadlineTimeZone !== undefined && !validTimeZone(deadlineTimeZone)) fail(400, "Refresh the companion to detect its closing-time clock");
+        // Preserve the clock labelled beside the input, even if a TV reports a
+        // different timezone while the owner is completing the form.
+        const timeZone = validTimeZone(deadlineTimeZone) ? deadlineTimeZone : validTimeZone(reportedTimeZone) ? reportedTimeZone :
+          validTimeZone(companionTimeZone) ? companionTimeZone : "UTC";
+        // Duration and open-ended rounds need no timezone. A wall-clock deadline
+        // uses the TV's automatic report, or the explicitly labelled companion clock.
+        if (body.endsLocal && !validTimeZone(deadlineTimeZone) && !validTimeZone(reportedTimeZone) && !validTimeZone(companionTimeZone)) {
+          fail(400, "Refresh the companion or connect your TV to set a local closing time. You can start with the saved duration now.");
+        }
         let endsAtMs: number | null;
         try {
           endsAtMs = body.endsLocal ? pollLocalDeadline(body.endsLocal, timeZone) :
@@ -236,12 +247,12 @@ export async function handlePollFeed(req: Request, res: Response): Promise<void>
   try {
     const user = db.collection("users").doc(identity.userId);
     if (identity.deviceId) {
-      const timeZone = req.get("X-Time-Zone"); const device = user.collection("devices").doc(identity.deviceId);
+      const device = user.collection("devices").doc(identity.deviceId);
       const stored = (await device.get()).data();
-      if (stored && (stored.widgetLayoutVersion !== 1 || (validTimeZone(timeZone) && stored.timeZone !== timeZone))) {
+      if (stored && stored.widgetLayoutVersion !== 1) {
         await runUserTransaction(identity.userId, async (tx) => {
           const s = await tx.get(device);
-          if (s.data()?.revokedAtMs === 0) tx.update(device, {widgetLayoutVersion: 1, ...(validTimeZone(timeZone) ? {timeZone} : {})});
+          if (s.data()?.revokedAtMs === 0) tx.update(device, {widgetLayoutVersion: 1});
         });
       }
     }

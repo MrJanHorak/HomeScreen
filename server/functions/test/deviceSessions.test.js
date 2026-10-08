@@ -53,6 +53,40 @@ test("managed TV session uses its owner-scoped device record and cannot become a
   assert.deepEqual(await authenticatedIdentity(request()), {userId: "owner-a", deviceId: id, owner: false});
 });
 
+test("ordinary cached dashboard requests record the TV clock timezone before polls exist", async (t) => {
+  stubAuth(t, {dashboardDeviceId: id});
+  const updates = stubDevice(t, {revokedAtMs: 0, lastSeenAtMs: Date.now()});
+  const cache = require("../lib/utils/db");
+  t.mock.method(cache, "getDashboardCache", async () => ({cachedAtMs: Date.now(), summary: {cached: true}}));
+  t.mock.method(cache, "recordUserQuota", async () => {throw new Error("Cache hit must not refresh providers");});
+  const req = request(); req.headers["x-time-zone"] = "America/New_York";
+  const res = response();
+  await require("../lib/getDashboardSummary").handleGetDashboardSummary(req, res);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(res.body, {cached: true});
+  assert.deepEqual(updates, [{timeZone: "America/New_York"}]);
+});
+
+test("TV timezone reports ignore invalid values and avoid redundant writes", async (t) => {
+  stubAuth(t, {dashboardDeviceId: id});
+  const updates = stubDevice(t, {revokedAtMs: 0, lastSeenAtMs: Date.now(), timeZone: "America/New_York"});
+  for (const timeZone of ["invalid/zone", "America/New_York", undefined, ["UTC"]]) {
+    const req = request(); req.headers["x-time-zone"] = timeZone;
+    assert.ok(await authenticatedIdentity(req));
+  }
+  assert.deepEqual(updates, []);
+  const req = request(); req.headers["x-time-zone"] = "Europe/London";
+  assert.ok(await authenticatedIdentity(req));
+  assert.deepEqual(updates, [{timeZone: "Europe/London"}]);
+});
+
+test("an owner browser timezone cannot overwrite a linked TV's clock", async (t) => {
+  stubAuth(t, {firebase: {sign_in_provider: "google.com"}});
+  t.mock.method(db, "collection", () => {throw new Error("Owner authentication must not write device metadata");});
+  const req = request(); req.headers["x-time-zone"] = "Pacific/Honolulu";
+  assert.equal((await authenticatedIdentity(req)).owner, true);
+});
+
 test("revoked, missing, malformed and unverifiable TV sessions fail authentication", async (t) => {
   const verifier = stubVerifier();
   t.mock.method(auth, "verifyIdToken", verifier);

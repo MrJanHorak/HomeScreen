@@ -10,11 +10,11 @@ if(enabled){
   ({db,auth}=require('../lib/utils/db')); handlers=require('../lib/polls');
 }
 const definition={question:'Movie night?',description:'',answerMode:'mixed',options:[{id:'a',label:'Comedy'},{id:'b',label:'Drama'}],resultsVisibility:'after-vote',protection:'browser',moderate:true,defaultDurationMinutes:60};
-async function fixture(t,overrides={}){
+async function fixture(t,overrides={},deviceOverrides={}){
   const uid=`poll-test-${randomBytes(8).toString('hex')}`;const deviceId='d'.repeat(32);
   t.mock.method(auth,'verifyIdToken',async(token)=>({uid:token==='other'?'another-owner':uid,firebase:{sign_in_provider:token==='tv'?'custom':'google.com'},...(token==='tv'?{dashboardDeviceId:deviceId}:{})}));
   const user=db.collection('users').doc(uid);
-  await user.set({});await user.collection('devices').doc(deviceId).set({name:'Test TV',revokedAtMs:0,timeZone:'America/New_York',lastSeenAtMs:Date.now()});
+  await user.set({});await user.collection('devices').doc(deviceId).set({name:'Test TV',revokedAtMs:0,timeZone:'America/New_York',lastSeenAtMs:Date.now(),...deviceOverrides});
   t.after(async()=>{await db.recursiveDelete(user);const links=await db.collection('poll_links').where('userId','==',uid).get();await Promise.all(links.docs.map(d=>d.ref.delete()));});
   async function invoke(handler,method,body={},headers={},query={}){
     const res={statusCode:0,body:null,headers:{},set(k,v){this.headers[k]=v;},status(code){this.statusCode=code;return this;},json(value){this.body=value;},send(){}};
@@ -28,6 +28,35 @@ async function fixture(t,overrides={}){
   const vote=(g,body={})=>invoke(handlers.handlePollParticipant,'POST',{token,name:'Alex',optionId:'a',requestId:randomBytes(16).toString('hex'),...body}, {cookie:g.cookie,origin:'https://demo-polls.firebaseapp.com','x-poll-csrf':g.csrf});
   return {uid,user,round,token,owner,invoke,guest,vote,ref:user.collection('pollRounds').doc(round.id),template:saved.body.template};
 }
+integration('duration and open-ended rounds start before the TV reports a timezone',async(t)=>{
+  const before=Date.now();const f=await fixture(t,{}, {timeZone:null});
+  assert.ok(f.round.endsAtMs>=before+3600000 && f.round.endsAtMs<=Date.now()+3600000);
+  const saved=await f.owner({action:'saveTemplate',definition:{...definition,defaultDurationMinutes:null}});
+  const started=await f.owner({action:'startRound',templateId:saved.body.template.id,referenceDeviceId:'d'.repeat(32)});
+  assert.equal(started.statusCode,200,JSON.stringify(started.body));assert.equal(started.body.round.endsAtMs,null);
+});
+integration('local deadlines use automatic companion fallback then TV reports without moving existing deadlines',async(t)=>{
+  const f=await fixture(t,{}, {timeZone:null});
+  const body={action:'startRound',templateId:f.template.id,referenceDeviceId:'d'.repeat(32),endsLocal:'2030-10-07T18:30',clientTimeZone:'Pacific/Honolulu'};
+  const fallback=await f.owner(body);assert.equal(fallback.statusCode,200,JSON.stringify(fallback.body));
+  assert.equal(fallback.body.round.endsAtMs,Date.parse('2030-10-08T04:30:00Z'));
+  assert.equal(fallback.body.round.timeZone,'Pacific/Honolulu');
+  const {authenticatedIdentity}=require('../lib/utils/requestAuth');
+  assert.ok(await authenticatedIdentity({headers:{authorization:'Bearer tv','x-time-zone':'America/New_York'}}));
+  const tv=await f.owner(body);assert.equal(tv.statusCode,200,JSON.stringify(tv.body));
+  assert.equal(tv.body.round.endsAtMs,Date.parse('2030-10-07T22:30:00Z'));
+  const editingDuringReport=await f.owner({...body,deadlineTimeZone:'Pacific/Honolulu'});
+  assert.equal(editingDuringReport.statusCode,200);
+  assert.equal(editingDuringReport.body.round.endsAtMs,fallback.body.round.endsAtMs);
+  const original=(await f.user.collection('pollRounds').doc(fallback.body.round.id).get()).data();
+  assert.equal(original.endsAtMs,fallback.body.round.endsAtMs);
+  assert.equal(original.timeZone,'Pacific/Honolulu');
+});
+integration('a wall-clock deadline needs a valid automatic clock rather than silently assuming UTC',async(t)=>{
+  const f=await fixture(t,{}, {timeZone:null});
+  const start=await f.owner({action:'startRound',templateId:f.template.id,referenceDeviceId:'d'.repeat(32),endsLocal:'2030-10-07T18:30',clientTimeZone:'invalid'});
+  assert.equal(start.statusCode,400);assert.match(start.body.error,/saved duration/);
+});
 integration('real transaction concurrency accepts one browser ballot and one count',async(t)=>{
   const f=await fixture(t);const g=await f.guest();const results=await Promise.all(Array.from({length:8},()=>f.vote(g)));
   assert.ok(results.every(r=>r.statusCode===200),JSON.stringify(results));
