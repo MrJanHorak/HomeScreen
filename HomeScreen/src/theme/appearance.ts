@@ -1,6 +1,6 @@
 import type { PaletteChoice } from './tvTheme';
 import { normalizeHexColor } from './tvTheme';
-import { validGrid } from '../../../server/functions/src/utils/dashboardLayout';
+import { DASHBOARD_CARD_IDS, validGrid } from '../../../server/functions/src/utils/dashboardLayout';
 import type { DashboardGridLayout } from '../../../server/functions/src/utils/dashboardLayout';
 import { validCardStyles } from '../../../server/functions/src/utils/cardStyle';
 import type { CardStyles } from '../../../server/functions/src/utils/cardStyle';
@@ -11,14 +11,7 @@ import {
   normalizePhotoZoom,
 } from '../../../server/functions/src/utils/photoFraming';
 
-export const CARD_IDS = [
-  'weather',
-  'schedule',
-  'activity',
-  'media',
-  'meal',
-  'todo',
-] as const;
+export const CARD_IDS = DASHBOARD_CARD_IDS;
 export type CardId = (typeof CARD_IDS)[number];
 export type LayoutId = 'balanced' | 'agenda' | 'wellness' | 'calm' | 'custom';
 export type CardSize = 'standard' | 'wide';

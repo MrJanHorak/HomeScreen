@@ -266,6 +266,12 @@ export async function handlePollFeed(req: Request, res: Response): Promise<void>
       }
     }
     const appearance = (await user.collection("appearance").doc("settings").get()).data()?.appearance;
+    if (req.query?.available === "1") {
+      const rounds = await user.collection("pollRounds").orderBy("createdAtMs", "desc").limit(100).get();
+      res.status(200).json({polls: rounds.docs.filter((doc) => doc.data().state !== "archived")
+        .map((doc) => ({id: doc.id, question: doc.data().question}))});
+      return;
+    }
     const layout = appearance?.widgetLayout;
     const ids = validWidgetLayout(layout) ? [...new Set(layout.widgets.filter((w) => w.kind === "poll" && w.visible).map((w) => w.roundId!))] : [];
     const views = await Promise.all(ids.map(async (roundId) => {

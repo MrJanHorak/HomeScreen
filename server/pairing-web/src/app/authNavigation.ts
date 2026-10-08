@@ -3,6 +3,14 @@ import type {CompanionPage} from './companionPage';
 /** Recover the originating flow when the sign-in helper returns to /pair. */
 export function restoreSignInPath(): void {
   const url = new URL(window.location.href);
+  try {
+    const saved = window.sessionStorage.getItem('homescreen:people-signin');
+    window.sessionStorage.removeItem('homescreen:people-signin');
+    if (saved && url.pathname === '/pair' && !url.searchParams.has('result')) {
+      const target = new URL(saved, url.origin);
+      if (target.origin === url.origin && target.pathname === '/people') {url.pathname = target.pathname; url.search = target.search;}
+    }
+  } catch { /* The current URL still identifies the invitation when storage is unavailable. */ }
   let returnPath: string | null = null;
   let returningToMeals = false;
   let returningToDashboard = false;
@@ -33,6 +41,8 @@ export function restoreSignInPath(): void {
 
 export function rememberSignInPath(page: CompanionPage): void {
   try {
+    if (page === 'people') window.sessionStorage.setItem('homescreen:people-signin', window.location.pathname + window.location.search);
+    else window.sessionStorage.removeItem('homescreen:people-signin');
     window.sessionStorage.setItem('homescreen:signin-path', window.location.pathname);
     for (const flow of ['meals', 'dashboard'] as const) {
       const key = `homescreen:${flow === 'meals' ? 'meal' : flow}-signin`;

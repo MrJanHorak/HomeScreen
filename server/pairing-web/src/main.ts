@@ -13,6 +13,7 @@ import {createAccountController} from './features/account/accountController';
 import './styles/style.css';
 import {mountPollParticipant} from './features/polls/PollParticipant';
 import {createPollManager} from './features/polls/PollManager';
+import {createPeopleManager} from './features/people/PeopleManager';
 import './styles/companion.css';
 
 if (window.location.pathname.startsWith('/vote/')) {
@@ -64,6 +65,7 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
       case 'dashboard': return createAppearanceEditor(requiredElement(app, '#appearance-editor'), apiUrl, getToken);
       case 'settings': return createWeatherEditor(requiredElement(app, '#weather-editor'), apiUrl, getToken);
       case 'polls': return createPollManager(requiredElement(app, '#poll-manager'), apiUrl, getToken);
+      case 'people': return createPeopleManager(requiredElement(app, '#people-manager'), apiUrl, getToken, params);
     }
   })();
 
@@ -121,6 +123,9 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
   });
 
   const result = params.get('result');
+  if (result === 'activity_connected') showStatus('Activity connected. You can manage sharing below; the dashboard owner can add your widget in Dashboard Studio.', 'success');
+  if (result === 'activity_denied') showStatus('Activity access was cancelled. Open the invitation again to retry.', 'error');
+  if (result === 'activity_error') showStatus('Activity could not be connected. Check your account and open the invitation again, or reconnect below.', 'error');
   if (result === 'connected') {
     showStatus('TV connected. You can return to your TV now.', 'success');
     requiredElement(app, '#connected-next').hidden = false;

@@ -44,6 +44,7 @@
       { "source": "/api/pollParticipant/**", "function": {"functionId": "pollParticipant", "region": "us-central1"} },
       { "source": "/vote/**", "destination": "/index.html" },
       { "source": "/polls", "destination": "/index.html" },
+      { "source": "/people", "destination": "/index.html" },
       { "source": "/pair", "destination": "/index.html" },
       { "source": "/dashboard", "destination": "/index.html" },
       { "source": "/settings", "destination": "/index.html" },

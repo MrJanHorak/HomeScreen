@@ -20,13 +20,19 @@ export async function handleAppearanceStudio(req: Request, res: Response): Promi
   if (!identity) {
     res.status(401).json({error: "Valid Firebase ID token required"}); return;
   }
-  if (!identity.owner) {
+  const savedLayoutsOnly = req.method === "GET" && req.query?.designs === "1";
+  if (!identity.owner && !savedLayoutsOnly) {
     res.status(403).json({error: "Sign in with Google on the companion site to manage designs"}); return;
   }
   const collection = db.collection("users").doc(identity.userId).collection("appearance");
   const ref = collection.doc("studio");
   try {
     if (req.method === "GET") {
+      if (savedLayoutsOnly) {
+        const library = await db.runTransaction(async (transaction) => (await transaction.get(ref)).data());
+        const designs = (library?.designs || []).filter((design: {appearance: unknown}) => validAppearance(design.appearance));
+        res.status(200).json({designs}); return;
+      }
       const result = await db.runTransaction(async (transaction) => {
         const [library, settings, history] = await Promise.all([
           transaction.get(ref), transaction.get(collection.doc("settings")), transaction.get(collection.doc("history")),

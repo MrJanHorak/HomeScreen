@@ -57,13 +57,25 @@ function fixture(t, initial = {}, provider = "google.com") {
     for (const [id, data] of pending) {records[id] = data; writes.push(id);}
     return result;
   });
-  async function invoke(handler, method, body = {}) {
+  async function invoke(handler, method, body = {}, query = {}) {
     const res = {statusCode: 0, body: null, set() {}, status(code) {this.statusCode = code; return this;}, json(value) {this.body = value;}};
-    await handler({method, headers: {authorization: "Bearer test"}, body}, res);
+    await handler({method, headers: {authorization: "Bearer test"}, body, query}, res);
     return res;
   }
-  return {records, writes, studio: (method, body) => invoke(handleAppearanceStudio, method, body), publish: (body) => invoke(handleUserAppearance, "PUT", body)};
+  return {records, writes, studio: (method, body, query) => invoke(handleAppearanceStudio, method, body, query), publish: (body) => invoke(handleUserAppearance, "PUT", body)};
 }
+
+test("linked TVs read saved layouts without receiving drafts or history, and cannot mutate the library", async (t) => {
+  const design = {id: "evening", name: "Evening", appearance, updatedAtMs: 7};
+  const f = fixture(t, {studio: {designs: [design, {...design, id: "broken", appearance: {}}],
+    draft: {appearance, baseUpdatedAtMs: 6}, updatedAtMs: 7}, history: {revisions: [{appearance}]}}, "custom");
+  const result = await f.studio("GET", {}, {designs: "1"});
+  assert.equal(result.statusCode, 200);
+  assert.deepEqual(result.body, {designs: [design]});
+  assert.equal((await f.studio("GET")).statusCode, 403);
+  assert.equal((await f.studio("PUT", {action: "deleteDesign", id: "evening", expectedUpdatedAtMs: 7}, {designs: "1"})).statusCode, 403);
+  assert.deepEqual(f.writes, []);
+});
 
 test("drafts persist across reads without changing the published TV settings", async (t) => {
   const f = fixture(t, {settings: {appearance, updatedAtMs: 42}});

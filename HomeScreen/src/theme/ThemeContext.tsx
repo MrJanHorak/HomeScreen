@@ -8,7 +8,7 @@ import React, {
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import {validWidgetLayout, legacyWidgetProjection} from '../../../server/functions/src/utils/widgets';
+import {validWidgetLayout, legacyWidgetProjection, widgetsFromLegacy} from '../../../server/functions/src/utils/widgets';
 import type {WidgetLayout} from '../../../server/functions/src/utils/widgets';
 import {
   getSavedGooglePhoto,
@@ -53,6 +53,7 @@ interface AppearanceContextValue {
   toggleCardSize: (id: CardId) => void;
   resetAppearance: () => void;
   setWidgetLayout: (layout: WidgetLayout) => void;
+  applySavedLayout: (appearance: unknown) => void;
 }
 
 const AppearanceContext = createContext<AppearanceContextValue | null>(null);
@@ -242,12 +243,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       photoDataUrl,
       ambientPhotos,
       selectLayout: (layout) =>
-        setAppearance((current) => ({
-          ...current,
-          layout,
-          grid: null,
-          cards: LAYOUTS[layout].cards.map((card) => ({ ...card })),
-        })),
+        setAppearance((current) => {
+          const cards = LAYOUTS[layout].cards.map((card) => ({...card}));
+          if (!current.widgetLayout) return {...current, layout, grid: null, cards};
+          const base = widgetsFromLegacy(cards, null, current.cardStyles);
+          const widgetLayout: WidgetLayout = {...base, widgets: [
+            ...base.widgets.map((widget) => ({...current.widgetLayout!.widgets.find((item) => item.id === widget.id), ...widget})),
+            ...current.widgetLayout.widgets.filter((widget) => widget.id !== widget.kind).map((widget) => ({...widget, visible: false})),
+          ]};
+          return {...current, layout, widgetLayout, ...legacyWidgetProjection(widgetLayout)};
+        }),
       selectPalette: (palette) =>
         setAppearance((current) => ({ ...current, palette })),
       setCustomAccent: (customAccent) =>
@@ -322,7 +327,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         if (validWidgetLayout(widgetLayout)) setAppearance((current) => ({...current, widgetLayout,
           ...legacyWidgetProjection(widgetLayout), layout: 'custom'}));
       },
-      resetAppearance: () => setAppearance((current) => ({...DEFAULT_APPEARANCE, ...(current.widgetLayout ? {widgetLayout: current.widgetLayout} : {})})),
+      applySavedLayout: (saved) => {
+        const normalized = normalizeAppearance(saved);
+        setAppearance({...normalized, widgetLayout: normalized.widgetLayout || null});
+      },
+      resetAppearance: () => setAppearance((current) => ({...DEFAULT_APPEARANCE, ...(current.widgetLayout
+        ? {widgetLayout: current.widgetLayout, ...legacyWidgetProjection(current.widgetLayout), layout: 'custom' as const} : {})})),
     }),
     [ambientPhotos, appearance, photoDataUrl, ready],
   );

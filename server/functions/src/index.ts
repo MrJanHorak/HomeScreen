@@ -15,7 +15,7 @@ import { authDeviceHandler } from "./authDevice";
 import { executeActionHandler } from "./executeAction";
 import { syncUserDataHandler } from "./syncUserData";
 import {beginGoogleLinkHandler, beginGooglePhotosHandler,
-  beginGoogleMealsHandler, googleOAuthCallbackHandler} from "./googlePairing";
+  beginGoogleMealsHandler, googleOAuthCallbackHandler, beginGoogleActivityHandler} from "./googlePairing";
 import {googlePhotosPickerHandler} from "./googlePhotosPicker";
 import {userAppearanceHandler} from "./userAppearance";
 import {mealSheetConfigHandler} from "./mealSheetConfig";
@@ -25,6 +25,7 @@ import {appearanceStudioHandler} from "./appearanceStudio";
 import {userPreferencesHandler} from "./userPreferences";
 import {deviceAppsHandler} from "./deviceApps";
 import {pollsHandler, pollFeedHandler, pollParticipantHandler, pollRetention} from "./polls";
+import {peopleHandler, peopleActivityHandler} from "./people";
 
 
 // import {onRequest} from "firebase-functions/https";
@@ -71,3 +72,6 @@ export const polls = pollsHandler;
 export const pollFeed = pollFeedHandler;
 export const pollParticipant = pollParticipantHandler;
 export {pollRetention};
+export const people = peopleHandler;
+export const peopleActivity = peopleActivityHandler;
+export const beginGoogleActivity = beginGoogleActivityHandler;

@@ -83,6 +83,7 @@ test('dashboard draft supports two independently styled poll instances and resto
   const state={appearance:base,updatedAtMs:1,library:{updatedAtMs:0,designs:[],draft:null},history:[]};let sent=null;
   await page.route('**/__fixture-api/**',async route=>{const url=route.request().url(),b=route.request().postDataJSON();let response;
     if(url.endsWith('/polls'))response={templates:[],rounds:[{...round,id:'b'.repeat(32),question:'Another poll',results:[],linked:true,displayed:false},{...round,results:[],linked:true,displayed:false}],devices:[]};
+    else if(url.endsWith('/people'))response={people:[],sharing:[],connection:null};
     else if(url.includes('googlePhotosPicker'))response={photos:[]};
     else if(url.endsWith('appearanceStudio')){if(!b)response=state;else{state.library.updatedAtMs++;if(b.action==='draft')state.library.draft=b.draft;response={library:state.library};}}
     else {sent=b.appearance;state.appearance=sent;state.updatedAtMs++;response={updatedAtMs:state.updatedAtMs};}

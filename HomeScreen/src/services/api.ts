@@ -9,6 +9,27 @@ import {validatedApiUrl} from '../../../shared/src/transport';
 import { Platform } from 'react-native';
 import type {PollView} from '../../../server/functions/src/utils/polls';
 import type {PeopleActivityFeed, PeopleSettings, PeopleInvitation} from '../../../shared/src/people';
+import type {SavedDesign} from '../../../server/functions/src/utils/appearanceLibrary';
+
+export async function getSavedDashboardLayouts(): Promise<SavedDesign[]> {
+  const result = await authenticatedRequest<{designs: SavedDesign[]}>('appearanceStudio?designs=1', 'Could not load saved layouts');
+  if (!Array.isArray(result.designs) || result.designs.length > 20 || !result.designs.every((design) =>
+    design && typeof design.id === 'string' && typeof design.name === 'string' &&
+    design.appearance && typeof design.appearance === 'object' && !Array.isArray(design.appearance) &&
+    Number.isSafeInteger(design.updatedAtMs) && design.updatedAtMs >= 0)) {
+    throw new Error('The server returned invalid saved layouts. Refresh to try again.');
+  }
+  return result.designs;
+}
+
+export interface AvailablePoll {id: string; question: string}
+export async function getAvailableDashboardPolls(): Promise<AvailablePoll[]> {
+  const result = await authenticatedRequest<{polls: AvailablePoll[]}>('pollFeed?available=1', 'Could not load available polls');
+  if (!Array.isArray(result.polls) || !result.polls.every((poll) => poll && /^[a-f0-9]{32}$/.test(poll.id) && typeof poll.question === 'string')) {
+    throw new Error('The server returned invalid polls. Refresh to try again.');
+  }
+  return result.polls;
+}
 
 export async function fetchPeopleActivity(signal?: AbortSignal): Promise<PeopleActivityFeed> {
   return authenticatedRequest('peopleActivity', 'Could not refresh shared activity', {signal,

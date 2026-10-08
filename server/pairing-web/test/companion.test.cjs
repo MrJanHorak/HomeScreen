@@ -57,6 +57,7 @@ async function setup(t, {signedOut = false} = {}) {
       state.writes.push(body); status=state.pairStatus || 200;
       result={authorizationUrl:state.authorizationUrl || 'https://accounts.google.com/mock-consent'};
     } else if (endpoint === 'beginGoogleMeals') result={authorizationUrl:state.authorizationUrl || 'https://accounts.google.com/mock-consent'};
+    else if (endpoint === 'people') result={people:[],sharing:[],connection:{connected:false,stepGoal:10000,distanceGoal:8}};
     else if (endpoint === 'polls') result={templates:[],rounds:[],devices:[{id:'a'.repeat(32),name:'Living room',timeZone:'America/New_York',pollCapable:true}]};
     else if (endpoint === 'linkedDevices') result={devices:[{id:'a'.repeat(32),name:'Living room',pairedAtMs:1,lastSeenAtMs:Date.now()}]};
     else if (endpoint === 'deviceApps') {if (body) {state.apps.preferences=body.preferences;state.apps.updatedAtMs++;state.writes.push(body);}result=state.apps;}
@@ -69,7 +70,7 @@ async function setup(t, {signedOut = false} = {}) {
 }
 test('every companion page reflows at phone, tablet and laptop widths', async (t) => {
   const {page} = await setup(t);
-  for (const route of ['pair','dashboard','polls','settings','meals','account']) {
+  for (const route of ['pair','dashboard','polls','settings','meals','account','people']) {
     for (const width of [320,390,768,1024,1440]) {
       await page.setViewportSize({width,height:900}); await page.goto(`${baseUrl}/${route}`);
       await page.waitForFunction(()=>document.querySelector('#account-name')?.textContent === 'owner@example.com');
@@ -80,7 +81,7 @@ test('every companion page reflows at phone, tablet and laptop widths', async (t
       assert.ok(dimensions.scroll <= dimensions.width+1, `${route} overflows at ${width}: ${dimensions.scroll}`);
       assert.equal(await page.locator('.site-nav [aria-current=page]').count(),1);
       assert.equal(await page.locator('.site-nav [aria-current=page]').getAttribute('href'), `/${route}`);
-      const featureRoots = ['#pair-form', '#appearance-editor', '#poll-manager', '#weather-editor', '#meal-form', '#account-controls'];
+      const featureRoots = ['#pair-form', '#appearance-editor', '#poll-manager', '#weather-editor', '#meal-form', '#account-controls', '#people-manager'];
       assert.equal(await page.locator(featureRoots.join(',')).count(), 1, 'only the active feature is mounted');
       if (process.env.COMPANION_SCREENSHOTS && [390,768,1440].includes(width)) {
         await fs.mkdir(process.env.COMPANION_SCREENSHOTS,{recursive:true});

@@ -35,7 +35,9 @@ The screenshot shows one configured TV on October 1, 2026. See the [TV app READM
 | Cloud Functions and API setup | [server/functions/README.md](server/functions/README.md) |
 | Pairing site and meal Sheet setup | [server/pairing-web/README.md](server/pairing-web/README.md) |
 
-The sections below describe the product vision as well as implemented features. Family profiles, universal search, and cross-app deep links beyond supported Play Next intents remain future ideas.
+People and shared activity are now implemented in source: invite someone from TV or companion Settings → People, let them approve activity-only sharing from their own account, and add independently arranged activity widgets for each person. Sharing can be stopped by the participant or removed by the dashboard owner. Deploy Functions/Hosting/TTL configuration and update the TV app together. See the [People implementation and release guide](server/pairing-web/PEOPLE.md).
+
+The sections below describe the product vision as well as implemented features. Separate personal dashboards, universal search, and cross-app deep links beyond supported Play Next intents remain future ideas.
 
 ---
 

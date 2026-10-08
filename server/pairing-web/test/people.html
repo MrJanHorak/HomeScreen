@@ -1,0 +1,10 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>People fixture</title></head>
+<body><div id="app"></div><script type="module">
+import '/src/styles/style.css';
+import '/src/styles/companion.css';
+import {renderCompanionPage} from '/src/app/companionPage.ts';
+import {createPeopleManager} from '/src/features/people/PeopleManager.tsx';
+renderCompanionPage(document.querySelector('#app'), 'people');
+window.peopleManager = createPeopleManager(document.querySelector('#people-manager'), '/__fixture-api', async () => 'fixture-token', new URLSearchParams(location.search));
+window.peopleManager.load();
+</script></body></html>

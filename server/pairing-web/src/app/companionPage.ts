@@ -2,7 +2,7 @@ import {pairingTemplate} from '../features/pairing/pairingTemplate';
 import {mealTemplate} from '../features/meals/mealTemplate';
 import {accountTemplate} from '../features/account/accountTemplate';
 
-export type CompanionPage = 'pair' | 'dashboard' | 'settings' | 'meals' | 'account' | 'polls';
+export type CompanionPage = 'pair' | 'dashboard' | 'settings' | 'meals' | 'account' | 'polls' | 'people';
 
 interface PageCopy {
   title: string;
@@ -13,6 +13,9 @@ interface PageCopy {
 }
 
 const PAGE_COPY: Record<CompanionPage, PageCopy> = {
+  people: {title: 'People · HomeScreen', eyebrow: 'ACTIVITY SHARING', heading: 'People',
+    intro: 'Make room for everyone’s activity. Invite people and choose whose activity appears on your dashboard.',
+    privacy: 'Each person approves sharing from their own account and can stop at any time. Shared activity is visible to anyone viewing the linked TVs.'},
   polls: {title: 'Polls · HomeScreen', eyebrow: 'CREATE & SHARE', heading: 'Polls',
     intro: 'Ask a question, invite everyone to vote, and share the results on your TV.',
     privacy: 'Participant names and ballots are visible only to you. Archived private ballots are removed after 90 days.'},
@@ -57,6 +60,7 @@ export function companionPageForPath(path: string): CompanionPage {
   switch (path) {
     case '/': return 'dashboard';
     case '/polls': return 'polls';
+    case '/people': return 'people';
     case '/dashboard': return 'dashboard';
     case '/settings': return 'settings';
     case '/meals': return 'meals';
@@ -71,7 +75,7 @@ function siteNavigation(page: CompanionPage): string {
   return `<nav class="site-nav" aria-label="Companion site">
     <div class="nav-group"><p class="nav-label">Your home screen</p>${link('dashboard', 'Dashboard', '▦')}${link('polls', 'Polls', '◷')}</div>
     <div class="nav-group"><p class="nav-label">On your TV</p>${link('settings', 'Weather & goals', '☀')}${link('meals', 'Meals', '◉')}</div>
-    <div class="nav-group nav-manage"><p class="nav-label">Manage</p>${link('account', 'TVs & account', '▣')}${link('pair', 'Connect a TV', '+')}</div>
+    <div class="nav-group nav-manage"><p class="nav-label">Manage</p>${link('people', 'People', '♧')}${link('account', 'TVs & account', '▣')}${link('pair', 'Connect a TV', '+')}</div>
   </nav>`;
 }
 
@@ -104,6 +108,7 @@ function pageGuide(page: CompanionPage): string {
 
 function pageContent(page: CompanionPage): string {
   switch (page) {
+    case 'people': return '<section id="people-manager" aria-label="People and activity sharing"></section>';
     case 'polls': return '<section id="poll-manager" aria-label="Manage household polls"></section>';
     case 'pair': return pairingTemplate();
     case 'meals': return mealTemplate();

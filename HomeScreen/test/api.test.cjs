@@ -104,3 +104,21 @@ test('a late response from the previous account cannot clear or populate the new
   assert.equal(auth.currentUser.uid, 'new-owner');
   assert.deepEqual(events, []);
 });
+
+test('TV layout and available poll reads use the scoped authenticated endpoints and validate metadata', async (t) => {
+  const {api} = setup(t);
+  const calls = [];
+  t.mock.method(global, 'fetch', async (url, options) => {
+    calls.push({url, options});
+    return Response.json(url.includes('appearanceStudio') ? {designs: [{id: 'evening', name: 'Evening', appearance: {}, updatedAtMs: 7}]} :
+      {polls: [{id: 'a'.repeat(32), question: 'Dinner?'}]});
+  });
+  assert.equal((await api.getSavedDashboardLayouts())[0].name, 'Evening');
+  assert.equal((await api.getAvailableDashboardPolls())[0].question, 'Dinner?');
+  assert.ok(calls[0].url.endsWith('/appearanceStudio?designs=1'));
+  assert.ok(calls[1].url.endsWith('/pollFeed?available=1'));
+  assert.ok(calls.every((call) => call.options.headers.Authorization === 'Bearer fixture-token'));
+  t.mock.method(global, 'fetch', async () => Response.json({designs: [{id: 'broken'}], polls: [{id: '../bad', question: 'Bad'}]}));
+  await assert.rejects(api.getSavedDashboardLayouts(), /invalid saved layouts/);
+  await assert.rejects(api.getAvailableDashboardPolls(), /invalid polls/);
+});

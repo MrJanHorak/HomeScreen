@@ -7,6 +7,7 @@ export interface Widget {
   id: string;
   kind: DashboardCardId | "poll";
   roundId?: string;
+  personId?: string;
   visible: boolean;
   size: "standard" | "wide";
   style?: CardStyle;
@@ -42,10 +43,12 @@ export function validWidgetLayout(value: unknown): value is WidgetLayout {
   const seen = new Set<string>();
   for (const w of value.widgets) {
     if (!record(w) || typeof w.id !== "string" || seen.has(w.id) ||
-      Object.keys(w).some((k) => !["id", "kind", "roundId", "visible", "size", "style", "accent", "presentation"].includes(k)) ||
+      Object.keys(w).some((k) => !["id", "kind", "roundId", "personId", "visible", "size", "style", "accent", "presentation"].includes(k)) ||
       typeof w.visible !== "boolean" || !["standard", "wide"].includes(String(w.size)) ||
-      (w.kind === "poll" ? !/^poll_[a-f0-9]{32}$/.test(w.id) || !validPollId(w.roundId) :
-        !DASHBOARD_CARD_IDS.includes(w.kind as DashboardCardId) || w.id !== w.kind || w.roundId !== undefined) ||
+      (w.kind === "poll" ? !/^poll_[a-f0-9]{32}$/.test(w.id) || !validPollId(w.roundId) || w.personId !== undefined :
+        w.kind === "activity" && w.personId !== undefined ?
+          !validPollId(w.personId) || w.id !== `activity_${w.personId}` || w.roundId !== undefined :
+          !DASHBOARD_CARD_IDS.includes(w.kind as DashboardCardId) || w.id !== w.kind || w.roundId !== undefined || w.personId !== undefined) ||
       (w.style !== undefined && !validCardStyles({weather: w.style})) ||
       (w.accent !== undefined && (typeof w.accent !== "string" || !/^#[0-9a-fA-F]{6}$/.test(w.accent))) ||
       (w.presentation !== undefined && !["auto", "results", "join"].includes(String(w.presentation)))) return false;
@@ -93,15 +96,31 @@ export function freeWidgetSpace(grid: WidgetGrid, id: string) {
   }
   return null;
 }
-/** Old TVs receive only known card IDs. Poll-only dashboards retain a usable fallback. */
+/** One activity widget per shared person; connecting someone never changes the layout. */
+export function addPersonWidget(layout: WidgetLayout, personId: string): WidgetLayout {
+  if (!validPollId(personId)) throw new Error("Invalid person.");
+  const id = `activity_${personId}`;
+  if (layout.widgets.some((w) => w.id === id)) throw new Error("This person already has an activity widget. Show their existing widget instead.");
+  const widget: Widget = {id, kind: "activity", personId, visible: true, size: "standard"};
+  let grid = layout.grid;
+  if (grid) {
+    const space = freeWidgetSpace(grid, id);
+    if (!space) throw new Error("Make room on the canvas before adding another activity widget.");
+    grid = {...grid, items: [...grid.items, space]};
+  }
+  const next = {...layout, grid, widgets: [...layout.widgets, widget]};
+  if (!validWidgetLayout(next)) throw new Error("Hide a widget or use free layout before adding another activity widget.");
+  return next;
+}
+/** Old TVs receive only known card IDs. Shared activity never replaces the owner's legacy card. */
 export function legacyWidgetProjection(layout: WidgetLayout) {
   const cards = DASHBOARD_CARD_IDS.map((id) => {
-    const w = layout.widgets.find((i) => i.kind === id);
+    const w = layout.widgets.find((i) => i.id === id && i.kind === id);
     return {id, visible: w?.visible ?? false, size: w?.size ?? "standard" as "standard" | "wide"};
   });
   if (!cards.some((c) => c.visible)) cards[0].visible = true;
   const cardStyles: CardStyles = {};
-  for (const w of layout.widgets) if (w.kind !== "poll" && w.style) cardStyles[w.kind] = w.style;
+  for (const w of layout.widgets) if (w.id === w.kind && w.kind !== "poll" && w.style) cardStyles[w.kind] = w.style;
   const items = layout.grid?.items.filter((i) => DASHBOARD_CARD_IDS.includes(i.id as DashboardCardId)) ?? [];
   const grid = layout.grid && items.length === cards.filter((c) => c.visible).length ? {...layout.grid, items} as DashboardGridLayout : null;
   return {cards, cardStyles, grid};

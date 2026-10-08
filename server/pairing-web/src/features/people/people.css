@@ -1,0 +1,18 @@
+.people-manager {display: grid; gap: 22px; min-width: 0;}
+.people-panel {padding: 22px; border: 1px solid var(--border, #34445b); border-radius: 16px; background: rgba(255,255,255,.025); min-width: 0;}
+.people-panel h2 {margin-top: 0; font-size: 22px;}
+.people-panel summary {font-size: 19px; font-weight: 700; cursor: pointer;}
+.people-panel[open] summary {margin-bottom: 20px;}
+.people-panel p {line-height: 1.6;}
+.people-fields {display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px;}
+.people-fields label, .people-invitation label {display: grid; gap: 8px; font-weight: 600;}
+.people-fields input, .people-invitation input {min-width: 0; width: 100%; box-sizing: border-box;}
+.people-consent {display: flex; align-items: flex-start; gap: 10px; margin: 20px 0 10px; line-height: 1.5;}
+.people-consent input {width: 20px; height: 20px; flex-shrink: 0; margin: 3px 0 0;}
+.people-actions {display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px;}
+.people-invitation {margin-top: 20px;}
+.people-row {display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 0; border-top: 1px solid var(--border, #34445b);}
+.people-row > div {min-width: 0; overflow-wrap: anywhere;}
+.people-row h3 {margin: 0 0 8px;}
+.people-panel fieldset {border: 0; margin: 0; padding: 0; min-width: 0;}
+@media (max-width: 650px) {.people-fields {grid-template-columns: 1fr;} .people-panel {padding: 16px;} .people-row {align-items: flex-start; flex-direction: column;}}

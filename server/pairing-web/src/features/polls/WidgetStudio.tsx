@@ -1,7 +1,8 @@
 import {useEffect, useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {createPortal} from 'react-dom';
-import {freeWidgetSpace, validWidgetLayout, widgetGridFromRows, widgetsFromLegacy, legacyWidgetProjection} from '../../../../functions/src/utils/widgets';
+import {addPersonWidget, freeWidgetSpace, validWidgetLayout, widgetGridFromRows, widgetsFromLegacy, legacyWidgetProjection} from '../../../../functions/src/utils/widgets';
+import type {PeopleSettings} from '../../../../../shared/src/people';
 import type {Widget, WidgetLayout} from '../../../../functions/src/utils/widgets';
 import {CARD_LABELS} from '../dashboard/appearanceModel';
 import type {Appearance} from '../dashboard/appearanceModel';
@@ -14,6 +15,16 @@ function WidgetStudio({appearance, busy, request, update, previewRoot, addRoot}:
   const layout = appearance.widgetLayout;
   const [rounds, setRounds] = useState<RoundSummary[]>([]); const [roundId, setRoundId] = useState(''); const [selected, setSelected] = useState(''); const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true); const [refresh, setRefresh] = useState(0);
+  const [people, setPeople] = useState<PeopleSettings['people']>([]);
+  const [personId, setPersonId] = useState(''); const [peopleLoading, setPeopleLoading] = useState(true);
+  useEffect(() => {
+    let active = true; setPeopleLoading(true);
+    void request<PeopleSettings>('people').then((data) => {
+      if (active) {setPeople(data.people); setPersonId((id) => data.people.some((p) => p.id === id) ? id : data.people[0]?.id || '');}
+    }).catch(() => {if (active) setMessage('People could not load. Refresh to try again.');})
+      .finally(() => {if (active) setPeopleLoading(false);});
+    return () => {active = false;};
+  }, [request, refresh]);
   useEffect(() => {let active = true; setLoading(true);
     void request<PollLibrary>('polls').then((library) => {if (active) {
       const available = library.rounds.filter((r) => r.state !== 'archived'); setRounds(available);
@@ -22,7 +33,16 @@ function WidgetStudio({appearance, busy, request, update, previewRoot, addRoot}:
       setMessage(requested && !available.some((r) => r.id === requested) ? 'That poll is no longer available. Choose another voting round below.' : '');
     }}).catch((e) => {if (active) setMessage(e.message);}).finally(() => {if (active) setLoading(false);});
     return () => {active = false;};}, [request, refresh]);
-  const label = (widget: Widget) => widget.kind === 'poll' ? rounds.find((r) => r.id === widget.roundId)?.question || 'Poll' : CARD_LABELS[widget.kind];
+  const label = (widget: Widget) => widget.kind === 'poll' ? rounds.find((r) => r.id === widget.roundId)?.question || 'Poll' :
+    widget.personId ? `Activity · ${people.find((p) => p.id === widget.personId)?.name || 'Person unavailable'}` : CARD_LABELS[widget.kind];
+  function addActivity() {
+    if (!personId || !people.some((p) => p.id === personId)) return;
+    try {
+      const current = layout || widgetsFromLegacy(appearance.cards, appearance.grid, appearance.cardStyles);
+      const next = addPersonWidget(current, personId);
+      commit(next); setSelected(`activity_${personId}`);
+    } catch (error) {setMessage(error instanceof Error ? error.message : 'Could not add activity widget.');}
+  }
   function commit(next: WidgetLayout) {if (!validWidgetLayout(next)) {setMessage('Keep at least one widget visible, up to eight in rows, or twelve fitting the free canvas. Widgets cannot overlap.'); return;} setMessage(''); update(next);}
   function change(id: string, changes: Partial<Widget>) {if (layout) commit({...layout, widgets: layout.widgets.map((w) => w.id === id ? {...w, ...changes} : w)});}
   function visibility(widget: Widget, visible: boolean) {
@@ -44,7 +64,15 @@ function WidgetStudio({appearance, busy, request, update, previewRoot, addRoot}:
     if (!validWidgetLayout(next)) {setMessage('Your automatic rows are full. Hide a card or switch to Free layout before adding another poll.'); return;}
     commit(next); setSelected(widget.id);
   }
-  return <section className="widget-studio" aria-label="Poll widgets and arrangement">
+  return <section className="widget-studio" aria-label="Widgets and arrangement">
+    {createPortal(<section className="studio-add-poll" aria-labelledby="studio-add-activity-title">
+      <div className="poll-section-heading"><div><h2 id="studio-add-activity-title">Add a person’s activity</h2><p className="field-hint">Each person has an independent card. Joining does not change your layout.</p></div><a className="guide-link" href="/people">Manage People →</a></div>
+      <div className="widget-add-controls"><select aria-label="Person’s activity to add" disabled={busy || peopleLoading || !people.length} value={personId} onChange={(e) => setPersonId(e.target.value)}>
+        <option value="">{peopleLoading ? 'Loading people…' : 'Choose a person'}</option>{people.map((person) => <option key={person.id} value={person.id}>{person.name}{layout?.widgets.some((w) => w.personId === person.id) ? ' · Already added' : ''}</option>)}</select>
+        <button type="button" className="button button-primary" disabled={busy || peopleLoading || !personId || layout?.widgets.some((w) => w.personId === personId)} onClick={addActivity}>Add activity</button>
+        <button type="button" className="button button-text" disabled={busy || peopleLoading} onClick={() => setRefresh((n) => n + 1)}>Refresh people</button>
+      </div>{!peopleLoading && !people.length && <p className="field-hint"><a href="/people">Invite someone to share their activity →</a></p>}
+    </section>, addRoot)}
     {createPortal(<section className="studio-add-poll" aria-labelledby="studio-add-poll-title"><div className="poll-section-heading"><div><h2 id="studio-add-poll-title">Add a poll to your dashboard</h2><p className="field-hint">Choose a voting round, then arrange and style its card in the preview.</p></div><a className="guide-link" href="/polls">Manage polls →</a></div>
       <div className="widget-add-controls"><select aria-label="Poll round to add" disabled={busy || loading || !rounds.length} value={roundId} onChange={(e) => setRoundId(e.target.value)}><option value="">{loading ? 'Loading polls…' : 'Choose a voting round'}</option>{rounds.map((r) => <option key={r.id} value={r.id}>{r.question} · {r.state === 'open' ? 'Voting open' : 'Results'}</option>)}</select><button type="button" className="button button-primary" disabled={busy || loading || !roundId} onClick={addPoll}>Add poll</button><button type="button" className="button button-text" disabled={busy || loading} onClick={() => setRefresh((n) => n + 1)}>Refresh</button></div>
       {!loading && !rounds.length && <p className="field-hint">No voting rounds yet. <a href="/polls">Create a poll and start voting →</a></p>}
@@ -59,7 +87,7 @@ function WidgetStudio({appearance, busy, request, update, previewRoot, addRoot}:
         <div className="widget-toolbar widget-heading"><h3>{label(widget)}</h3><button type="button" className="button button-secondary" aria-expanded={selected === widget.id} disabled={busy} onClick={() => setSelected(selected === widget.id ? '' : widget.id)}>{selected === widget.id ? 'Hide controls' : 'Edit widget'}</button></div>
         <div className="widget-toolbar"><label><input type="checkbox" disabled={busy} checked={widget.visible} onChange={(e) => visibility(widget, e.target.checked)}/>Visible</label>
           {!layout.grid && <><button type="button" className="button button-secondary" aria-label={`Move ${label(widget)} earlier`} disabled={busy || index === 0} onClick={() => {const widgets = [...layout.widgets]; [widgets[index - 1], widgets[index]] = [widgets[index], widgets[index - 1]]; commit({...layout, widgets});}}>↑</button><button type="button" className="button button-secondary" aria-label={`Move ${label(widget)} later`} disabled={busy || index === layout.widgets.length - 1} onClick={() => {const widgets = [...layout.widgets]; [widgets[index], widgets[index + 1]] = [widgets[index + 1], widgets[index]]; commit({...layout, widgets});}}>↓</button></>}
-          {widget.kind === 'poll' && <button type="button" className="button button-text" disabled={busy} onClick={() => commit({...layout, widgets: layout.widgets.filter((w) => w.id !== widget.id), grid: layout.grid ? {...layout.grid, items: layout.grid.items.filter((i) => i.id !== widget.id)} : null})}>Remove widget</button>}
+          {(widget.kind === 'poll' || widget.personId) && <button type="button" className="button button-text" disabled={busy} onClick={() => commit({...layout, widgets: layout.widgets.filter((w) => w.id !== widget.id), grid: layout.grid ? {...layout.grid, items: layout.grid.items.filter((i) => i.id !== widget.id)} : null})}>Remove widget</button>}
         </div>
         {selected === widget.id && <fieldset disabled={busy} className="poll-form-fields">
           <div className="widget-fields"><label>Surface preset<select value={widget.style?.useThemeSurface !== false ? 'theme' : 'custom'} onChange={(e) => change(widget.id, {style: e.target.value === 'theme' ? undefined : {backgroundColor: '#142338', opacity: .95, useThemeSurface: false, borderWidth: 1, borderRadius: 20}})}><option value="theme">Follow dashboard theme</option><option value="custom">Custom color</option></select></label>

@@ -17,6 +17,8 @@ import {
 } from "./utils/db";
 import {authenticatedIdentity} from "./utils/requestAuth";
 import {logSafeError} from "./utils/safeLog";
+import {ACTIVITY_SCOPES, activityProfile, invitationHash, validInvitation} from "./utils/people";
+import {readActivityInvitation, saveActivityConsent} from "./services/activitySharing";
 
 const STATE_LIFETIME_MS = 10 * 60 * 1000;
 const GOOGLE_SCOPES = [
@@ -35,7 +37,9 @@ interface OAuthState {
   authorizationVersion: number;
   authTimeSeconds: number;
   deviceCode?: string;
-  kind?: "device" | "photos" | "meals";
+  kind?: "device" | "photos" | "meals" | "activity";
+  inviteHash?: string;
+  activityProfile?: {name: string; stepGoal: number; distanceGoal: number};
   codeVerifier: string;
   expiresAt: number;
   deleteAt?: Timestamp;
@@ -52,9 +56,11 @@ function hash(value: string): string {
 }
 
 function pairingRedirect(result: "connected" | "denied" | "expired" | "error" |
-  "meals_connected" | "meals_denied" | "meals_error"): string {
+  "meals_connected" | "meals_denied" | "meals_error" |
+  "activity_connected" | "activity_denied" | "activity_error"): string {
   const url = new URL(requiredSetting("PAIRING_URL"));
   if (result.startsWith("meals_")) url.pathname = "/meals";
+  if (result.startsWith("activity_")) url.pathname = "/people";
   url.searchParams.set("result", result);
   return url.toString();
 }
@@ -74,6 +80,56 @@ export const beginGoogleLinkHandler = onRequest(
   {cors: true, maxInstances: 10},
   handleBeginGoogleLink
 );
+
+/** A participant approves activity-only access from their own signed-in browser. */
+export const beginGoogleActivityHandler = onRequest({cors: true, maxInstances: 5}, handleBeginGoogleActivity);
+export async function handleBeginGoogleActivity(req: Request, res: Response): Promise<void> {
+  res.set("Cache-Control", "private, no-store");
+  if (req.method === "OPTIONS") {
+    res.status(204).send(""); return;
+  }
+  if (req.method !== "POST") {
+    res.status(405).json({error: "Method not allowed"}); return;
+  }
+  const identity = await authenticatedIdentity(req);
+  if (!identity) {
+    res.status(401).json({error: "Sign in to connect your activity."}); return;
+  }
+  if (!identity.owner) {
+    res.status(403).json({error: "Connect activity from your own Google account on a phone or computer."}); return;
+  }
+  const profile = activityProfile(req.body);
+  if (!profile || req.body?.consent !== true || (req.body.invite !== undefined && !validInvitation(req.body.invite))) {
+    res.status(400).json({error: "Enter your name and goals and approve activity sharing."}); return;
+  }
+  try {
+    const inviteHash = req.body.invite ? invitationHash(req.body.invite) : undefined;
+    if (inviteHash && (await readActivityInvitation(inviteHash)).dashboardId === identity.userId) {
+      res.status(400).json({error: "Use the other person’s Google account for this invitation."}); return;
+    }
+    if (!await recordUserQuota(identity.userId, "activity_consent", 10, STATE_LIFETIME_MS)) {
+      res.status(429).json({error: "Please wait before starting activity consent again."}); return;
+    }
+    const state = crypto.randomBytes(32).toString("base64url");
+    const codeVerifier = crypto.randomBytes(48).toString("base64url");
+    const record: OAuthState = {kind: "activity", userId: identity.userId,
+      authTimeSeconds: identity.authTimeSeconds || 0,
+      authorizationVersion: await getAuthorizationVersion(identity.userId),
+      activityProfile: profile, ...(inviteHash ? {inviteHash} : {}), codeVerifier,
+      expiresAt: Date.now() + STATE_LIFETIME_MS};
+    await db.collection("oauth_states").doc(hash(state)).create({...record,
+      deleteAt: Timestamp.fromMillis(record.expiresAt + 60 * 60 * 1000)});
+    const oauthClient = new google.auth.OAuth2(requiredSetting("GOOGLE_CLIENT_ID"), undefined, requiredSetting("GOOGLE_REDIRECT_URI"));
+    res.status(200).json({authorizationUrl: oauthClient.generateAuthUrl({
+      access_type: "offline", prompt: "consent", scope: ["openid", "email", ...ACTIVITY_SCOPES],
+      state, code_challenge_method: CodeChallengeMethod.S256,
+      code_challenge: crypto.createHash("sha256").update(codeVerifier).digest("base64url"),
+    })});
+  } catch (error) {
+    logSafeError("Could not start activity consent", error);
+    res.status(400).json({error: "Activity connection could not start. Check the invitation or try again."});
+  }
+}
 
 export async function handleBeginGoogleLink(req: Request, res: Response): Promise<void> {
   res.set("Cache-Control", "no-store");
@@ -297,6 +353,7 @@ export const googleOAuthCallbackHandler = onRequest(
       }
       if (req.query.error) {
         if (record.kind === "photos") photosResult(res, "Google Photos access was cancelled.");
+        else if (record.kind === "activity") res.redirect(303, pairingRedirect("activity_denied"));
         else if (record.kind === "meals") res.redirect(303, pairingRedirect("meals_denied"));
         else res.redirect(303, pairingRedirect("denied"));
         return;
@@ -304,6 +361,7 @@ export const googleOAuthCallbackHandler = onRequest(
       const code = req.query.code;
       if (typeof code !== "string" || !code) {
         if (record.kind === "photos") photosResult(res, "Google Photos could not be connected.");
+        else if (record.kind === "activity") res.redirect(303, pairingRedirect("activity_error"));
         else if (record.kind === "meals") res.redirect(303, pairingRedirect("meals_error"));
         else res.redirect(303, pairingRedirect("error"));
         return;
@@ -347,6 +405,14 @@ export const googleOAuthCallbackHandler = onRequest(
         return;
       }
 
+      if (record.kind === "activity") {
+        if (!record.activityProfile) throw new Error("Activity profile is missing.");
+        await saveActivityConsent(record.userId, {accessToken: tokens.access_token,
+          refreshToken: tokens.refresh_token, expiryDate: tokens.expiry_date ?? undefined, scope: tokens.scope},
+        record.authorizationVersion, record.authTimeSeconds, record.activityProfile, record.inviteHash);
+        res.redirect(303, pairingRedirect("activity_connected")); return;
+      }
+
       if (record.kind === "meals") {
         if (!tokens.scope?.split(" ").includes(MEALS_SCOPE)) {
           throw new Error("Google Sheets permission was not granted");
@@ -383,6 +449,7 @@ export const googleOAuthCallbackHandler = onRequest(
     } catch (error) {
       logSafeError("Could not finish Google pairing", error);
       if (flow === "photos") photosResult(res, "Google Photos could not be connected. Please try again.");
+      else if (flow === "activity") res.redirect(303, pairingRedirect("activity_error"));
       else if (flow === "meals") res.redirect(303, pairingRedirect("meals_error"));
       else res.redirect(303, pairingRedirect("error"));
     }

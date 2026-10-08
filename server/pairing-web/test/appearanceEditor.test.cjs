@@ -41,6 +41,7 @@ async function setup(t, initial = {}, options = {}) {
     const request = route.request(); const body = request.postDataJSON();
     let status = 200; let result;
     if (request.url().endsWith('/polls')) result = {templates:[],rounds:state.rounds || [],devices:[]};
+    else if (request.url().endsWith('/people')) result = {people: [], sharing: [], connection: null};
     else if (request.url().includes('googlePhotosPicker')) result = {photos: []};
     else if (request.url().endsWith('appearanceStudio')) {
       if (request.method() === 'GET') result = state;

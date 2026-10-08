@@ -3,6 +3,7 @@ import type {Response} from "express";
 import {FieldValue} from "firebase-admin/firestore";
 import {auth, db, invalidateDashboardCache, invalidatePendingAuthorizations, runUserTransaction} from "./utils/db";
 import {authenticatedIdentity, recentlyAuthenticated} from "./utils/requestAuth";
+import {clearActivitySharing} from "./services/activitySharing";
 
 async function deleteUserRecords(collection: string, userId: string): Promise<void> {
   const query = db.collection(collection).where("userId", "==", userId).limit(100);
@@ -107,6 +108,7 @@ export async function handleAccountSecurity(req: Request, res: Response): Promis
     }
     if (action === "deleteAccount") {
       await auth.updateUser(userId, {disabled: true});
+      await clearActivitySharing(userId, true);
       // Remove nested photos, appearance and cache before deleting Auth.
       await auth.revokeRefreshTokens(userId);
       await db.recursiveDelete(userRef);

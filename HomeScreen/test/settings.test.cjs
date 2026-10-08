@@ -1,0 +1,64 @@
+const {test, before, after} = require('node:test');
+const assert = require('node:assert/strict');
+const {chromium} = require('playwright');
+const url = process.env.TV_SETTINGS_TEST_URL || 'http://127.0.0.1:5175/settings.html';
+let browser;
+before(async () => {browser = await chromium.launch({headless: true, ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? {executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE} : {})});});
+after(async () => {await browser?.close();});
+const state = (page) => page.locator('[data-appearance]').textContent().then(JSON.parse);
+for (const width of [960, 1920]) test(`TV card and saved layout controls work with keyboard and persist widget instances: ${width}`, async (t) => {
+  const page = await browser.newPage({viewport: {width, height: 850}});
+  t.after(() => page.close());
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto(url);
+  const poll = page.getByRole('button', {name: 'Poll · Movie night? shown', exact: true});
+  await poll.waitFor();
+  if (process.env.TV_SETTINGS_SCREENSHOTS) await page.screenshot({path: `../artifacts/settings-cards-${width}.png`});
+  await poll.focus(); await page.keyboard.press('Enter');
+  await page.getByRole('button', {name: 'Poll · Movie night? hidden', exact: true}).waitFor();
+  await page.getByRole('button', {name: 'Poll · Movie night? hidden', exact: true}).click();
+  await page.getByRole('button', {name: 'Add Activity · Sam', exact: true}).click();
+  await page.getByRole('button', {name: 'Activity · Sam shown', exact: true}).waitFor();
+  await page.getByRole('button', {name: 'Add Poll · Dinner?', exact: true}).click();
+  await page.getByRole('button', {name: 'Poll · Dinner? shown', exact: true}).waitFor();
+  assert.equal((await state(page)).widgetLayout.widgets.filter((widget) => widget.visible).length, 5);
+  await page.getByRole('button', {name: 'Layout tab', exact: true}).click();
+  if (process.env.TV_SETTINGS_SCREENSHOTS) {
+    await page.getByRole('button', {name: 'Apply saved layout Garden', exact: true}).waitFor();
+    await page.screenshot({path: `../artifacts/settings-layouts-${width}.png`});
+  }
+  await page.getByRole('button', {name: 'Apply saved layout Garden', exact: true}).click();
+  assert.equal((await state(page)).palette, 'forest');
+  assert.equal((await state(page)).widgetLayout.grid.items.length, 3);
+  await page.getByRole('button', {name: 'Cards tab', exact: true}).click();
+  await page.getByRole('button', {name: 'Next spot Weather', exact: true}).click();
+  const moved = await state(page);
+  assert.equal(moved.widgetLayout.grid.items.find((item) => item.id === 'weather').x, 6);
+  await page.getByRole('button', {name: 'Activity · Alex shown', exact: true}).click();
+  await page.getByRole('button', {name: 'Activity · Alex hidden', exact: true}).click();
+  assert.equal((await state(page)).widgetLayout.grid.items.length, 3);
+  await page.getByRole('button', {name: 'Layout tab', exact: true}).click();
+  await page.getByRole('button', {name: 'Balanced. All six cards, with the schedule prominent.', exact: true}).click();
+  const preset = await state(page);
+  assert.equal(preset.widgetLayout.widgets.find((widget) => widget.kind === 'poll').visible, false);
+  assert.equal(preset.widgetLayout.grid, null);
+  await page.getByRole('button', {name: 'Apply saved layout Classic', exact: true}).click();
+  assert.equal((await state(page)).widgetLayout, null);
+  await page.waitForFunction(() => window.settingsFixture.writes.at(-1)?.widgetLayout === null);
+  assert.deepEqual(errors, []);
+});
+
+test('saved layout failures show a retry and retain the current dashboard', async (t) => {
+  const page = await browser.newPage(); t.after(() => page.close());
+  await page.goto(url);
+  await page.getByRole('button', {name: 'Free layout', exact: true}).waitFor();
+  const previous = await state(page);
+  await page.evaluate(() => {window.settingsFixture.failLayouts = true;});
+  await page.getByRole('button', {name: 'Layout tab', exact: true}).click();
+  await page.getByText('Could not load saved layouts', {exact: true}).waitFor();
+  assert.deepEqual(await state(page), previous);
+  await page.evaluate(() => {window.settingsFixture.failLayouts = false;});
+  await page.getByRole('button', {name: 'Refresh saved layouts', exact: true}).click();
+  await page.getByRole('button', {name: 'Apply saved layout Garden', exact: true}).waitFor();
+});
