@@ -60,6 +60,23 @@
 .companion-mode .studio-actionbar .draft-actions, .companion-mode .studio-actionbar .editor-actions { margin: 0; }
 .companion-mode .studio-add-poll .widget-add-controls { align-items: center; }
 .companion-mode .studio-add-poll .widget-add-controls select { flex-basis: 180px; }
+.companion-mode .studio-add-poll { margin: 20px 0 0; padding: 18px; }
+.companion-mode .studio-add-poll h2 { font-size: 18px; margin: 0; }
+.widget-studio > label { display: grid; gap: 8px; font-size: 13px; font-weight: 600; }
+.widget-studio > label select { margin: 0; }
+.widget-studio .widget-note { margin: 0; }
+.widget-studio > .status:empty { display: none; }
+.widget-row .widget-heading { align-items: center; justify-content: space-between; }
+.widget-heading h3 { flex: 1 1 140px; min-width: 0; overflow-wrap: anywhere; line-height: 1.4; }
+.widget-heading .button { flex-shrink: 0; }
+.widget-toolbar { align-items: center; }
+.widget-toolbar > label { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
+.widget-toolbar input[type=checkbox] { width: 18px; height: 18px; margin: 0; accent-color: #b9e6d1; }
+.widget-fields select, .widget-fields input[type=color] { margin: 0; }
+.widget-fields label { align-content: start; }
+.widget-fields input[type=range] { min-height: 36px; margin: 0; accent-color: #b9e6d1; cursor: pointer; }
+.widget-fields output { font-variant-numeric: tabular-nums; color: #b9cec9; font-weight: 600; }
+.widget-reset { justify-self: start; text-align: left; }
 .companion-mode .poll-empty .button { min-width: 200px; }
 .companion-mode .studio-preview-heading { margin-bottom: 14px; }
 .companion-mode .studio-section { border-radius: 14px; margin-top: 12px; }

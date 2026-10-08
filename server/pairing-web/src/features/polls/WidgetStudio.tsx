@@ -1,11 +1,11 @@
 import {useEffect, useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import {createPortal} from 'react-dom';
-import {cardInk, cardSurface} from '../../../../functions/src/utils/cardStyle';
-import {freeWidgetSpace, validWidgetLayout, validWidgetGrid, widgetGridFromRows, widgetsFromLegacy, legacyWidgetProjection} from '../../../../functions/src/utils/widgets';
+import {freeWidgetSpace, validWidgetLayout, widgetGridFromRows, widgetsFromLegacy, legacyWidgetProjection} from '../../../../functions/src/utils/widgets';
 import type {Widget, WidgetLayout} from '../../../../functions/src/utils/widgets';
 import {CARD_LABELS} from '../dashboard/appearanceModel';
 import type {Appearance} from '../dashboard/appearanceModel';
+import {WidgetCanvas} from '../dashboard/grid/WidgetCanvas';
 import {pollApi} from './pollApi';
 import type {PollRequest, PollLibrary, RoundSummary} from './pollApi';
 import './polls.css';
@@ -45,42 +45,33 @@ function WidgetStudio({appearance, busy, request, update, previewRoot, addRoot}:
     commit(next); setSelected(widget.id);
   }
   return <section className="widget-studio" aria-label="Poll widgets and arrangement">
-    {createPortal(<section className="studio-add-poll" aria-labelledby="studio-add-poll-title"><div className="poll-section-heading"><div><h2 id="studio-add-poll-title">Add a poll to your dashboard</h2><p className="field-hint">Choose a voting round, then arrange and style its card below.</p></div><a className="guide-link" href="/polls">Manage polls →</a></div>
+    {createPortal(<section className="studio-add-poll" aria-labelledby="studio-add-poll-title"><div className="poll-section-heading"><div><h2 id="studio-add-poll-title">Add a poll to your dashboard</h2><p className="field-hint">Choose a voting round, then arrange and style its card in the preview.</p></div><a className="guide-link" href="/polls">Manage polls →</a></div>
       <div className="widget-add-controls"><select aria-label="Poll round to add" disabled={busy || loading || !rounds.length} value={roundId} onChange={(e) => setRoundId(e.target.value)}><option value="">{loading ? 'Loading polls…' : 'Choose a voting round'}</option>{rounds.map((r) => <option key={r.id} value={r.id}>{r.question} · {r.state === 'open' ? 'Voting open' : 'Results'}</option>)}</select><button type="button" className="button button-primary" disabled={busy || loading || !roundId} onClick={addPoll}>Add poll</button><button type="button" className="button button-text" disabled={busy || loading} onClick={() => setRefresh((n) => n + 1)}>Refresh</button></div>
       {!loading && !rounds.length && <p className="field-hint">No voting rounds yet. <a href="/polls">Create a poll and start voting →</a></p>}
-      <p role="status" className="status" data-kind="error">{message}</p>
+      {!layout && <p role="status" className="status" data-kind="error">{message}</p>}
     </section>, addRoot)}
     {!layout ? null : <>
       <label>Arrangement<select disabled={busy} value={layout.grid ? 'grid' : 'rows'} onChange={(e) => commit({...layout, grid: e.target.value === 'grid' ? widgetGridFromRows(layout.widgets) : null})}><option value="rows">Automatic rows</option><option value="grid">Free layout · all 50 sizes</option></select></label>
-      {createPortal(<div className="widget-canvas" aria-label="Widget layout preview">{(layout.grid || widgetGridFromRows(layout.widgets)).items.map((item) => {const widget = layout.widgets.find((w) => w.id === item.id)!;
-        const custom = widget.style && !widget.style.useThemeSurface ? widget.style : null;
-        return <button type="button" key={item.id} disabled={busy} aria-pressed={selected === item.id} onClick={() => setSelected(item.id)} style={{gridColumn: `${item.x + 1}/span ${item.width}`, gridRow: `${item.y + 1}/span ${item.height}`, background: custom ? cardSurface(custom) : '#24344d', color: custom ? cardInk(custom, appearance.backgroundColor, appearance.customAccent).primary : '#fff', borderRadius: custom?.borderRadius, borderWidth: custom?.borderWidth}}>{label(widget)}<small>{item.width} × {item.height}{widget.kind === 'poll' ? ` · ${rounds.find((r) => r.id === widget.roundId)?.total ?? 0} votes` : ''}</small></button>;
-      })}</div>, previewRoot)}
-      <p className="widget-note">Select a widget for precise positioning. Changes remain in your draft until Save to TV. Small polls open a larger QR when selected on the TV.</p>
+      {createPortal(<WidgetCanvas appearance={appearance} layout={layout} busy={busy} selected={selected} select={setSelected} label={label} votes={(widget) => rounds.find((r) => r.id === widget.roundId)?.total ?? 0} commit={commit} report={setMessage}/>, previewRoot)}
+      <p id="widget-layout-help" className="widget-note">{layout.grid ? 'Drag widgets to move them. Drop onto another widget to swap their places and sizes. Drag the bottom-right corner to resize.' : 'Drag a widget onto another to reorder. Choose Free layout to move and resize widgets.'} Select a widget to style it below. You can also use arrow keys on a widget or its resize handle. Changes stay in your draft until Save to TV.</p>
+      <p role="status" className="status" data-kind="error">{message}</p>
       {layout.widgets.map((widget, index) => <article className={`widget-row ${selected === widget.id ? 'is-selected' : ''}`} key={widget.id}>
-        <div className="widget-toolbar"><h3>{label(widget)}</h3><button type="button" disabled={busy} onClick={() => setSelected(selected === widget.id ? '' : widget.id)}>{selected === widget.id ? 'Hide controls' : 'Edit widget'}</button></div>
+        <div className="widget-toolbar widget-heading"><h3>{label(widget)}</h3><button type="button" className="button button-secondary" aria-expanded={selected === widget.id} disabled={busy} onClick={() => setSelected(selected === widget.id ? '' : widget.id)}>{selected === widget.id ? 'Hide controls' : 'Edit widget'}</button></div>
         <div className="widget-toolbar"><label><input type="checkbox" disabled={busy} checked={widget.visible} onChange={(e) => visibility(widget, e.target.checked)}/>Visible</label>
-          {!layout.grid && <><button type="button" disabled={busy || index === 0} onClick={() => {const widgets = [...layout.widgets]; [widgets[index - 1], widgets[index]] = [widgets[index], widgets[index - 1]]; commit({...layout, widgets});}}>↑</button><button type="button" disabled={busy || index === layout.widgets.length - 1} onClick={() => {const widgets = [...layout.widgets]; [widgets[index], widgets[index + 1]] = [widgets[index + 1], widgets[index]]; commit({...layout, widgets});}}>↓</button></>}
-          {widget.kind === 'poll' && <button type="button" disabled={busy} onClick={() => commit({...layout, widgets: layout.widgets.filter((w) => w.id !== widget.id), grid: layout.grid ? {...layout.grid, items: layout.grid.items.filter((i) => i.id !== widget.id)} : null})}>Remove widget</button>}
+          {!layout.grid && <><button type="button" className="button button-secondary" aria-label={`Move ${label(widget)} earlier`} disabled={busy || index === 0} onClick={() => {const widgets = [...layout.widgets]; [widgets[index - 1], widgets[index]] = [widgets[index], widgets[index - 1]]; commit({...layout, widgets});}}>↑</button><button type="button" className="button button-secondary" aria-label={`Move ${label(widget)} later`} disabled={busy || index === layout.widgets.length - 1} onClick={() => {const widgets = [...layout.widgets]; [widgets[index], widgets[index + 1]] = [widgets[index + 1], widgets[index]]; commit({...layout, widgets});}}>↓</button></>}
+          {widget.kind === 'poll' && <button type="button" className="button button-text" disabled={busy} onClick={() => commit({...layout, widgets: layout.widgets.filter((w) => w.id !== widget.id), grid: layout.grid ? {...layout.grid, items: layout.grid.items.filter((i) => i.id !== widget.id)} : null})}>Remove widget</button>}
         </div>
         {selected === widget.id && <fieldset disabled={busy} className="poll-form-fields">
-          {layout.grid && widget.visible && <div className="widget-fields">{(['x', 'y', 'width', 'height'] as const).map((key) => {
-            const item = layout.grid!.items.find((i) => i.id === widget.id)!; const offset = key === 'x' || key === 'y' ? 1 : 0;
-            return <label key={key}>{key === 'x' ? 'Column' : key === 'y' ? 'Row' : key === 'width' ? 'Width (3–12)' : 'Height (2–6)'}<input type="number" step={1} min={key === 'width' ? 3 : key === 'height' ? 2 : 1} max={key === 'x' || key === 'width' ? 12 : 6} value={item[key] + offset} onChange={(e) => {
-              const next = {...layout.grid!, items: layout.grid!.items.map((i) => i.id === widget.id ? {...i, [key]: Number(e.target.value) - offset} : i)};
-              if (validWidgetGrid(next, layout.widgets)) commit({...layout, grid: next}); else setMessage('This size or position does not fit. Move or shrink another widget first.');
-            }}/></label>;
-          })}</div>}
           <div className="widget-fields"><label>Surface preset<select value={widget.style?.useThemeSurface !== false ? 'theme' : 'custom'} onChange={(e) => change(widget.id, {style: e.target.value === 'theme' ? undefined : {backgroundColor: '#142338', opacity: .95, useThemeSurface: false, borderWidth: 1, borderRadius: 20}})}><option value="theme">Follow dashboard theme</option><option value="custom">Custom color</option></select></label>
             {!layout.grid && <label>Row width<select value={widget.size} onChange={(e) => change(widget.id, {size: e.target.value as Widget['size']})}><option value="standard">Standard</option><option value="wide">Wide where space permits</option></select></label>}
             {widget.style && !widget.style.useThemeSurface && <>
               <label>Background color<input type="color" value={widget.style.backgroundColor} onChange={(e) => change(widget.id, {style: {...widget.style!, backgroundColor: e.target.value}})}/></label>
-              <label>Opacity<input type="range" min={0.3} max={1} step={.05} value={widget.style.opacity} onChange={(e) => change(widget.id, {style: {...widget.style!, opacity: Number(e.target.value)}})}/></label>
-              <label>Border width<input type="number" min={0} max={4} step={.5} value={widget.style.borderWidth ?? 1} onChange={(e) => change(widget.id, {style: {...widget.style!, borderWidth: Number(e.target.value)}})}/></label>
-              <label>Corner radius<input type="number" min={0} max={32} value={widget.style.borderRadius ?? 20} onChange={(e) => change(widget.id, {style: {...widget.style!, borderRadius: Number(e.target.value)}})}/></label>
+              <label>Opacity <output>{Math.round(widget.style.opacity * 100)}%</output><input aria-label="Opacity" type="range" min={0} max={1} step={.01} value={widget.style.opacity} onChange={(e) => change(widget.id, {style: {...widget.style!, opacity: Number(e.target.value)}})}/></label>
+              <label>Border width <output>{widget.style.borderWidth ?? 1}px</output><input aria-label="Border width" type="range" min={0} max={4} step={.5} value={widget.style.borderWidth ?? 1} onChange={(e) => change(widget.id, {style: {...widget.style!, borderWidth: Number(e.target.value)}})}/></label>
+              <label>Corner radius <output>{widget.style.borderRadius ?? 20}px</output><input aria-label="Corner radius" type="range" min={0} max={32} step={1} value={widget.style.borderRadius ?? 20} onChange={(e) => change(widget.id, {style: {...widget.style!, borderRadius: Number(e.target.value)}})}/></label>
             </>}
             {widget.kind === 'poll' && <><label>Result accent<input type="color" value={widget.accent || appearance.customAccent} onChange={(e) => change(widget.id, {accent: e.target.value})}/></label><label>Presentation<select value={widget.presentation || 'auto'} onChange={(e) => change(widget.id, {presentation: e.target.value as Widget['presentation']})}><option value="auto">Automatic</option><option value="results">Results first</option><option value="join">Join first</option></select></label><label>Voting round<select value={widget.roundId} onChange={(e) => change(widget.id, {roundId: e.target.value})}>{rounds.map((r) => <option key={r.id} value={r.id}>{r.question}</option>)}</select></label></>}
-          </div><button type="button" onClick={() => change(widget.id, {style: undefined, accent: undefined, presentation: 'auto'})}>Reset this widget style</button>
+          </div><button type="button" className="button button-text widget-reset" onClick={() => change(widget.id, {style: undefined, accent: undefined, presentation: 'auto'})}>Reset this widget style</button>
         </fieldset>}
       </article>)}
     </>}

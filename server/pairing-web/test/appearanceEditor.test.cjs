@@ -7,8 +7,31 @@ before(async () => {browser = await chromium.launch({headless: true, ...(process
 after(async () => {await browser?.close();});
 const base = {layout: 'balanced', palette: 'night', customAccent: '#38BDF8', background: 'photo', backgroundColor: '#0F172A', backgroundZoom: 1.05,
   cards: ['weather', 'schedule', 'activity', 'media', 'meal', 'todo'].map((id, i) => ({id, visible: true, size: i === 1 ? 'wide' : 'standard'})), grid: null, cardStyles: {}};
-async function setup(t, initial = {}) {
-  const page = await browser.newPage({viewport: {width: 390, height: 844}});
+const pollId = `poll_${'a'.repeat(32)}`;
+function widgetAppearance(rows = false) {
+  const widgets = [...base.cards.map((card) => ({...card, kind: card.id, visible: ['weather', 'schedule'].includes(card.id)})),
+    {id: pollId, kind: 'poll', roundId: 'a'.repeat(32), visible: true, size: 'standard', presentation: 'auto'}];
+  return {...base, widgetLayout: {version: 1, widgets, grid: rows ? null : {version: 1, columns: 12, rows: 6, items: [
+    {id: 'weather', x: 0, y: 0, width: 3, height: 2}, {id: 'schedule', x: 3, y: 0, width: 4, height: 2}, {id: pollId, x: 7, y: 0, width: 3, height: 2},
+  ]}}};
+}
+async function drag(page, handle, destination) {
+  const box = await handle.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down(); await page.mouse.move(destination.x, destination.y, {steps: 8}); await page.mouse.up();
+}
+async function cell(page, x, y) {
+  return page.locator('.widget-canvas').evaluate((canvas, {x, y}) => {
+    const r = canvas.getBoundingClientRect(), s = getComputedStyle(canvas);
+    const left = r.left + parseFloat(s.borderLeftWidth) + parseFloat(s.paddingLeft);
+    const top = r.top + parseFloat(s.borderTopWidth) + parseFloat(s.paddingTop);
+    const width = canvas.clientWidth - parseFloat(s.paddingLeft) - parseFloat(s.paddingRight);
+    const height = canvas.clientHeight - parseFloat(s.paddingTop) - parseFloat(s.paddingBottom);
+    return {x: left + x * (width + parseFloat(s.columnGap)) / 12, y: top + y * (height + parseFloat(s.rowGap)) / 6};
+  }, {x, y});
+}
+async function setup(t, initial = {}, options = {}) {
+  const page = await browser.newPage({viewport: {width: 390, height: 844}, ...options});
   t.after(() => page.close());
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -17,7 +40,7 @@ async function setup(t, initial = {}) {
   await page.route('**/__fixture-api/**', async (route) => {
     const request = route.request(); const body = request.postDataJSON();
     let status = 200; let result;
-    if (request.url().endsWith('/polls')) result = {templates:[],rounds:[],devices:[]};
+    if (request.url().endsWith('/polls')) result = {templates:[],rounds:state.rounds || [],devices:[]};
     else if (request.url().includes('googlePhotosPicker')) result = {photos: []};
     else if (request.url().endsWith('appearanceStudio')) {
       if (request.method() === 'GET') result = state;
@@ -58,6 +81,98 @@ async function setup(t, initial = {}) {
   const waitIdle = () => page.waitForFunction(() => !document.querySelector('#appearance-reload').disabled);
   return {page, state, open, waitIdle};
 }
+
+for (const width of [390, 1440]) test(`widget gestures, sliders and draft recovery at ${width}px`, async (t) => {
+  const {page, state, open, waitIdle} = await setup(t, {appearance: widgetAppearance()}, {viewport: {width, height: 1000}});
+  await page.locator('.widget-canvas').scrollIntoViewIfNeeded();
+  const tile = (id) => page.locator(`[data-widget-id="${id}"]`);
+  const persisted = async () => {
+    await page.waitForFunction(() => document.querySelector('#draft-status').textContent.startsWith('Draft saved to your account'));
+    await waitIdle();
+    return state.library.draft.appearance.widgetLayout;
+  };
+  assert.equal(await page.locator('#widget-add').evaluate((element) => element.closest('.studio-section')?.querySelector('summary').textContent), 'Layout & cards');
+  const schedule = await tile('schedule').boundingBox();
+  await drag(page, tile('weather').locator('.widget-move'), {x: schedule.x + schedule.width / 2, y: schedule.y + schedule.height / 2});
+  let layout = await persisted();
+  assert.deepEqual(layout.grid.items.find((i) => i.id === 'weather'), {id: 'weather', x: 3, y: 0, width: 4, height: 2});
+  assert.deepEqual(layout.grid.items.find((i) => i.id === 'schedule'), {id: 'schedule', x: 0, y: 0, width: 3, height: 2});
+  await page.locator('#appearance-undo').click();
+  assert.equal(await tile('weather').evaluate((element) => element.style.gridColumnStart), '1');
+  await page.locator('#appearance-redo').click();
+  await persisted();
+  await drag(page, tile('weather').locator('.widget-move'), await cell(page, 5, 3));
+  layout = await persisted();
+  assert.equal(layout.grid.items.find((i) => i.id === 'weather').y, 2);
+  const handle = tile('weather').locator('.widget-resize');
+  const box = await handle.boundingBox(), first = await cell(page, 0, 0), second = await cell(page, 1, 1);
+  await drag(page, handle, {x: box.x + box.width / 2 + second.x - first.x, y: box.y + box.height / 2 + second.y - first.y});
+  layout = await persisted();
+  assert.equal(layout.grid.items.find((i) => i.id === 'weather').width, 5);
+  assert.equal(layout.grid.items.find((i) => i.id === 'weather').height, 3);
+  assert.equal(await page.locator('.widget-studio input[type=number]').count(), 0);
+  const row = page.locator('.widget-row').filter({has: page.getByRole('heading', {name: 'Weather', exact: true})});
+  await row.getByLabel('Surface preset').selectOption('custom');
+  for (const [name, value] of [['Border width', '3'], ['Corner radius', '28'], ['Opacity', '0.65']]) {
+    const slider = row.getByRole('slider', {name, exact: true});
+    await slider.fill(value);
+    assert.equal(await slider.inputValue(), String(Number(value)));
+  }
+  assert.match(await row.innerText(), /3px/); assert.match(await row.innerText(), /28px/); assert.match(await row.innerText(), /65%/);
+  assert.equal(await row.getByRole('button', {name: 'Hide controls'}).evaluate((b) => getComputedStyle(b).backgroundColor), 'rgb(36, 52, 58)');
+  layout = await persisted();
+  assert.equal(layout.widgets.find((w) => w.id === 'weather').style.borderWidth, 3);
+  assert.equal(state.publishes, 0);
+  const saved = structuredClone(layout); await open();
+  assert.equal(await tile('weather').evaluate((element) => element.style.gridRowStart), '3');
+  await page.getByRole('button', {name: /Save to TV/}).click();
+  await page.waitForFunction(() => document.querySelector('#draft-status').textContent === 'No unpublished draft.');
+  assert.deepEqual(state.appearance.widgetLayout, saved); assert.equal(state.publishes, 1);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false);
+  if (process.env.STUDIO_SCREENSHOT_DIR) {
+    await tile('weather').locator('.widget-move').click();
+    await page.screenshot({path: `${process.env.STUDIO_SCREENSHOT_DIR}/widgets-${width}.png`, fullPage: true});
+  }
+});
+
+test('touch poll dragging, cancellation, collision rejection and keyboard resizing keep valid drafts', async (t) => {
+  const {page, state, waitIdle} = await setup(t, {appearance: widgetAppearance()}, {hasTouch: true});
+  const poll = page.locator(`[data-widget-id="${pollId}"]`);
+  await poll.scrollIntoViewIfNeeded();
+  const source = await poll.boundingBox(), destination = await cell(page, 8.5, 3);
+  const session = await page.context().newCDPSession(page);
+  const touch = (type, point) => session.send('Input.dispatchTouchEvent', {type, touchPoints: point ? [{x: point.x, y: point.y, id: 1}] : []});
+  await touch('touchStart', {x: source.x + source.width / 2, y: source.y + 12});
+  await touch('touchMove', destination); await touch('touchEnd');
+  await page.waitForFunction(() => document.querySelector('#draft-status').textContent.startsWith('Draft saved to your account'));
+  assert.equal(state.library.draft.appearance.widgetLayout.grid.items.find((i) => i.id === pollId).y, 3);
+  await waitIdle();
+  const before = structuredClone(state.library.draft.appearance.widgetLayout);
+  const start = await poll.locator('.widget-move').boundingBox();
+  await page.mouse.move(start.x + 10, start.y + 10); await page.mouse.down(); await page.mouse.move(start.x + 50, start.y + 30);
+  await poll.locator('.widget-move').press('Escape'); await page.mouse.up();
+  assert.equal(await poll.evaluate((element) => element.style.gridRowStart), '4');
+  const weather = page.locator('[data-widget-id="weather"]');
+  await weather.locator('.widget-resize').focus(); await weather.locator('.widget-resize').press('ArrowRight');
+  await page.getByRole('status').filter({hasText: 'Widgets cannot overlap'}).waitFor();
+  assert.match(await weather.locator('small').innerText(), /3 × 2/);
+  assert.deepEqual(state.library.draft.appearance.widgetLayout, before);
+  await poll.locator('.widget-resize').focus(); await poll.locator('.widget-resize').press('ArrowRight');
+  await page.waitForFunction(() => document.querySelector('#draft-status').textContent.startsWith('Draft saved to your account'));
+  assert.equal(state.library.draft.appearance.widgetLayout.grid.items.find((i) => i.id === pollId).width, 4);
+  assert.equal(state.publishes, 0); await session.detach();
+});
+
+test('automatic rows allow dragging polls to swap order without enabling free layout', async (t) => {
+  const {page, state} = await setup(t, {appearance: widgetAppearance(true)});
+  await page.locator('.widget-canvas').scrollIntoViewIfNeeded();
+  const target = await page.locator('[data-widget-id="weather"]').boundingBox();
+  await drag(page, page.locator(`[data-widget-id="${pollId}"] .widget-move`), {x: target.x + target.width / 2, y: target.y + target.height / 2});
+  await page.waitForFunction(() => document.querySelector('#draft-status').textContent.startsWith('Draft saved to your account'));
+  const layout = state.library.draft.appearance.widgetLayout;
+  assert.equal(layout.grid, null); assert.equal(layout.widgets[0].id, pollId);
+  assert.equal(await page.locator('.widget-resize').count(), 0); assert.equal(state.publishes, 0);
+});
 
 test('phone edits support undo/redo, autosave, and recovery after reload without publishing', async (t) => {
   const {page, state, open} = await setup(t);

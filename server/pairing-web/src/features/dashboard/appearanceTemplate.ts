@@ -7,7 +7,6 @@ export const APPEARANCE_EDITOR_TEMPLATE = `
         <div class="draft-actions"><button id="appearance-undo" class="button button-text" type="button">Undo</button><button id="appearance-redo" class="button button-text" type="button">Redo</button><button id="draft-save" class="button button-secondary" type="button">Save draft</button></div>
         <div class="editor-actions"><button id="appearance-reload" class="button button-text" type="button">Discard changes</button><button id="appearance-save" class="button button-primary" type="button">Save to TV <span aria-hidden="true">↗</span></button></div>
       </div>
-      <div id="widget-add"></div>
       <div class="studio-workspace">
         <div class="studio-preview">
           <div class="studio-preview-heading"><span class="field-label">TV PREVIEW</span><span>Updates as you edit</span></div>
@@ -27,6 +26,7 @@ export const APPEARANCE_EDITOR_TEMPLATE = `
             <div id="grid-position-controls"></div>
             </div>
             <div id="widget-studio"></div>
+            <div id="widget-add"></div>
           </div></details>
           <details class="studio-section"><summary>Colors & background</summary><div class="studio-section-body">
             <div class="editor-columns">
