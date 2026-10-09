@@ -1,12 +1,7 @@
+import Pressable from '../../shared/NarratedPressable';
 import Text from '../../shared/ReadingText';
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  Image,
-  Linking,
-  Pressable,
-  StyleSheet,
-  View,
-} from 'react-native';
+import {Image, Linking, StyleSheet, View} from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { useAppearance, useTheme } from '../../../theme/ThemeContext';
 import { auth } from '../../../services/firebase';

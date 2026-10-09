@@ -1,6 +1,7 @@
+import Pressable from '../../shared/NarratedPressable';
 import Text from '../../shared/ReadingText';
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import {
   displayAccentColor,

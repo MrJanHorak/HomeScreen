@@ -13,6 +13,7 @@ import { useAppearance, useTheme } from '../theme/ThemeContext';
 import useCompactTVLayout from '../hooks/useCompactTVLayout';
 import useAmbientMode from '../components/ambient/useAmbientMode';
 import AmbientScreen from '../components/ambient/AmbientScreen';
+import {useNarration} from '../accessibility/NarrationContext';
 
 function HomeScreen() {
   const { error } = useDashboard();
@@ -20,12 +21,14 @@ function HomeScreen() {
   const theme = useTheme();
   const compact = useCompactTVLayout();
   const [activeModal, setActiveModal] = useState<DetailTopic | null>(null);
+  const {stop} = useNarration();
   const ambient = useAmbientMode(
     appearance.ambient.enabled, appearance.ambient.idleMinutes, activeModal !== null
   );
   const setVisible = usePollVisibility();
   useEffect(() => {setVisible(!ambient.active);}, [ambient.active, setVisible]);
-  const closeModal = useCallback(() => setActiveModal(null), []);
+  useEffect(() => {if (ambient.active) stop();}, [ambient.active, stop]);
+  const closeModal = useCallback(() => {stop(); setActiveModal(null);}, [stop]);
   const previewAmbient = () => {
     setActiveModal(null);
     ambient.preview();

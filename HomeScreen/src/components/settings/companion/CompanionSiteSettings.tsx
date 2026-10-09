@@ -1,6 +1,7 @@
+import Pressable from '../../shared/NarratedPressable';
 import Text from '../../shared/ReadingText';
 import { useEffect, useState } from 'react';
-import { Linking, Pressable, StyleSheet, View } from 'react-native';
+import {Linking, StyleSheet, View} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import { useAuth } from '../../../context/AuthContext';

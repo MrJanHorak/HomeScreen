@@ -1,7 +1,8 @@
+import Pressable from '../../shared/NarratedPressable';
 import Text from '../../shared/ReadingText';
 import {useState} from 'react';
 import type React from 'react';
-import {Pressable, View} from 'react-native';
+import {View} from 'react-native';
 import {useTheme} from '../../../theme/ThemeContext';
 import {styles} from './appearanceStyles';
 

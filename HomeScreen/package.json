@@ -9,6 +9,7 @@
     "expo-dev-client": "~57.0.19",
     "expo-font": "~57.0.4",
     "expo-secure-store": "~57.0.4",
+    "expo-speech": "~57.0.3",
     "expo-status-bar": "~57.0.1",
     "firebase": "^12.19.0",
     "react": "19.2.3",
@@ -38,7 +39,8 @@
     "web": "expo start --web",
     "test:cards": "node --test test/cardContentLayout.test.cjs test/weatherCardLayout.test.cjs test/scheduleCardLayout.test.cjs test/tasksCardLayout.test.cjs test/pollCardLayout.test.cjs",
     "typecheck": "tsc --noEmit",
-    "test": "node --test test/api.test.cjs test/widgetControls.test.cjs test/cardContentLayout.test.cjs test/activitySummary.test.cjs test/weatherCardLayout.test.cjs test/scheduleCardLayout.test.cjs test/tasksCardLayout.test.cjs test/pollCardLayout.test.cjs",
+    "test": "node --test test/api.test.cjs test/widgetControls.test.cjs test/cardContentLayout.test.cjs test/activitySummary.test.cjs test/weatherCardLayout.test.cjs test/scheduleCardLayout.test.cjs test/tasksCardLayout.test.cjs test/pollCardLayout.test.cjs test/narration.test.cjs",
+    "test:narration": "node --test test/narration.test.cjs test/narration.browser.test.cjs",
     "test:browser": "node --test test/cardMatrix.test.cjs test/peopleCards.test.cjs",
     "test:settings": "node --test test/settings.test.cjs",
     "test:reading": "node --test test/reading.test.cjs"

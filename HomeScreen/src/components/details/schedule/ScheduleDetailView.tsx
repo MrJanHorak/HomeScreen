@@ -1,6 +1,7 @@
+import Pressable from '../../shared/NarratedPressable';
 import Text from '../../shared/ReadingText';
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
+import {View, StyleSheet, ScrollView} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme/ThemeContext';
 import { useDashboard } from '../../../context/DashboardContext';

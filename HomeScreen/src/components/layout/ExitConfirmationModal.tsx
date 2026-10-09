@@ -1,6 +1,7 @@
+import Pressable from '../shared/NarratedPressable';
 import Text from '../shared/ReadingText';
 import React, { useState } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import {Modal, StyleSheet, View} from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 
 interface ExitConfirmationModalProps {

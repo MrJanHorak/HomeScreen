@@ -1,5 +1,6 @@
+import Pressable from '../../shared/NarratedPressable';
 import Text from '../../shared/ReadingText';
-import { StyleSheet, View, Platform, Pressable} from 'react-native';
+import {StyleSheet, View, Platform} from 'react-native';
 import { useState } from 'react';
 import { useGreeting } from './useGreeting';
 import { useCurrentDateTime } from './useCurrentDateTime';

@@ -1,12 +1,8 @@
+import Pressable from '../../shared/NarratedPressable';
+import TextInput from '../../shared/NarratedTextInput';
 import Text from '../../shared/ReadingText';
 import { useRef, useState } from 'react';
-import {
-  View,
-  StyleSheet,
-  Pressable,
-  TextInput,
-  Platform,
-} from 'react-native';
+import {View, StyleSheet, Platform} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme/ThemeContext';
 import { useDashboard } from '../../../context/DashboardContext';

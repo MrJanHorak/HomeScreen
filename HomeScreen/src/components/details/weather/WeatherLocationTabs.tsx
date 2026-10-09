@@ -1,5 +1,6 @@
+import Pressable from '../../shared/NarratedPressable';
 import Text from '../../shared/ReadingText';
-import {Pressable, ScrollView, StyleSheet, View} from 'react-native';
+import {ScrollView, StyleSheet, View} from 'react-native';
 import {MaterialCommunityIcons} from '@expo/vector-icons';
 import type {SavedLocation, Weather} from '../../../../../shared/src/types';
 import {useTheme} from '../../../theme/ThemeContext';

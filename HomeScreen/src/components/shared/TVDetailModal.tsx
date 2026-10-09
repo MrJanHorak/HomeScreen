@@ -1,13 +1,7 @@
+import Pressable from './NarratedPressable';
 import Text from './ReadingText';
 import React, { useEffect, useRef } from 'react';
-import {
-  Modal,
-  View,
-  StyleSheet,
-  Pressable,
-  Platform,
-  BackHandler,
-} from 'react-native';
+import {Modal, View, StyleSheet, Platform, BackHandler} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
 

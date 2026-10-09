@@ -11,6 +11,7 @@ import { FavoriteAppsProvider } from './src/hooks/useFavoriteApps';
 import ExitConfirmationModal from './src/components/layout/ExitConfirmationModal';
 import {PollsProvider} from './src/context/PollsContext';
 import {PeopleProvider} from './src/context/PeopleContext';
+import {NarrationProvider} from './src/accessibility/NarrationContext';
 
 import backgroundImage from './assets/media/wp8860764-nasa-4k-wallpapers.jpg';
 
@@ -80,7 +81,7 @@ export default function App() {
   return (
     <AuthProvider>
       <ThemeProvider>
-        <ThemedScreen />
+        <NarrationProvider><ThemedScreen /></NarrationProvider>
       </ThemeProvider>
     </AuthProvider>
   );

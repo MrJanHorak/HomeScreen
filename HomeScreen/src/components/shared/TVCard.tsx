@@ -1,12 +1,7 @@
+import Pressable from './NarratedPressable';
 import Text from './ReadingText';
 import { ReactNode, useState } from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  ViewStyle,
-  TextStyle,
-  Platform,
-} from 'react-native';
+import {StyleSheet, ViewStyle, TextStyle, Platform} from 'react-native';
 import {
   CardThemeProvider,
   useAppearance,

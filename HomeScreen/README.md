@@ -56,6 +56,46 @@ controls, persistence, font rendering and all 50 widget footprints at 960px/1920
 against the settings and card Vite fixtures. Native font rendering and couch-distance
 readability still need an Android TV hardware check.
 
+## Spoken navigation
+
+Open **Settings → Accessibility → Read selections aloud → On** to hear focused
+cards, menus, favorite apps and named text fields. It starts off, and stores the
+toggle, speaking speed and voice on this device rather than syncing them to every
+TV on the account. **Preview voice** works while narration is off; **Stop speaking**
+interrupts speech. Voices and their languages come from the device's installed
+text-to-speech engine. Selecting another language changes the voice, not the UI
+language or the content's language.
+
+Fast navigation cancels previous announcements. Android TalkBack takes priority;
+the app pauses its own narrator while the screen reader is active. Speech also
+stops when the app goes into the background, opens another app, closes a detail
+panel, or enters ambient mode. Dashboard focus reads card names, not entire
+private feeds. Controls in an opened detail view may include personal information;
+text fields announce their labels without reading typed values. Passive clock,
+weather and data refreshes are silent.
+
+The TV app uses Expo Speech; the web preview uses the browser's Speech Synthesis
+API. Browsers cannot detect screen readers, so turn the preview narrator off when
+using a browser screen reader. Unsupported or unavailable speech displays a
+message without preventing navigation. Voices may require downloads or connectivity,
+depending on the device's text-to-speech engine.
+
+**Rebuild and reinstall the Android TV app** to include the native `expo-speech`
+module; a Metro reload cannot add it to an existing APK. This change needs no
+Functions/Hosting deployment. Native voice playback and TalkBack focus behavior
+still need a hardware check.
+
+`npm test` includes cancellation, state announcements, race handling and preference
+normalization checks. For browser integration, start the Vite fixtures with
+`node ../server/pairing-web/node_modules/vite/bin/vite.js --config test/narration.vite.config.mjs`,
+then run `npm run test:narration` with Playwright available. The browser fixture
+uses simulated device accessibility events and speech output to verify controls,
+speed, voice selection, persistence and stopping at 960×540 and 1920×1080.
+
+The next layout work should fit content to font metrics and text scale, prioritize
+essential information in cards, and use smaller detail headers and more efficient
+TV detail layouts. Spoken navigation preserves the existing card/detail styles.
+
 ## Run the app
 
 1. Install dependencies from this directory with `npm install`.
