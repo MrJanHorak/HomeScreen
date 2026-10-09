@@ -5,9 +5,11 @@ import {View, StyleSheet, ScrollView, Platform} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme/ThemeContext';
 import { useDashboard } from '../../../context/DashboardContext';
+import {useDetailLayout} from '../../shared/DetailLayout';
 
 export default function ToDoDetailView() {
   const theme = useTheme();
+  const {twoColumns, compact} = useDetailLayout();
   const { tasks, isLoading, completeTask } = useDashboard();
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
 
@@ -30,6 +32,7 @@ export default function ToDoDetailView() {
       <View style={styles.topBar}>
         <View style={styles.filterPills}>
           <Pressable
+            accessibilityState={{selected: filter === 'all'}}
             onPress={() => setFilter('all')}
             style={[
               styles.filterPill,
@@ -45,6 +48,7 @@ export default function ToDoDetailView() {
           </Pressable>
 
           <Pressable
+            accessibilityState={{selected: filter === 'pending'}}
             onPress={() => setFilter('pending')}
             style={[
               styles.filterPill,
@@ -60,6 +64,7 @@ export default function ToDoDetailView() {
           </Pressable>
 
           <Pressable
+            accessibilityState={{selected: filter === 'completed'}}
             onPress={() => setFilter('completed')}
             style={[
               styles.filterPill,
@@ -83,8 +88,8 @@ export default function ToDoDetailView() {
       </View>
 
       {/* Task List */}
-      <ScrollView style={styles.scrollList} showsVerticalScrollIndicator={false}>
-        <View style={styles.taskWrapper}>
+      <ScrollView style={styles.scrollList} showsVerticalScrollIndicator>
+        <View style={[styles.taskWrapper, twoColumns && {flexDirection: 'row', flexWrap: 'wrap'}]}>
           {filteredTasks.length === 0 && (
             <Text style={[styles.dueText, { color: theme.colors.textSecondary }]}>
               {isLoading ? 'Loading tasks…' : filter === 'completed'
@@ -95,10 +100,14 @@ export default function ToDoDetailView() {
           {filteredTasks.map((task) => (
             <Pressable
               key={task.id}
+              accessibilityRole='checkbox' accessibilityState={{checked: !!task.completed}}
+              accessibilityLabel={[task.title, task.due, task.completed ? 'Completed' : 'Mark complete'].filter(Boolean).join('. ')}
               onPress={() => toggleTask(task.id)}
               disabled={Boolean(task.completed)}
               style={({ pressed }) => [
                 styles.taskCard,
+                twoColumns && {width: '49%'},
+                compact && {paddingVertical: 10, paddingHorizontal: 12, gap: 10},
                 task.completed && styles.taskCardCompleted,
                 pressed && { opacity: 0.8 },
               ]}
@@ -146,12 +155,15 @@ const styles = StyleSheet.create({
   },
   topBar: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
   filterPills: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
   },
   filterPill: {

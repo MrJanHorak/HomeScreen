@@ -1,7 +1,7 @@
 import Pressable from '../shared/NarratedPressable';
 import Text from '../shared/ReadingText';
 import React, { useRef, useState } from 'react';
-import {View, StyleSheet, ScrollView, Platform} from 'react-native';
+import {View, StyleSheet, ScrollView, Platform, useWindowDimensions} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
 import ReadingSettings from './appearance/ReadingSettings';
@@ -55,8 +55,14 @@ export default function SettingsDetailView({
   onPreviewAmbient?: () => void;
 }) {
   const theme = useTheme();
+  const {height} = useWindowDimensions();
+  const compact = height < 700;
   const [section, setSection] = useState<SettingsSection>('colors');
   const scrollRef = useRef<ScrollView>(null);
+  const menuRef = useRef<ScrollView>(null);
+  const menuItems = useRef<Record<string, {y: number; height: number}>>({});
+  const menuHeight = useRef(0);
+  const menuOffset = useRef(0);
   const { focusProps, focusStyle } = useControlFocus();
 
   const changeSection = (next: SettingsSection) => {
@@ -66,7 +72,10 @@ export default function SettingsDetailView({
 
   return (
     <View style={styles.container}>
-      <View style={styles.tabs} accessibilityRole='tablist'>
+      <ScrollView ref={menuRef} style={[styles.menu, compact && styles.compactMenu]} contentContainerStyle={styles.menuItems}
+        accessibilityRole='tablist' accessibilityLabel='Settings sections' showsVerticalScrollIndicator
+        onLayout={({nativeEvent: {layout}}) => {menuHeight.current = layout.height;}}
+        onScroll={({nativeEvent}) => {menuOffset.current = nativeEvent.contentOffset.y;}} scrollEventThrottle={16}>
         {SECTIONS.filter(
           (item) => Platform.OS === 'android' || item.id !== 'apps',
         ).map((item) => {
@@ -79,9 +88,20 @@ export default function SettingsDetailView({
               hasTVPreferredFocus={item.id === 'colors'}
               accessibilityState={{ selected: active }}
               onPress={() => changeSection(item.id)}
+              onLayout={({nativeEvent: {layout}}) => {menuItems.current[item.id] = layout;}}
               {...focusProps(`tab-${item.id}`)}
+              onFocus={() => {
+                focusProps(`tab-${item.id}`).onFocus();
+                const row = menuItems.current[item.id];
+                if (!row) return;
+                let y = menuOffset.current;
+                if (row.y < y) y = row.y;
+                else if (row.y + row.height > y + menuHeight.current) y = row.y + row.height - menuHeight.current;
+                menuRef.current?.scrollTo({y: Math.max(0, y), animated: false});
+              }}
               style={[
                 styles.tab,
+                compact && styles.compactTab,
                 {
                   borderColor: active
                     ? theme.colors.glassBorderTop
@@ -91,29 +111,31 @@ export default function SettingsDetailView({
                     : theme.colors.glassSurface,
                 },
                 focusStyle(`tab-${item.id}`),
+                {transform: [{scale: 1}]},
               ]}
             >
               <MaterialCommunityIcons
                 name={item.icon}
-                size={22}
+                size={compact ? 18 : 22}
                 color={
                   active ? theme.colors.focusRing : theme.colors.textSecondary
                 }
               />
               <Text
-                style={[styles.tabLabel, { color: theme.colors.textPrimary }]}
+                style={[styles.tabLabel, compact && styles.compactTabLabel, { color: theme.colors.textPrimary }]}
               >
                 {item.label}
               </Text>
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
       <ScrollView
         ref={scrollRef}
         style={styles.content}
         contentContainerStyle={styles.contentInner}
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator
+        accessibilityLabel={`${SECTIONS.find((item) => item.id === section)?.label} options`}
       >
         {(section === 'colors' ||
           section === 'background' ||
@@ -140,20 +162,27 @@ export default function SettingsDetailView({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    minHeight: 0,
+    flexDirection: 'row',
+    gap: 18,
   },
-  tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
+  menu: {width: 230, flexGrow: 0, flexShrink: 0, borderRightWidth: 1, borderRightColor: '#ffffff18'},
+  compactMenu: {width: 190},
+  menuItems: {gap: 5, paddingRight: 10, paddingVertical: 4},
   tab: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     gap: 8,
     minHeight: 46,
-    paddingHorizontal: 13,
+    paddingHorizontal: 10,
     borderWidth: 2,
     borderRadius: 12,
   },
-  tabLabel: { fontSize: 15, fontWeight: '700' },
-  content: { flex: 1 },
+  compactTab: {minHeight: 36, paddingVertical: 5, gap: 7},
+  tabLabel: { fontSize: 16, fontWeight: '700', flexShrink: 1 },
+  compactTabLabel: {fontSize: 14},
+  content: { flex: 1, minWidth: 0 },
   hiddenSection: { display: 'none' },
-  contentInner: { paddingBottom: 24 },
+  contentInner: { paddingBottom: 12, paddingHorizontal: 4 },
 });

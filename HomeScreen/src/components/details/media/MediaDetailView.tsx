@@ -8,6 +8,7 @@ import { mockContinueWatching } from '../../../data/mockData';
 import { useWatchNext } from '../../../hooks/useWatchNext';
 import type { WatchNextItem } from '../../../hooks/useWatchNext';
 import WatchPoster from '../../shared/WatchPoster';
+import {useDetailLayout} from '../../shared/DetailLayout';
 
 export default function MediaDetailView() {
   const theme = useTheme();
@@ -125,8 +126,9 @@ export default function MediaDetailView() {
   );
 }
 
-function AndroidWatchDetail() {
+export function AndroidWatchDetail() {
   const theme = useTheme();
+  const {compact} = useDetailLayout();
   const { items, hidden, status, refresh, requestAccess, openProgram, feature, hide, restore } = useWatchNext();
   const [focusedId, setFocusedId] = useState<number | null>(null);
   const [pendingHide, setPendingHide] = useState<WatchNextItem | null>(null);
@@ -210,14 +212,14 @@ function AndroidWatchDetail() {
 
   return (
     <>
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      <View style={[styles.heroBanner, styles.androidHero]}>
-        <WatchPoster uri={selected.posterUri} width={130} height={195} />
+    <ScrollView style={styles.container} showsVerticalScrollIndicator>
+      <View style={[styles.heroBanner, styles.androidHero, compact && {padding: 12, gap: 16, marginBottom: 12}]}>
+        <WatchPoster uri={selected.posterUri} width={compact ? 90 : 130} height={compact ? 135 : 195} />
         <View style={styles.androidHeroBody}>
           <Text style={[styles.sourceText, { color: theme.colors.focusRing }]}>
             {selected.appName || selected.packageName || 'TV app'}
           </Text>
-          <Text style={[styles.showTitle, { color: theme.colors.textPrimary }]}>{selected.title}</Text>
+          <Text style={[styles.showTitle, compact && {fontSize: 24}, { color: theme.colors.textPrimary }]}>{selected.title}</Text>
           <Text style={[styles.episodeTitle, { color: theme.colors.textSecondary }]}>
             {[selected.season && `Season ${selected.season}`, selected.episode && `Episode ${selected.episode}`, selected.episodeTitle].filter(Boolean).join(' · ') || 'From TV Play Next'}
           </Text>
@@ -258,6 +260,7 @@ function AndroidWatchDetail() {
               delayLongPress={600}
               accessibilityLabel={`${item.title}, ${item.appName || item.packageName || 'TV app'}${selected.id === item.id ? ', up next' : ''}. Select to make up next. Hold to hide.`}
               style={[styles.showCard, styles.androidShowCard,
+                compact && {height: 136, padding: 10},
                 selected.id === item.id && styles.androidCardFeatured,
                 focusedId === item.id && [styles.androidCardFocused, { borderColor: theme.colors.focusRing }]]}
             >

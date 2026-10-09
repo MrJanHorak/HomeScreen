@@ -3,6 +3,7 @@ import type {ComponentProps} from 'react';
 import {StyleSheet, View} from 'react-native';
 import {MaterialCommunityIcons} from '@expo/vector-icons';
 import {useTheme} from '../../../theme/ThemeContext';
+import {useDetailLayout} from '../../shared/DetailLayout';
 
 interface WeatherMetricProps {
   icon: ComponentProps<typeof MaterialCommunityIcons>['name'];
@@ -13,9 +14,10 @@ interface WeatherMetricProps {
 
 export default function WeatherMetric({icon, color, label, value}: WeatherMetricProps) {
   const theme = useTheme();
+  const {compact} = useDetailLayout();
   return (
-    <View style={styles.tile}>
-      <MaterialCommunityIcons name={icon} size={24} color={color} />
+    <View style={[styles.tile, compact && {paddingVertical: 8, paddingHorizontal: 10}]}>
+      <MaterialCommunityIcons name={icon} size={compact ? 20 : 24} color={color} />
       <Text style={[styles.label, {color: theme.colors.textSecondary}]}>{label}</Text>
       <Text style={[styles.value, {color: theme.colors.textPrimary}]}>{value}</Text>
     </View>

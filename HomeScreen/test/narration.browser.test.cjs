@@ -45,6 +45,7 @@ for (const width of [960, 1920]) test(`keyboard navigation, preview, speed, voic
   assert.deepEqual((await calls(page)).map((item) => item.text), ['Tasks. Open details']);
   await page.getByRole('button', {name: 'Slower speaking speed', exact: true}).click();
   await page.getByRole('button', {name: 'Choose a voice', exact: false}).click();
+  await page.getByRole('button', {name: 'Spanish, 1 voices', exact: true}).click();
   await page.getByRole('button', {name: 'Spanish voice. es-ES', exact: true}).click();
   await clear(page);
   await page.getByRole('button', {name: 'Preview voice', exact: true}).click();
@@ -54,6 +55,8 @@ for (const width of [960, 1920]) test(`keyboard navigation, preview, speed, voic
   await page.getByRole('button', {name: 'Stop speaking', exact: true}).click();
   assert.ok(await page.evaluate(() => window.speechStops) > stops);
   await page.screenshot({path: `../artifacts/narration-settings-${width}.png`});
+  await page.getByRole('button', {name: 'Back to languages', exact: true}).click();
+  await page.getByRole('button', {name: 'Back to spoken navigation', exact: true}).click();
   await page.reload(); await page.getByRole('button', {name: 'Read selections aloud, on', exact: true}).waitFor();
   await page.waitForFunction(() => JSON.parse(document.querySelector('[data-narration]').textContent).voice === 'test-es');
   const saved = await page.locator('[data-narration]').textContent().then(JSON.parse);

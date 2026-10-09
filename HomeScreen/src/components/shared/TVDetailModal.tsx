@@ -1,9 +1,10 @@
 import Pressable from './NarratedPressable';
 import Text from './ReadingText';
-import React, { useEffect, useRef } from 'react';
-import {Modal, View, StyleSheet, Platform, BackHandler} from 'react-native';
+import React, { useCallback, useEffect, useRef } from 'react';
+import {Modal, View, StyleSheet, Platform, BackHandler, useWindowDimensions} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
+import {DetailBackContext, DetailFrameContext} from './DetailLayout';
 
 export interface TVDetailModalProps {
   visible: boolean;
@@ -24,13 +25,24 @@ export default function TVDetailModal({
   subtitle,
   icon,
   iconColor,
-  badgeText,
   spacious = false,
   children,
 }: TVDetailModalProps) {
   const theme = useTheme();
+  const screen = useWindowDimensions();
+  const compact = screen.height < 700;
+  const [frame, setFrame] = React.useState({width: screen.width - 56, height: screen.height - 100});
   const [closeFocused, setCloseFocused] = React.useState(false);
   const closeButtonRef = useRef<View>(null);
+  const nestedBack = useRef<(() => void) | null>(null);
+  const registerBack = useCallback((handler: () => void) => {
+    nestedBack.current = handler;
+    return () => {if (nestedBack.current === handler) nestedBack.current = null;};
+  }, []);
+  const handleBack = useCallback(() => {
+    if (nestedBack.current) nestedBack.current();
+    else onClose();
+  }, [onClose]);
 
   // TV Remote Back button and Web Escape key handler
   useEffect(() => {
@@ -40,7 +52,7 @@ export default function TVDetailModal({
     const backSubscription = BackHandler.addEventListener(
       'hardwareBackPress',
       () => {
-        onClose();
+        handleBack();
         return true;
       },
     );
@@ -53,7 +65,7 @@ export default function TVDetailModal({
         target?.tagName === 'INPUT' ||
         target?.tagName === 'TEXTAREA';
       if (e.key === 'Escape' || (e.key === 'Backspace' && !isEditing)) {
-        onClose();
+        handleBack();
       }
     };
 
@@ -67,7 +79,7 @@ export default function TVDetailModal({
         window.removeEventListener('keydown', handleKeyDown);
       }
     };
-  }, [visible, onClose]);
+  }, [visible, handleBack]);
 
   if (!visible) return null;
 
@@ -76,13 +88,13 @@ export default function TVDetailModal({
       transparent
       visible={visible}
       animationType='fade'
-      onRequestClose={onClose}
+      onRequestClose={handleBack}
     >
-      <View style={[styles.scrim, spacious && styles.spaciousScrim]}>
+      <View style={[styles.scrim, compact && styles.compactScrim]}>
         <View
           style={[
             styles.glassContainer,
-            spacious && styles.spaciousContainer,
+            compact && styles.compactContainer,
             {
               backgroundColor: theme.colors.modalSurface,
               borderColor: theme.colors.glassBorder,
@@ -90,12 +102,11 @@ export default function TVDetailModal({
           ]}
         >
           {/* Header Bar */}
-          <View style={[styles.header, spacious && styles.spaciousHeader]}>
+          <View style={styles.header} testID='detail-header'>
             <View style={styles.titleArea}>
               <View
                 style={[
                   styles.iconBadge,
-                  spacious && styles.spaciousIconBadge,
                   {
                     backgroundColor: iconColor
                       ? `${iconColor}22`
@@ -105,44 +116,22 @@ export default function TVDetailModal({
               >
                 <MaterialCommunityIcons
                   name={icon}
-                  size={spacious ? 22 : 28}
+                  size={compact ? 20 : 24}
                   color={iconColor || theme.colors.focusRing}
                 />
               </View>
-              <View>
+              <View style={{flex: 1, minWidth: 0}}>
                 <View style={styles.titleRow}>
                   <Text
                     style={[
                       styles.title,
-                      spacious && styles.spaciousTitle,
                       { color: theme.colors.textPrimary },
                     ]}
+                    accessibilityRole='header' accessibilityLabel={[title, subtitle].filter(Boolean).join('. ')}
                   >
                     {title}
                   </Text>
-                  {badgeText && (
-                    <View style={styles.contextBadge}>
-                      <Text
-                        style={[
-                          styles.contextBadgeText,
-                          { color: theme.colors.focusRing },
-                        ]}
-                      >
-                        {badgeText}
-                      </Text>
-                    </View>
-                  )}
                 </View>
-                {subtitle && (
-                  <Text
-                    style={[
-                      styles.subtitle,
-                      { color: theme.colors.textSecondary },
-                    ]}
-                  >
-                    {subtitle}
-                  </Text>
-                )}
               </View>
             </View>
 
@@ -150,9 +139,10 @@ export default function TVDetailModal({
             <Pressable
               ref={closeButtonRef}
               hasTVPreferredFocus={!spacious}
+              accessibilityLabel={`Back from ${title}`}
               onFocus={() => setCloseFocused(true)}
               onBlur={() => setCloseFocused(false)}
-              onPress={onClose}
+              onPress={handleBack}
               style={[
                 styles.closeButton,
                 closeFocused && [
@@ -186,10 +176,15 @@ export default function TVDetailModal({
           </View>
 
           {/* Divider */}
-          <View style={[styles.divider, spacious && styles.spaciousDivider]} />
+          <View style={styles.divider} />
 
           {/* Modal Content */}
-          <View style={styles.contentArea}>{children}</View>
+          <View style={styles.contentArea} testID='detail-content' onLayout={({nativeEvent: {layout}}) =>
+            setFrame((current) => current.width === layout.width && current.height === layout.height ? current : {width: layout.width, height: layout.height})}>
+            <DetailFrameContext.Provider value={frame}>
+              <DetailBackContext.Provider value={registerBack}>{children}</DetailBackContext.Provider>
+            </DetailFrameContext.Provider>
+          </View>
         </View>
       </View>
     </Modal>
@@ -202,7 +197,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(5, 10, 20, 0.75)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 36,
+    padding: 24,
     ...Platform.select({
       web: {
         backdropFilter: 'blur(28px)',
@@ -210,16 +205,16 @@ const styles = StyleSheet.create({
       } as any,
     }),
   },
-  spaciousScrim: { padding: 20 },
+  compactScrim: { padding: 12 },
   glassContainer: {
     width: '100%',
-    maxWidth: 1400,
-    height: '88%',
+    maxWidth: 1800,
+    height: '100%',
     borderRadius: 24,
     backgroundColor: 'rgba(15, 23, 42, 0.72)',
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.16)',
-    padding: 28,
+    padding: 18,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 24 },
@@ -235,56 +230,39 @@ const styles = StyleSheet.create({
       } as any,
     }),
   },
-  spaciousContainer: { height: '94%', padding: 18 },
+  compactContainer: {padding: 12, borderRadius: 18},
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 8,
+    gap: 12,
   },
-  spaciousHeader: { marginBottom: 10 },
   titleArea: {
+    flex: 1,
+    minWidth: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 10,
   },
   iconBadge: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  spaciousIconBadge: { width: 42, height: 42, borderRadius: 12 },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
   title: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '700',
     letterSpacing: -0.3,
-  },
-  spaciousTitle: { fontSize: 22 },
-  contextBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 12,
-    backgroundColor: 'rgba(56, 189, 248, 0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.3)',
-  },
-  contextBadgeText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  subtitle: {
-    fontSize: 15,
-    fontWeight: '500',
-    marginTop: 2,
   },
   closeButton: {
     flexDirection: 'row',
@@ -305,7 +283,6 @@ const styles = StyleSheet.create({
   },
   closeButtonFocused: {
     backgroundColor: 'rgba(56, 189, 248, 0.25)',
-    transform: [{ scale: 1.05 }],
     ...Platform.select({
       web: {
         boxShadow: '0 0 20px rgba(56, 189, 248, 0.4)',
@@ -316,17 +293,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
-  escHint: {
-    fontSize: 12,
-    opacity: 0.6,
-  },
   divider: {
     height: 1,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    marginBottom: 20,
+    marginBottom: 10,
   },
-  spaciousDivider: { marginBottom: 10 },
   contentArea: {
     flex: 1,
+    minHeight: 0,
   },
 });

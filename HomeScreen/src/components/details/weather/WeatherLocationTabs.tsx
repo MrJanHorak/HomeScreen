@@ -5,6 +5,7 @@ import {MaterialCommunityIcons} from '@expo/vector-icons';
 import type {SavedLocation, Weather} from '../../../../../shared/src/types';
 import {useTheme} from '../../../theme/ThemeContext';
 import {useControlFocus} from '../../../hooks/useControlFocus';
+import {useDetailLayout} from '../../shared/DetailLayout';
 
 interface WeatherLocationTabsProps {
   locations: SavedLocation[];
@@ -15,9 +16,10 @@ interface WeatherLocationTabsProps {
 
 export default function WeatherLocationTabs({locations, activeId, getWeather, onSelect}: WeatherLocationTabsProps) {
   const theme = useTheme();
+  const {compact} = useDetailLayout();
   const {focusProps, focusStyle} = useControlFocus();
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, compact && {marginBottom: 12}]}>
       <ScrollView horizontal accessibilityRole="tablist" accessibilityLabel="Weather locations" showsHorizontalScrollIndicator={false} style={styles.tabs}>
         {locations.map((location) => {
           const selected = location.id === activeId;

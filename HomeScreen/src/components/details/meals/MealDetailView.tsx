@@ -3,6 +3,7 @@ import {ScrollView, StyleSheet, View} from 'react-native';
 import {MaterialCommunityIcons} from '@expo/vector-icons';
 import {useTheme} from '../../../theme/ThemeContext';
 import {useDashboard} from '../../../context/DashboardContext';
+import {useDetailLayout} from '../../shared/DetailLayout';
 
 function localDate(): string {
   const now = new Date();
@@ -18,6 +19,7 @@ function friendlyDate(date: string): string {
 
 export default function MealDetailView() {
   const theme = useTheme();
+  const {twoColumns, compact} = useDetailLayout();
   const {meals} = useDashboard();
   const today = localDate();
   const upcoming = meals.items.filter((item) => item.date >= today).slice(0, 14);
@@ -29,9 +31,9 @@ export default function MealDetailView() {
       : 'No upcoming dinners are listed in your Sheet.';
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}>
-      {next ? <View style={styles.hero}>
+    <ScrollView style={styles.container} contentContainerStyle={[styles.content, twoColumns && styles.columns]}
+      showsVerticalScrollIndicator>
+      {next ? <View style={[styles.hero, twoColumns && styles.dinnerColumn, compact && {padding: 14}]}>
         <View style={styles.heroLabel}>
           <MaterialCommunityIcons name="silverware-fork-knife" size={20} color="#F59E0B" />
           <Text style={styles.eyebrow}>{next.date === today ? "TONIGHT'S DINNER" : 'NEXT DINNER'}</Text>
@@ -53,10 +55,10 @@ export default function MealDetailView() {
         <Text style={[styles.empty, {color: theme.colors.textSecondary}]}>{message}</Text>
       </View>}
 
-      {upcoming.length > 0 && <View>
-        <Text style={[styles.sectionTitle, {color: theme.colors.textPrimary}]}>Upcoming dinners</Text>
-        {upcoming.map((item) => <View key={`${item.date}-${item.title}`} style={[
-          styles.row, item.date === today && {borderColor: theme.colors.focusRing},
+      {upcoming.length > 1 && <View style={twoColumns && styles.menuColumn}>
+        <Text style={[styles.sectionTitle, {color: theme.colors.textPrimary}]}>Following dinners</Text>
+        {upcoming.slice(1).map((item) => <View key={`${item.date}-${item.title}`} style={[
+          styles.row, compact && {padding: 10, gap: 10}, item.date === today && {borderColor: theme.colors.focusRing},
         ]}>
           <Text style={[styles.day, {color: item.date === today ? theme.colors.focusRing :
             theme.colors.textSecondary}]}>{friendlyDate(item.date)}</Text>
@@ -77,6 +79,9 @@ export default function MealDetailView() {
 const styles = StyleSheet.create({
   container: {flex: 1},
   content: {paddingBottom: 24},
+  columns: {flexDirection: 'row', gap: 16, alignItems: 'flex-start'},
+  dinnerColumn: {width: '37%', minWidth: 0, marginBottom: 0},
+  menuColumn: {flex: 1, minWidth: 0},
   hero: {padding: 24, borderRadius: 20, borderWidth: 1, borderColor: '#ffffff20',
     backgroundColor: '#ffffff0b', marginBottom: 24},
   heroLabel: {flexDirection: 'row', alignItems: 'center', gap: 9},
@@ -89,7 +94,7 @@ const styles = StyleSheet.create({
   row: {flexDirection: 'row', alignItems: 'center', gap: 18, padding: 15,
     borderWidth: 1, borderColor: '#ffffff18', borderRadius: 13, marginBottom: 8,
     backgroundColor: '#ffffff08'},
-  day: {width: 95, fontSize: 15, fontWeight: '700'},
+  day: {width: 118, fontSize: 15, fontWeight: '700'},
   rowContent: {flex: 1},
   meal: {fontSize: 16, fontWeight: '600'},
   rowNote: {fontSize: 13, marginTop: 4},

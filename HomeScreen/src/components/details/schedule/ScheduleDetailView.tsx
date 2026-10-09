@@ -6,6 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme/ThemeContext';
 import { useDashboard } from '../../../context/DashboardContext';
 import type { CalendarEvent } from '../../../../../shared/src/types';
+import {useDetailLayout} from '../../shared/DetailLayout';
 
 function formatEventDate(date: string): string {
   return new Intl.DateTimeFormat('en-US', {
@@ -15,6 +16,7 @@ function formatEventDate(date: string): string {
 
 export default function ScheduleDetailView() {
   const theme = useTheme();
+  const {twoColumns, compact} = useDetailLayout();
   const { schedule, upcomingEvents, isLoading } = useDashboard();
   const [activeTab, setActiveTab] = useState<'today' | 'upcoming'>('today');
   const upcomingByDate = upcomingEvents.reduce<Record<string, CalendarEvent[]>>((groups, event) => {
@@ -23,7 +25,7 @@ export default function ScheduleDetailView() {
   }, {});
 
   const renderEvent = (evt: CalendarEvent) => (
-    <View key={evt.id} style={styles.eventCard}>
+    <View key={evt.id} style={[styles.eventCard, compact && {paddingVertical: 10, paddingHorizontal: 12, gap: 10}]}>
       <View style={[styles.timeBox, { borderColor: `${evt.color || '#38BDF8'}66` }]}>
         <Text style={[styles.timeText, { color: theme.colors.textPrimary }]}>{evt.time}</Text>
         {evt.endTime !== evt.time && !!evt.endTime && (
@@ -33,12 +35,12 @@ export default function ScheduleDetailView() {
 
       <View style={styles.eventInfo}>
         <Text style={[styles.eventTitle, { color: theme.colors.textPrimary }]}>{evt.title}</Text>
-        <View style={styles.metaRow}>
+        {!compact && <View style={styles.metaRow}>
           <MaterialCommunityIcons name="clock-outline" size={15} color={theme.colors.textSecondary} />
           <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>
             {evt.endTime && evt.endTime !== evt.time ? `${evt.time} – ${evt.endTime}` : evt.time}
           </Text>
-        </View>
+        </View>}
       </View>
 
       <View style={[styles.categoryPill, {
@@ -57,6 +59,7 @@ export default function ScheduleDetailView() {
       {/* Tab Switcher */}
       <View style={styles.tabBar}>
         <Pressable
+          accessibilityState={{selected: activeTab === 'today'}}
           onPress={() => setActiveTab('today')}
           style={[
             styles.tabItem,
@@ -82,6 +85,7 @@ export default function ScheduleDetailView() {
         </Pressable>
 
         <Pressable
+          accessibilityState={{selected: activeTab === 'upcoming'}}
           onPress={() => setActiveTab('upcoming')}
           style={[
             styles.tabItem,
@@ -108,7 +112,7 @@ export default function ScheduleDetailView() {
       </View>
 
       {/* Content */}
-      <ScrollView style={styles.scrollList} showsVerticalScrollIndicator={false}>
+      <ScrollView style={styles.scrollList} showsVerticalScrollIndicator>
         {activeTab === 'today' ? (
           <View style={styles.eventsWrapper}>
             {schedule.length === 0 && (
@@ -116,17 +120,19 @@ export default function ScheduleDetailView() {
                 {isLoading ? 'Loading schedule…' : 'No events scheduled today.'}
               </Text>
             )}
-            {schedule.map(renderEvent)}
+            <View style={[styles.eventsWrapper, twoColumns && styles.eventGrid]}>
+              {schedule.map((event) => <View key={event.id} style={twoColumns && styles.eventCell}>{renderEvent(event)}</View>)}
+            </View>
           </View>
         ) : (
-          <View style={styles.eventsWrapper}>
+          <View style={[styles.eventsWrapper, twoColumns && styles.eventGrid]}>
             {upcomingEvents.length === 0 && (
               <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>
                 {isLoading ? 'Loading upcoming events…' : 'No events in the next 14 days.'}
               </Text>
             )}
             {Object.entries(upcomingByDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, events]) => (
-              <View key={date} style={styles.dayGroup}>
+              <View key={date} style={[styles.dayGroup, twoColumns && styles.eventCell]}>
                 <Text style={[styles.dayHeading, { color: theme.colors.textPrimary }]}>
                   {formatEventDate(date)}
                 </Text>
@@ -173,6 +179,8 @@ const styles = StyleSheet.create({
   eventsWrapper: {
     gap: 10,
   },
+  eventGrid: {flexDirection: 'row', flexWrap: 'wrap'},
+  eventCell: {width: '49%', minWidth: 0},
   dayGroup: {
     gap: 10,
     marginBottom: 12,
@@ -213,6 +221,7 @@ const styles = StyleSheet.create({
   },
   eventInfo: {
     flex: 1,
+    minWidth: 0,
   },
   eventTitle: {
     fontSize: 18,

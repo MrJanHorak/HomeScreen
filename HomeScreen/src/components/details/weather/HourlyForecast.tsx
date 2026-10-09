@@ -5,9 +5,11 @@ import type {HourlyForecastItem} from '../../../../../shared/src/types';
 import {useTheme} from '../../../theme/ThemeContext';
 import {getWeatherIconName} from '../../../helpers/weatherHelpers';
 import ForecastSection from './ForecastSection';
+import {useDetailLayout} from '../../shared/DetailLayout';
 
 export default function HourlyForecast({hours}: {hours: HourlyForecastItem[]}) {
   const theme = useTheme();
+  const {compact} = useDetailLayout();
   return (
     <ForecastSection title="Hourly Forecast">
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scroll}>
@@ -15,15 +17,16 @@ export default function HourlyForecast({hours}: {hours: HourlyForecastItem[]}) {
           <Text style={[styles.time, {color: theme.colors.textSecondary}]}>Hourly forecast unavailable.</Text>
         )}
         {hours.map((hour, index) => (
-          <View key={index} style={styles.card}>
+          <View key={index} style={[styles.card, compact && {paddingVertical: 7, paddingHorizontal: 10, marginRight: 8}]}>
             <Text style={[styles.time, {color: theme.colors.textSecondary}]}>{hour.time}</Text>
-            <MaterialCommunityIcons
+            <View style={compact && {flexDirection: 'row', alignItems: 'center', gap: 5}}><MaterialCommunityIcons
               name={getWeatherIconName(hour.icon).name}
-              size={26}
+              size={compact ? 22 : 26}
               color={theme.colors.focusRing}
-              style={{marginVertical: 6}}
+              style={compact ? undefined : {marginVertical: 6}}
             />
             <Text style={[styles.temperature, {color: theme.colors.textPrimary}]}>{hour.temp}°</Text>
+            </View>
             <Text style={styles.precipitation}>{hour.pop}</Text>
           </View>
         ))}

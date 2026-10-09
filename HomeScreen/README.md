@@ -92,9 +92,33 @@ then run `npm run test:narration` with Playwright available. The browser fixture
 uses simulated device accessibility events and speech output to verify controls,
 speed, voice selection, persistence and stopping at 960×540 and 1920×1080.
 
-The next layout work should fit content to font metrics and text scale, prioritize
-essential information in cards, and use smaller detail headers and more efficient
-TV detail layouts. Spoken navigation preserves the existing card/detail styles.
+**Choose a voice** first shows languages, sorted by their readable names. Select a
+language to browse only its voices. Languages and voices use six choices per page;
+regional variants stay together, and technical engine identifiers receive shorter
+voice labels. Voice identifiers and saved preferences are unchanged. Back returns
+to languages, then spoken navigation. Preview and Stop remain available in the picker.
+
+## TV settings and detail layouts
+
+Settings uses a persistent, independently scrolling side menu instead of several
+rows of tabs. This gives each settings section the full remaining height. Speech
+help is expandable so the main controls stay near the top.
+
+All dashboard detail views share a smaller header and wider content frame. Weather
+places current conditions beside forecasts; Activity places today's metrics beside
+the week; Meals places the next dinner beside following dinners without duplicating
+it. Schedule and Tasks use two columns when room permits. Compact TV media and poll
+views have smaller artwork/QR areas and less padding. Content dimensions, font choice
+and system font scale determine whether columns fit. Long lists and larger text
+remain scrollable; information is not silently discarded to force a single screen.
+
+The new layout leaves dashboard widget styling unchanged. Update the TV client to
+receive it; no backend schema or appearance-settings migration is needed. The detail
+browser fixtures check all seven views plus Settings with system/OpenDyslexic fonts
+at 960×540 and 1920×1080. Start
+`node ../server/pairing-web/node_modules/vite/bin/vite.js --config test/details.vite.config.mjs`,
+then run `npm run test:details` with Playwright available. Real TV remote traversal,
+overscan and TalkBack should still be verified on hardware after installing.
 
 ## Run the app
 

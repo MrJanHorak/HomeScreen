@@ -16,6 +16,7 @@ interface OptionProps {
   preview?: React.ReactNode;
   onPress: () => void;
   large?: boolean;
+  compact?: boolean;
 }
 
 export default function Option({
@@ -28,6 +29,7 @@ export default function Option({
   preview,
   onPress,
   large = false,
+  compact = false,
 }: OptionProps) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
@@ -48,6 +50,7 @@ export default function Option({
       style={[
         styles.option,
         large && {minHeight: 64, maxWidth: '100%'},
+        compact && {minHeight: 44, paddingVertical: 8, paddingHorizontal: 12},
         Boolean(preview) && styles.layoutOption,
         {
           borderColor: focused
@@ -60,7 +63,7 @@ export default function Option({
             : theme.colors.glassSurface,
           opacity: disabled ? 0.45 : 1,
         },
-        focused && (large ? {borderWidth: 3} : styles.focused),
+        focused && (large || compact ? {borderWidth: 3} : styles.focused),
       ]}
     >
       {swatch && <View style={[styles.swatch, { backgroundColor: swatch }]} />}
@@ -69,6 +72,7 @@ export default function Option({
           style={[
             styles.optionLabel,
             large && {fontSize: 22},
+            compact && {fontSize: 18},
             {
               color: selected
                 ? theme.colors.focusRing
@@ -84,6 +88,7 @@ export default function Option({
             style={[
               styles.optionSubtitle,
               large && {fontSize: 18, maxWidth: 600},
+              compact && {fontSize: 14, maxWidth: '100%'},
               { color: theme.colors.textSecondary },
             ]}
           >

@@ -7,6 +7,7 @@ import { useDashboard } from '../../../context/DashboardContext';
 import {usePeople} from '../../../context/PeopleContext';
 import TVProgressRing from '../../shared/TVProgressRing';
 import {activityBarPercent, activityChartPeak, summarizeActivityWeek} from '../../../helpers/activitySummary';
+import {useDetailLayout} from '../../shared/DetailLayout';
 
 function recordTime(value?: string): string | null {
   if (!value) return null;
@@ -17,6 +18,7 @@ function recordTime(value?: string): string | null {
 
 export default function ActivityDetailView({personId}: {personId?: string} = {}) {
   const theme = useTheme();
+  const {twoColumns, compact} = useDetailLayout();
   const { health, isLoading } = useDashboard();
   const {people} = usePeople();
   const act = personId ? people.find((person) => person.id === personId)?.health : health;
@@ -45,16 +47,17 @@ export default function ActivityDetailView({personId}: {personId?: string} = {})
   const restingEstimate = act.estimatedRestingCalories || 0;
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView style={styles.container} contentContainerStyle={twoColumns && styles.columns} showsVerticalScrollIndicator>
+      <View style={twoColumns && styles.overviewColumn}>
       {fetchedTime && <Text style={[styles.metricSub, { color: theme.colors.textSecondary, marginBottom: 12 }]}>
         Google Fit · fetched {fetchedTime}
       </Text>}
       {/* Hero Overview */}
-      <View style={styles.heroRow}>
-        <View style={styles.ringCard}>
-          <TVProgressRing progress={act.progress} size={130} strokeWidth={12} />
+      <View style={[styles.heroRow, twoColumns && styles.stackedHero]}>
+        <View style={[styles.ringCard, !twoColumns && {flex: 1.2}, compact && {padding: 12, gap: 14}]}>
+          <TVProgressRing progress={act.progress} size={compact ? 80 : 110} strokeWidth={compact ? 8 : 10} />
           <View style={styles.ringTextGroup}>
-            <Text style={[styles.ringPercent, { color: theme.colors.textPrimary }]}>
+            <Text style={[styles.ringPercent, compact && {fontSize: 32}, { color: theme.colors.textPrimary }]}>
               {Math.round(act.progress * 100)}%
             </Text>
             <Text style={[styles.ringLabel, { color: theme.colors.focusRing }]}>
@@ -70,8 +73,8 @@ export default function ActivityDetailView({personId}: {personId?: string} = {})
         </View>
 
         {/* 3 Metric Summary Pillars */}
-        <View style={styles.metricsColumn}>
-          <View style={styles.metricCard}>
+        <View style={[styles.metricsColumn, !twoColumns && {flex: 1.3}, twoColumns && compact && styles.metricGrid]}>
+          <View style={[styles.metricCard, compact && styles.tightMetric, twoColumns && compact && styles.halfMetric]}>
             <MaterialCommunityIcons name="map-marker-distance" size={26} color="#34D399" />
             <View style={styles.metricMeta}>
               <Text style={[styles.metricTitle, { color: theme.colors.textSecondary }]}>Distance</Text>
@@ -80,7 +83,7 @@ export default function ActivityDetailView({personId}: {personId?: string} = {})
             </View>
           </View>
 
-          <View style={styles.metricCard}>
+          <View style={[styles.metricCard, compact && styles.tightMetric, twoColumns && compact && styles.halfMetric]}>
             <MaterialCommunityIcons name="timer-outline" size={26} color="#FBBF24" />
             <View style={styles.metricMeta}>
               <Text style={[styles.metricTitle, { color: theme.colors.textSecondary }]}>Move Minutes</Text>
@@ -93,7 +96,7 @@ export default function ActivityDetailView({personId}: {personId?: string} = {})
             </View>
           </View>
 
-          <View style={styles.metricCard}>
+          <View style={[styles.metricCard, compact && styles.tightMetric, twoColumns && compact && {width: '100%'}]}>
             <MaterialCommunityIcons name="lightning-bolt" size={26} color="#F87171" />
             <View style={styles.metricMeta}>
               <Text style={[styles.metricTitle, { color: theme.colors.textSecondary }]}>Calories Burned</Text>
@@ -110,8 +113,8 @@ export default function ActivityDetailView({personId}: {personId?: string} = {})
           </View>
         </View>
       </View>
-
-      <View style={styles.weeklyCard}>
+      </View>
+      <View style={[styles.weeklyCard, twoColumns && styles.weekColumn, compact && {padding: 14}]}>
         <Text style={[styles.weeklyTitle, { color: theme.colors.textPrimary }]}>
           Last 7 Days
         </Text>
@@ -155,13 +158,16 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  columns: {flexDirection: 'row', gap: 16, alignItems: 'flex-start'},
+  overviewColumn: {width: '45%', minWidth: 0},
+  weekColumn: {flex: 1, minWidth: 0},
+  stackedHero: {flexDirection: 'column', gap: 10, marginBottom: 0},
   heroRow: {
     flexDirection: 'row',
     gap: 20,
     marginBottom: 24,
   },
   ringCard: {
-    flex: 1.2,
     flexDirection: 'row',
     alignItems: 'center',
     padding: 24,
@@ -190,9 +196,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   metricsColumn: {
-    flex: 1.3,
     gap: 12,
   },
+  metricGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: 8},
+  halfMetric: {width: '48.5%'},
+  tightMetric: {paddingVertical: 8, paddingHorizontal: 10, gap: 10},
   metricCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -238,13 +246,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'flex-end',
     height: 140,
-    paddingHorizontal: 12,
+    paddingHorizontal: 0,
   },
   barColumn: {
     alignItems: 'center',
     height: '100%',
     justifyContent: 'flex-end',
-    width: 48,
+    flex: 1,
+    minWidth: 0,
   },
   barValueText: {
     fontSize: 12,
