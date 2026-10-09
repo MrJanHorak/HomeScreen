@@ -1,5 +1,6 @@
+import Text from '../../shared/ReadingText';
 import React from 'react';
-import { View, StyleSheet, Text, ScrollView } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme/ThemeContext';
 import { useDashboard } from '../../../context/DashboardContext';

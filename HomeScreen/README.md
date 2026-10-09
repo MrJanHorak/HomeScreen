@@ -32,6 +32,30 @@ The screenshots capture one configured TV using automatic rows on October 1, 202
 | Card settings | [Card order and live preview](../assets/Screenshot_20261001_175228.png) |
 | Ambient mode | [Ambient photo and information](../assets/Screenshot_20261001_174401.png) |
 
+## Fonts and reading
+
+Open **Settings → Fonts & reading** for the **Dyslexia-friendly** preset: bundled
+OpenDyslexic, warm cream text on opaque charcoal surfaces, and gentle letter
+spacing. Font and reading colors can also be selected independently; **Reset
+reading settings** restores the system font and theme colors without rearranging
+widgets. Reading preferences apply to widgets, detail panels, settings and ambient
+text, persist locally, and sync with the shared account appearance.
+
+The companion's **Dashboard Studio → Fonts & reading** adds preferred text color,
+bold weight and spacing controls with a live sample, undo, drafts and saved designs.
+Use **Save to TV** to publish. Reading color modes take priority over custom widget
+surfaces; switching back to theme colors restores them. Custom ink uses a readable
+fallback where it fails 4.5:1 contrast on the evaluated surface. Transparent photo
+surfaces still depend on the image beneath them; use Warm cream or High contrast
+for opaque reading surfaces.
+
+Fonts load from bundled files through Expo Font, with system-font fallback while
+loading or on failure. Widget text retains its existing sizes and bounded line
+budgets; select a widget for full details. `npm run test:reading` checks keyboard
+controls, persistence, font rendering and all 50 widget footprints at 960px/1920px
+against the settings and card Vite fixtures. Native font rendering and couch-distance
+readability still need an Android TV hardware check.
+
 ## Run the app
 
 1. Install dependencies from this directory with `npm install`.

@@ -28,6 +28,7 @@ export const APPEARANCE_EDITOR_TEMPLATE = `
             <div id="widget-studio"></div>
             <div id="widget-add"></div>
           </div></details>
+          <details class="studio-section"><summary>Fonts & reading</summary><div class="studio-section-body" id="reading-editor"></div></details>
           <details class="studio-section"><summary>Colors & background</summary><div class="studio-section-body">
             <div class="editor-columns">
               <div><label class="field-label" for="palette-select">COLOR SCHEME</label>

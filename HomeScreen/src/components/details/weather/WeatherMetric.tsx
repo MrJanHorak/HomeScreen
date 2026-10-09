@@ -1,5 +1,6 @@
+import Text from '../../shared/ReadingText';
 import type {ComponentProps} from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import {MaterialCommunityIcons} from '@expo/vector-icons';
 import {useTheme} from '../../../theme/ThemeContext';
 

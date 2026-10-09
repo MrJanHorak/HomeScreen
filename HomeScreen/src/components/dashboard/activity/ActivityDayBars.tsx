@@ -1,4 +1,5 @@
-import {Text, View} from 'react-native';
+import Text from '../../shared/ReadingText';
+import { View} from 'react-native';
 import type {ActivityDay} from '../../../../../shared/src/types';
 import {activityBarPercent} from '../../../helpers/activitySummary';
 import {useTheme} from '../../../theme/ThemeContext';

@@ -1,5 +1,6 @@
+import Text from '../../shared/ReadingText';
 import { useRef, useState } from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFavoriteApps } from '../../../hooks/useFavoriteApps';
 import { useTheme } from '../../../theme/ThemeContext';

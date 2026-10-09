@@ -1,7 +1,7 @@
+import Text from './ReadingText';
 import { ReactNode, useState } from 'react';
 import {
   Pressable,
-  Text,
   StyleSheet,
   ViewStyle,
   TextStyle,
@@ -12,6 +12,7 @@ import {
   useAppearance,
   useTheme,
 } from '../../theme/ThemeContext';
+import {readingColors} from '../../../../server/functions/src/utils/reading';
 import type { CardId } from '../../theme/appearance';
 import {
   cardInk,
@@ -44,9 +45,12 @@ export default function TVCard({
   const compact = useCompactTVLayout();
   const [isFocused, setIsFocused] = useState(false);
   const custom = widgetStyle || (cardId ? appearance.cardStyles[cardId] : undefined);
+  const readingScheme = readingColors(theme.reading);
+  // A reading color mode takes precedence over translucent custom surfaces.
+  const customSurface = custom && !custom.useThemeSurface && !readingScheme;
   const ink =
-    custom && !custom.useThemeSurface
-      ? cardInk(custom, theme.colors.background, theme.colors.focusRing)
+    customSurface
+      ? cardInk(custom, theme.colors.background, theme.colors.focusRing, theme.reading.textColor)
       : null;
   const cardTheme = ink
     ? {
@@ -69,7 +73,7 @@ export default function TVCard({
 
   const containerStyle: ViewStyle = {
     backgroundColor:
-      custom && !custom.useThemeSurface
+      customSurface
         ? cardSurface(custom, isFocused)
         : Platform.OS === 'web'
           ? isFocused

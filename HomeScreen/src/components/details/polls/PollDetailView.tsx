@@ -1,4 +1,5 @@
-import {ScrollView, Text, View} from 'react-native';
+import Text from '../../shared/ReadingText';
+import {ScrollView, View} from 'react-native';
 import {usePolls} from '../../../context/PollsContext';
 import {useTheme} from '../../../theme/ThemeContext';
 import useTVClock from '../../../hooks/useTVClock';

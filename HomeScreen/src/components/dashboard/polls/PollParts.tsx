@@ -1,4 +1,5 @@
-import {Text, View} from 'react-native';
+import Text from '../../shared/ReadingText';
+import { View} from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import {useTheme} from '../../../theme/ThemeContext';
 import type {PollView, PollResult} from '../../../../../server/functions/src/utils/polls';

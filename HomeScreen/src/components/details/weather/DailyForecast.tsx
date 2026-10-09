@@ -1,4 +1,5 @@
-import {StyleSheet, Text, View} from 'react-native';
+import Text from '../../shared/ReadingText';
+import {StyleSheet, View} from 'react-native';
 import {MaterialCommunityIcons} from '@expo/vector-icons';
 import type {WeatherForecast} from '../../../../../shared/src/types';
 import {useTheme} from '../../../theme/ThemeContext';

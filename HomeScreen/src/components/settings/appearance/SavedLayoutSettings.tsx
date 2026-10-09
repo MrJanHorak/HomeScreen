@@ -1,5 +1,6 @@
+import Text from '../../shared/ReadingText';
 import {useEffect, useState} from 'react';
-import {Text, View} from 'react-native';
+import { View} from 'react-native';
 import {useAuth} from '../../../context/AuthContext';
 import {getSavedDashboardLayouts} from '../../../services/api';
 import {useAppearance, useTheme} from '../../../theme/ThemeContext';

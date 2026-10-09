@@ -9,3 +9,7 @@ declare module '*.png' {
   const value: ImageSourcePropType;
   export default value;
 }
+declare module '*.otf' {
+  const value: string | number;
+  export default value;
+}

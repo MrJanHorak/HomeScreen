@@ -10,6 +10,7 @@ import type {FixtureDashboard, FixtureWatch} from './fixtureHooks';
 import PollDashboardCard from '../src/components/dashboard/polls/PollDashboardCard';
 import type {PollView} from '../../server/functions/src/utils/polls';
 import {DEFAULT_APPEARANCE} from '../src/theme/appearance';
+import {DYSLEXIA_READING} from '../../server/functions/src/utils/reading';
 import type {PeopleActivityFeed} from '../../shared/src/people';
 const poll: PollView = {id: 'a'.repeat(32), revision: 1, question: 'What should we watch Friday?', description: '', answerMode: 'mixed',
   options: [{id:'a',label:'Comedy'},{id:'b',label:'Adventure'},{id:'c',label:'Mystery'}], resultsVisibility:'live',protection:'browser',moderate:true,defaultDurationMinutes:60,
@@ -53,7 +54,8 @@ function Matrix() {
   data.setActiveLocation = (location) => {data.activeLocation = location; setRevision((n) => n+1);};
   const compact = new URLSearchParams(location.search).get('mode') !== 'full';
   const [areaWidth, areaHeight, gap, padding] = compact ? [900, 340, 8, 12] : [1800, 740, 12, 20];
-  return <FixtureProvider value={{data, watch, compact, people, polls:{[poll.id]:poll,[secondPoll.id]:secondPoll}, appearance:DEFAULT_APPEARANCE}}><main data-revision={revision}>
+  const appearance = new URLSearchParams(location.search).has('reading') ? {...DEFAULT_APPEARANCE, reading: DYSLEXIA_READING} : DEFAULT_APPEARANCE;
+  return <FixtureProvider value={{data, watch, compact, people, polls:{[poll.id]:poll,[secondPoll.id]:secondPoll}, appearance}}><main data-revision={revision}>
     {new URLSearchParams(location.search).has('people') && <section data-multiple-activity style={{display: 'flex', flexDirection: 'column', width: areaWidth, height: areaHeight}}>
       <DashboardLayout cards={DEFAULT_APPEARANCE.cards} grid={null} widgetLayout={{version: 1, grid: null,
         widgets: ['a', 'b'].map((id) => ({id: `activity_${id.repeat(32)}`, kind: 'activity', personId: id.repeat(32), visible: true, size: 'standard'}))}}

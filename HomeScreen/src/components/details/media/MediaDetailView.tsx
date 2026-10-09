@@ -1,5 +1,6 @@
+import Text from '../../shared/ReadingText';
 import React, { useState } from 'react';
-import { View, StyleSheet, Text, ScrollView, Pressable, Platform, Modal } from 'react-native';
+import { View, StyleSheet, ScrollView, Pressable, Platform, Modal } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme/ThemeContext';
 import { mockContinueWatching } from '../../../data/mockData';

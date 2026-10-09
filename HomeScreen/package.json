@@ -40,7 +40,8 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test test/api.test.cjs test/widgetControls.test.cjs test/cardContentLayout.test.cjs test/activitySummary.test.cjs test/weatherCardLayout.test.cjs test/scheduleCardLayout.test.cjs test/tasksCardLayout.test.cjs test/pollCardLayout.test.cjs",
     "test:browser": "node --test test/cardMatrix.test.cjs test/peopleCards.test.cjs",
-    "test:settings": "node --test test/settings.test.cjs"
+    "test:settings": "node --test test/settings.test.cjs",
+    "test:reading": "node --test test/reading.test.cjs"
   },
   "private": true,
   "devDependencies": {

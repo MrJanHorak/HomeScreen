@@ -8,6 +8,32 @@ after(async () => {await browser?.close();});
 const base = {layout: 'balanced', palette: 'night', customAccent: '#38BDF8', background: 'photo', backgroundColor: '#0F172A', backgroundZoom: 1.05,
   cards: ['weather', 'schedule', 'activity', 'media', 'meal', 'todo'].map((id, i) => ({id, visible: true, size: i === 1 ? 'wide' : 'standard'})), grid: null, cardStyles: {}};
 const pollId = `poll_${'a'.repeat(32)}`;
+test('reading controls preview, undo, recover drafts and publish through the companion', async (t) => {
+  const {page, state, open, waitIdle} = await setup(t, {appearance: widgetAppearance()});
+  await page.getByText('Fonts & reading', {exact: true}).click();
+  await page.getByRole('button', {name: 'Dyslexia-friendly preset', exact: true}).click();
+  await page.evaluate(() => document.fonts.ready);
+  assert.match(await page.locator('#reading-sample').evaluate((el) => getComputedStyle(el).fontFamily), /OpenDyslexic/);
+  const persisted = () => page.waitForFunction(() => document.querySelector('#draft-status').textContent.startsWith('Draft saved to your account'));
+  await persisted(); await waitIdle();
+  assert.equal(state.library.draft.appearance.reading.font, 'opendyslexic');
+  assert.deepEqual(state.library.draft.appearance.widgetLayout, widgetAppearance().widgetLayout);
+  await page.locator('#reading-weight').selectOption('bold');
+  await page.locator('#appearance-undo').click();
+  assert.equal(await page.locator('#reading-weight').inputValue(), 'standard');
+  await page.locator('#appearance-redo').click();
+  assert.equal(await page.locator('#reading-weight').inputValue(), 'bold');
+  await persisted(); await waitIdle();
+  await open(); await page.getByText('Fonts & reading', {exact: true}).click();
+  assert.equal(await page.locator('#reading-weight').inputValue(), 'bold');
+  await page.locator('#reading-custom').check();
+  await page.locator('#reading-ink').fill('#222222'); await page.locator('#reading-ink').dispatchEvent('input');
+  assert.match(await page.locator('#reading-color-status').textContent(), /fallback/);
+  await page.locator('#appearance-save').click();
+  await page.getByText('Saved to TV. Your draft is clear.', {exact: true}).waitFor();
+  assert.equal(state.appearance.reading.textColor, '#222222');
+  assert.equal(state.appearance.reading.weight, 'bold');
+});
 function widgetAppearance(rows = false) {
   const widgets = [...base.cards.map((card) => ({...card, kind: card.id, visible: ['weather', 'schedule'].includes(card.id)})),
     {id: pollId, kind: 'poll', roundId: 'a'.repeat(32), visible: true, size: 'standard', presentation: 'auto'}];

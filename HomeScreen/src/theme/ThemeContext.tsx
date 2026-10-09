@@ -6,6 +6,9 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import useReadingFonts from './useReadingFonts';
+import {normalizeReading} from '../../../server/functions/src/utils/reading';
+import type {ReadingPreference} from '../../../server/functions/src/utils/reading';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import {validWidgetLayout, legacyWidgetProjection, widgetsFromLegacy} from '../../../server/functions/src/utils/widgets';
@@ -41,6 +44,7 @@ interface AppearanceContextValue {
   ready: boolean;
   selectLayout: (layout: Exclude<LayoutId, 'custom'>) => void;
   selectPalette: (palette: PaletteChoice) => void;
+  setReadingPreference: (reading: ReadingPreference) => void;
   setCustomAccent: (accent: string) => void;
   setBackground: (background: DashboardAppearance['background']) => void;
   setBackgroundColor: (color: string) => void;
@@ -59,6 +63,7 @@ interface AppearanceContextValue {
 const AppearanceContext = createContext<AppearanceContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const [fontsReady, fontError] = useReadingFonts();
   const { user } = useAuth();
   const uid = user?.uid ?? null;
   const [appearance, setAppearance] =
@@ -253,6 +258,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
           ]};
           return {...current, layout, widgetLayout, ...legacyWidgetProjection(widgetLayout)};
         }),
+      setReadingPreference: (reading) => setAppearance((current) => ({...current, reading: normalizeReading(reading)})),
       selectPalette: (palette) =>
         setAppearance((current) => ({ ...current, palette })),
       setCustomAccent: (customAccent) =>
@@ -338,14 +344,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
 
   const theme = useMemo(
-    () =>
-      themeForPalette(
+    () => ({...themeForPalette(
         appearance.palette,
         appearance.customAccent,
         appearance.backgroundColor,
         appearance.background,
-      ),
+        normalizeReading(appearance.reading),
+      ), fontsReady, fontError: Boolean(fontError)}),
     [
+      fontsReady, fontError, appearance.reading,
       appearance.palette,
       appearance.customAccent,
       appearance.backgroundColor,

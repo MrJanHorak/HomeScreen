@@ -39,8 +39,20 @@ choose a background color and opacity (0–100%). The preview changes immediatel
 the background surface, not the text or artwork. Themed foregrounds adjust to the
 estimated composite color; contrast over a translucent photograph depends on
 the image beneath it. Re-enable **Use theme surface** to restore the palette's
-surface for that card. Layout presets keep these styles. Typography, spacing
-controls remain future work.
+surface for that card. Layout presets keep these styles.
+
+### Fonts and reading
+
+Under **Dashboard Studio → Fonts & reading**, choose the system font or bundled
+OpenDyslexic, theme/warm/high-contrast colors, standard/bold weight, gentle letter
+spacing, and an optional preferred text color. **Dyslexia-friendly preset** applies
+OpenDyslexic with warm cream colors and gentle spacing in one click. These controls
+use the same draft, undo, saved-design, history and **Save to TV** flow as layout.
+The updated TV also exposes the preset and simple font/color choices in Settings.
+
+Reading color modes use opaque surfaces and override widget surface colors without
+deleting them. Preferred text colors below 4.5:1 contrast use fallback ink on the TV.
+TV font sizes stay unchanged; bounded widget previews open into full details.
 
 ### Choose photos from the companion
 

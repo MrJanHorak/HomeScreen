@@ -1,6 +1,7 @@
+import Text from '../../shared/ReadingText';
 import {useState} from 'react';
 import type React from 'react';
-import {Pressable, Text, View} from 'react-native';
+import {Pressable, View} from 'react-native';
 import {useTheme} from '../../../theme/ThemeContext';
 import {styles} from './appearanceStyles';
 
@@ -13,6 +14,7 @@ interface OptionProps {
   swatch?: string;
   preview?: React.ReactNode;
   onPress: () => void;
+  large?: boolean;
 }
 
 export default function Option({
@@ -24,6 +26,7 @@ export default function Option({
   swatch,
   preview,
   onPress,
+  large = false,
 }: OptionProps) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
@@ -43,6 +46,7 @@ export default function Option({
       onPress={onPress}
       style={[
         styles.option,
+        large && {minHeight: 64, maxWidth: '100%'},
         Boolean(preview) && styles.layoutOption,
         {
           borderColor: focused
@@ -55,14 +59,15 @@ export default function Option({
             : theme.colors.glassSurface,
           opacity: disabled ? 0.45 : 1,
         },
-        focused && styles.focused,
+        focused && (large ? {borderWidth: 3} : styles.focused),
       ]}
     >
       {swatch && <View style={[styles.swatch, { backgroundColor: swatch }]} />}
-      <View>
+      <View style={{flexShrink: 1}}>
         <Text
           style={[
             styles.optionLabel,
+            large && {fontSize: 22},
             {
               color: selected
                 ? theme.colors.focusRing
@@ -77,6 +82,7 @@ export default function Option({
           <Text
             style={[
               styles.optionSubtitle,
+              large && {fontSize: 18, maxWidth: 600},
               { color: theme.colors.textSecondary },
             ]}
           >

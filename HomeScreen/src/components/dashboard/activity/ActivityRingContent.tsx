@@ -1,4 +1,5 @@
-import {Text, View} from 'react-native';
+import Text from '../../shared/ReadingText';
+import { View} from 'react-native';
 import {useTheme} from '../../../theme/ThemeContext';
 import {activitySummaryHeight, cardTypography} from '../shared/cardContentLayout';
 import TVProgressRing from '../../shared/TVProgressRing';

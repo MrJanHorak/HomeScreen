@@ -10,6 +10,8 @@ import {MAX_REVISIONS, PublishedRevision} from "./utils/appearanceLibrary";
 import {isDeepStrictEqual} from "node:util";
 import {validWidgetLayout, legacyWidgetProjection} from "./utils/widgets";
 
+import {validReading} from "./utils/reading";
+
 const CARD_IDS = ["weather", "schedule", "activity", "media", "meal", "todo"];
 const LAYOUTS = ["balanced", "agenda", "wellness", "calm", "custom"];
 const PALETTES = ["night", "forest", "plum", "contrast", "custom"];
@@ -22,6 +24,7 @@ export function validAppearance(value: unknown): boolean {
   if (appearance.widgetLayout !== undefined && appearance.widgetLayout !== null && !validWidgetLayout(appearance.widgetLayout)) return false;
   if (appearance.cardStyles !== undefined && !validCardStyles(appearance.cardStyles)) return false;
   if (appearance.backgroundZoom !== undefined && !validPhotoZoom(appearance.backgroundZoom)) return false;
+  if (appearance.reading !== undefined && !validReading(appearance.reading)) return false;
   const ambient = appearance.ambient;
   if (ambient !== undefined) {
     if (!ambient || typeof ambient !== "object") return false;
@@ -104,6 +107,8 @@ export async function handleUserAppearance(req: Request, res: Response): Promise
         const existing = snapshot.data();
         if (expected !== undefined && expected !== (existing?.updatedAtMs || 0)) return {conflict: true};
         const appearance = {...req.body.appearance};
+        // Older TVs retain reading preferences when saving unrelated appearance settings.
+        if (appearance.reading === undefined && existing?.appearance?.reading) appearance.reading = existing.appearance.reading;
         if (appearance.widgetLayout === undefined && existing?.appearance?.widgetLayout) {
           const previous = existing.appearance;
           if (!isDeepStrictEqual(appearance.cards, previous.cards) ||

@@ -1,5 +1,7 @@
 import React, {createContext, useContext} from 'react';
-import {TVTheme} from '../src/theme/tvTheme';
+import {TVTheme, themeForPalette} from '../src/theme/tvTheme';
+import type {TVThemeType} from '../src/theme/tvTheme';
+import './readingFixture.css';
 import {DEFAULT_APPEARANCE} from '../src/theme/appearance';
 import type {ReactNode} from 'react';
 import type {useDashboard as useDashboardContract} from '../src/context/DashboardContext';
@@ -34,9 +36,14 @@ function useFixture(): FixtureState {
 export function useDashboard() {return useFixture().data;}
 export function usePeople() {return {people: useFixture().people || [], error: null};}
 export function useWatchNext() {return useFixture().watch;}
-export function useTheme() {return TVTheme;}
+const ScopedTheme = createContext<TVThemeType | null>(null);
+export function useTheme() {
+  const scoped = useContext(ScopedTheme);
+  const appearance = useFixture().appearance || DEFAULT_APPEARANCE;
+  return scoped || {...themeForPalette(appearance.palette, appearance.customAccent, appearance.backgroundColor, appearance.background, appearance.reading), fontsReady: true};
+}
 export function useAppearance() {return {appearance: useFixture().appearance || DEFAULT_APPEARANCE};}
 export function usePolls() {return {rounds: useFixture().polls || {}, loading: false, stale: false, offsetMs: 0, updatedAtMs: Date.now(), setVisible: () => undefined};}
 export const usePollVisibility = () => () => undefined;
-export function CardThemeProvider({children}: {children: ReactNode}) {return <>{children}</>;}
+export function CardThemeProvider({children, theme}: {children: ReactNode; theme: TVThemeType}) {return <ScopedTheme.Provider value={theme}>{children}</ScopedTheme.Provider>;}
 export default function useCompactTVLayout() {return useFixture().compact;}

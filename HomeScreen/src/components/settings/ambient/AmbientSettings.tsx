@@ -1,5 +1,6 @@
+import Text from '../../shared/ReadingText';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useAppearance, useTheme } from '../../../theme/ThemeContext';
 import { AMBIENT_INFO_IDS, PLASMA_PRESETS } from '../../../theme/appearance';
 import type { AmbientPreference } from '../../../theme/appearance';

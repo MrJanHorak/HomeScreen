@@ -1,10 +1,10 @@
+import Text from '../../shared/ReadingText';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Image,
   Linking,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';

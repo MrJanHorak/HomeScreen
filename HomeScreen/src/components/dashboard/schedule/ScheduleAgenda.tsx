@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import Text from '../../shared/ReadingText';
+import { View } from 'react-native';
 import type { CalendarEvent } from '../../../../../shared/src/types';
 import { useTheme } from '../../../theme/ThemeContext';
 import CardSection from '../shared/CardSection';

@@ -1,10 +1,10 @@
+import Text from './ReadingText';
 import React, { useEffect, useRef } from 'react';
 import {
   Modal,
   View,
   StyleSheet,
   Pressable,
-  Text,
   Platform,
   BackHandler,
 } from 'react-native';

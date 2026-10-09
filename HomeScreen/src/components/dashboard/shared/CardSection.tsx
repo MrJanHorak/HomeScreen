@@ -1,5 +1,6 @@
+import Text from '../../shared/ReadingText';
 import type { ReactNode } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import { cardSectionLayout } from './cardSectionLayout';
 

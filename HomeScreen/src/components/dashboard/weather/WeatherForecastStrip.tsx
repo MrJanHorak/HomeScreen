@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import Text from '../../shared/ReadingText';
+import { View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { HourlyForecastItem, WeatherForecast } from '../../../../../shared/src/types';
 import { formatTemperature, rainProbability, weatherConditionIcon } from '../../../helpers/weatherHelpers';

@@ -1,5 +1,7 @@
+import Text from './ReadingText';
 import React from 'react';
-import { Text, TextProps, TextStyle } from 'react-native';
+import { TextProps, TextStyle } from 'react-native';
+import {useTheme} from '../../theme/ThemeContext';
 import { TVTheme } from '../../theme/tvTheme';
 
 type TypographyVariant = keyof typeof TVTheme.typography;
@@ -27,8 +29,9 @@ export default function TVText({
   style,
   ...rest
 }: TVTextProps) {
+  const theme = useTheme();
   const dynamicStyle: TextStyle = {
-    color: TVTheme.colors[color],
+    color: theme.colors[color],
     marginBottom: marginBottom ? TVTheme.spacing[marginBottom] : undefined,
     marginTop: marginTop ? TVTheme.spacing[marginTop] : undefined,
     marginHorizontal: marginHorizontal

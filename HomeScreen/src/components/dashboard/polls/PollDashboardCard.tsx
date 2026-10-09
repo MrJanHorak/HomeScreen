@@ -1,4 +1,5 @@
-import {Text, View} from 'react-native';
+import Text from '../../shared/ReadingText';
+import { View} from 'react-native';
 import {usePolls} from '../../../context/PollsContext';
 import {useTheme} from '../../../theme/ThemeContext';
 import useCompactTVLayout from '../../../hooks/useCompactTVLayout';
@@ -25,7 +26,7 @@ export default function PollDashboardCard({widget, width, height}: {widget: Widg
     <CardHeader id="poll" scale={scale} height={18 * scale} badge={closed ? 'Closed' : stale ? 'Offline' : 'Vote'}/>
     <View style={{flexDirection: plan.sideBySide ? 'row' : 'column', gap: plan.sideBySide ? 20 * scale : plan.gap}}>
     <View style={{width: plan.heroWidth, gap: plan.gap}}>
-    <Text testID="poll-question" numberOfLines={plan.titleLimit} style={{fontSize: plan.titleSize, lineHeight: plan.titleSize * 1.2, fontWeight: '700', color: theme.colors.textPrimary}}>{question}</Text>
+    <Text testID="poll-question" numberOfLines={plan.titleLines} style={{fontSize: plan.titleSize, lineHeight: plan.titleSize * 1.2, fontWeight: '700', color: theme.colors.textPrimary}}>{question}</Text>
     <Text testID="poll-status" numberOfLines={1} style={{fontSize: 11 * scale, lineHeight: 15 * scale, color: theme.colors.textSecondary}}>{status}</Text>
     </View>
     <View testID="poll-body" style={{flexDirection: 'row', gap: 20 * scale, minWidth: 0}}>

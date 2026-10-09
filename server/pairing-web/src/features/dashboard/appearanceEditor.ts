@@ -8,6 +8,7 @@ import {createGridEditor} from './grid/gridEditor';
 import {createCardStyleEditor} from './cards/cardStyleEditor';
 import {createPhotoGallery} from './photos/photoGallery';
 import {createAmbientEditor} from './ambient/ambientEditor';
+import {createReadingEditor} from './readingEditor';
 import {normalizeAmbient} from './ambient/ambientPreferences';
 import {copyCards, normalizeAppearance, appearanceDifferences, LAYOUT_PRESETS, PALETTE_COLORS} from './appearanceModel';
 import type {Appearance, Card, CardId} from './appearanceModel';
@@ -55,6 +56,10 @@ export function createAppearanceEditor(
   const backgroundColor = getElement<HTMLInputElement>('#background-color');
   const backgroundZoom = getElement<HTMLInputElement>('#background-zoom');
   const preview = createAppearancePreview(root);
+  const readingEditor = createReadingEditor(getElement('#reading-editor'), (reading) => {
+    appearance.reading = reading;
+    render();
+  });
   const libraryView = createAppearanceLibraryView(root, {
     load: loadDesign,
     replace: (design) => void changeLibrary({action: 'saveDesign', id: design.id, name: design.name, appearance}, 'Design replaced.'),
@@ -202,6 +207,7 @@ export function createAppearanceEditor(
     render();
   }
   function render() {
+    readingEditor.render(appearance.reading, busy);
     ambientEditor.render(normalizeAmbient(appearance.ambient), busy);
     content.hidden = !loaded;
     if (!loaded) return;
@@ -225,6 +231,7 @@ export function createAppearanceEditor(
     cardEditor.render(appearance.cards, Boolean(appearance.grid), busy);
     preview.render(appearance, savedPhoto);
     widgetStudio.render(appearance, busy);
+    updatePreview();
     getElement('#legacy-layout-controls').hidden = Boolean(appearance.widgetLayout);
     getElement('#legacy-card-style-section').hidden = Boolean(appearance.widgetLayout);
     if (appearance.widgetLayout) {

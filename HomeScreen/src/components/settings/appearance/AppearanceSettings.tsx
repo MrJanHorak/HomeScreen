@@ -1,5 +1,6 @@
+import Text from '../../shared/ReadingText';
 import React, {useEffect, useState} from 'react';
-import {Text, TextInput, View} from 'react-native';
+import { TextInput, View} from 'react-native';
 import {useAppearance, useTheme} from '../../../theme/ThemeContext';
 import {normalizeHexColor, PALETTES} from '../../../theme/tvTheme';
 import GooglePhotosBackgroundPicker from '../shared/GooglePhotosBackgroundPicker';

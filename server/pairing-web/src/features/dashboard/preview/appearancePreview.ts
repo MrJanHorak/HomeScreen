@@ -2,6 +2,7 @@ import {cardInk, cardSurface} from '../../../../../functions/src/utils/cardStyle
 import {CARD_LABELS, PALETTE_COLORS} from '../appearanceModel';
 import type {Appearance, Card, CardId} from '../appearanceModel';
 import {requiredElement} from '../../../shared/dom';
+import {normalizeReading, readingColors, readingInk} from '../../../../../functions/src/utils/reading';
 
 export interface AppearancePreview {
   render: (appearance: Appearance, savedPhoto: string | null) => void;
@@ -30,8 +31,9 @@ export function createAppearancePreview(root: HTMLElement): AppearancePreview {
 
   function updateStyles(appearance: Appearance, savedPhoto: string | null) {
     const colors = PALETTE_COLORS[appearance.palette];
-    const backdrop = appearance.background === 'solid' ? appearance.backgroundColor : colors.background;
-    const accent = appearance.palette === 'custom' ? appearance.customAccent : colors.accent;
+    const reading = normalizeReading(appearance.reading), scheme = readingColors(reading);
+    const backdrop = scheme?.background || (appearance.background === 'solid' ? appearance.backgroundColor : colors.background);
+    const accent = scheme?.accent || (appearance.palette === 'custom' ? appearance.customAccent : colors.accent);
     const photo = appearance.background === 'google-photo' && savedPhoto
       ? `linear-gradient(rgba(15,23,42,.45),rgba(15,23,42,.45)),url("${savedPhoto}")` : '';
     const canvas = root.querySelector<HTMLElement>('.layout-canvas');
@@ -44,12 +46,15 @@ export function createAppearancePreview(root: HTMLElement): AppearancePreview {
     }
     root.querySelectorAll<HTMLElement>('.canvas-tile, .tv-preview-tile').forEach((tile) => {
       const style = appearance.cardStyles[tile.dataset.cardId as CardId];
-      const ink = style && !style.useThemeSurface ? cardInk(style, colors.background, accent) : null;
-      tile.style.backgroundColor = style && !style.useThemeSurface ? cardSurface(style) : '';
+      const ink = style && !style.useThemeSurface && !scheme ? cardInk(style, colors.background, accent, reading.textColor) : null;
+      tile.style.backgroundColor = scheme?.surface || (style && !style.useThemeSurface ? cardSurface(style) : '');
       tile.style.borderWidth = style ? `${style.borderWidth ?? 1.5}px` : '';
       tile.style.borderRadius = style ? `${style.borderRadius ?? 20}px` : '';
-      tile.style.setProperty('--card-ink', ink?.primary || '#FFFFFF');
-      tile.style.color = ink?.primary || '#FFFFFF';
+      const color = ink?.primary || readingInk(reading.textColor, scheme?.focused || '#334155', scheme?.primary || '#FFFFFF');
+      tile.style.setProperty('--card-ink', color);
+      tile.style.color = color;
+      tile.style.fontFamily = reading.font === 'opendyslexic' ? 'OpenDyslexic, sans-serif' : '';
+      tile.style.letterSpacing = reading.spacing === 'relaxed' ? '.02em' : '';
     });
   }
 

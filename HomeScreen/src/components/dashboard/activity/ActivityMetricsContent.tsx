@@ -1,4 +1,5 @@
-import {Text, View} from 'react-native';
+import Text from '../../shared/ReadingText';
+import { View} from 'react-native';
 import {MaterialCommunityIcons} from '@expo/vector-icons';
 import {useTheme} from '../../../theme/ThemeContext';
 import {activitySummaryHeight, cardTypography} from '../shared/cardContentLayout';

@@ -1,5 +1,6 @@
+import Text from '../../shared/ReadingText';
 import {useEffect, useState} from 'react';
-import {Text, useWindowDimensions, View} from 'react-native';
+import { useWindowDimensions, View} from 'react-native';
 import {useAuth} from '../../../context/AuthContext';
 import {usePolls} from '../../../context/PollsContext';
 import {getAvailableDashboardPolls, getPeopleSettings} from '../../../services/api';

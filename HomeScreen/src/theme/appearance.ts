@@ -1,3 +1,5 @@
+import {DEFAULT_READING, normalizeReading} from '../../../server/functions/src/utils/reading';
+import type {ReadingPreference} from '../../../server/functions/src/utils/reading';
 import type { PaletteChoice } from './tvTheme';
 import { normalizeHexColor } from './tvTheme';
 import { DASHBOARD_CARD_IDS, validGrid } from '../../../server/functions/src/utils/dashboardLayout';
@@ -23,6 +25,7 @@ export interface CardPreference {
 }
 
 export interface DashboardAppearance {
+  reading?: ReadingPreference;
   widgetLayout?: WidgetLayout | null;
   layout: LayoutId;
   palette: PaletteChoice;
@@ -142,6 +145,7 @@ export const LAYOUTS: Record<
 };
 
 export const DEFAULT_APPEARANCE: DashboardAppearance = {
+  reading: DEFAULT_READING,
   layout: 'balanced',
   palette: 'night',
   customAccent: '#38BDF8',
@@ -264,6 +268,7 @@ export function normalizeAppearance(value: unknown): DashboardAppearance {
   return {
     layout: grid ? 'custom' : layout,
     palette,
+    reading: normalizeReading(raw.reading),
     customAccent,
     background,
     backgroundColor,

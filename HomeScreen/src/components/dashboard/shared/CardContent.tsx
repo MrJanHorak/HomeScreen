@@ -1,5 +1,6 @@
+import Text from '../../shared/ReadingText';
 import type { ReactNode } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import useCardContentLayout from './useCardContentLayout';
 import useCompactTVLayout from '../../../hooks/useCompactTVLayout';
 import { useTheme } from '../../../theme/ThemeContext';

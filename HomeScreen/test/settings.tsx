@@ -4,6 +4,7 @@ import {ScrollView, View, Text} from 'react-native';
 import {ThemeProvider, useAppearance} from '../src/theme/ThemeContext';
 import WidgetCardSettings from '../src/components/settings/appearance/WidgetCardSettings';
 import SavedLayoutSettings from '../src/components/settings/appearance/SavedLayoutSettings';
+import ReadingSettings from '../src/components/settings/appearance/ReadingSettings';
 function Settings() {
   const [section, setSection] = useState('cards');
   const {appearance} = useAppearance();
@@ -11,9 +12,10 @@ function Settings() {
     <Text style={{color: 'white', fontSize: 28, marginBottom: 12}}>Settings</Text>
     <View style={{flexDirection: 'row', gap: 12, marginBottom: 20}}>
       <button onClick={() => setSection('cards')}>Cards tab</button><button onClick={() => setSection('layout')}>Layout tab</button>
+      <button onClick={() => setSection('reading')}>Fonts & reading tab</button>
     </View>
     <ScrollView style={{maxHeight: 560}}>
-      {section === 'cards' ? <WidgetCardSettings/> : <SavedLayoutSettings/>}
+      {section === 'reading' ? <ReadingSettings/> : section === 'cards' ? <WidgetCardSettings/> : <SavedLayoutSettings/>}
     </ScrollView>
     <pre data-appearance style={{display: 'none'}}>{JSON.stringify(appearance)}</pre>
   </View>;

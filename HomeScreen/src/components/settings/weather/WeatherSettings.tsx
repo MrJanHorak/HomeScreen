@@ -1,8 +1,8 @@
+import Text from '../../shared/ReadingText';
 import { useRef, useState } from 'react';
 import {
   View,
   StyleSheet,
-  Text,
   Pressable,
   TextInput,
   Platform,

@@ -1,5 +1,6 @@
+import Text from '../../shared/ReadingText';
 import { useEffect, useState } from 'react';
-import { View, StyleSheet, Text, Pressable, Platform } from 'react-native';
+import { View, StyleSheet, Pressable, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';

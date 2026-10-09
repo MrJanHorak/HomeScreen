@@ -1,5 +1,6 @@
+import Text from '../../shared/ReadingText';
 import type {ReactNode} from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, View} from 'react-native';
 import {useTheme} from '../../../theme/ThemeContext';
 
 export default function ForecastSection({title, children}: {title: string; children: ReactNode}) {

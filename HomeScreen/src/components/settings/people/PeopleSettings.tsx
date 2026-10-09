@@ -1,5 +1,6 @@
+import Text from '../../shared/ReadingText';
 import {useEffect, useState} from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import {Pressable, StyleSheet, View} from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import type {PeopleSettings as PeopleData, PeopleInvitation} from '../../../../../shared/src/people';
 import {createPeopleInvitation, getPeopleSettings, peopleAction, getDeviceConnectionInfo} from '../../../services/api';

@@ -1,3 +1,5 @@
+import {DEFAULT_READING, normalizeReading} from '../../../../functions/src/utils/reading';
+import type {ReadingPreference} from '../../../../functions/src/utils/reading';
 import {isRecord} from '../../../../../shared/src/validation';
 import {validGrid} from '../../../../functions/src/utils/dashboardLayout';
 import type {DashboardGridLayout} from '../../../../functions/src/utils/dashboardLayout';
@@ -16,6 +18,7 @@ export interface Card {
   size: 'standard' | 'wide';
 }
 export type Appearance = {
+  reading?: ReadingPreference;
   widgetLayout?: WidgetLayout | null;
   layout: 'balanced' | 'agenda' | 'wellness' | 'calm' | 'custom';
   palette: 'night' | 'forest' | 'plum' | 'contrast' | 'custom';
@@ -57,6 +60,7 @@ export const LAYOUT_PRESETS: Record<Exclude<Appearance['layout'], 'custom'>, Car
   ],
 };
 const defaults: Appearance = {
+  reading: DEFAULT_READING,
   layout: 'balanced', palette: 'night', customAccent: '#38BDF8',
   background: 'photo', backgroundColor: '#0F172A', backgroundZoom: DEFAULT_PHOTO_ZOOM, cards: LAYOUT_PRESETS.balanced, grid: null, cardStyles: {},
 };
@@ -91,7 +95,7 @@ function colorOrDefault(value: unknown, fallback: string): string {
 
 /** Repair legacy settings while copying only recognized appearance fields. */
 export function normalizeAppearance(value: unknown): Appearance {
-  if (!isRecord(value)) return {...defaults, cards: copyCards(defaults.cards), cardStyles: {}};
+  if (!isRecord(value)) return {...defaults, reading: normalizeReading(null), cards: copyCards(defaults.cards), cardStyles: {}};
   const cards = Array.isArray(value.cards) ? copyCards(value.cards.filter(validCard)) : [];
   const unique = cards.filter((card, index) => cards.findIndex((other) => other.id === card.id) === index);
   for (const id of order) {
@@ -102,6 +106,7 @@ export function normalizeAppearance(value: unknown): Appearance {
     layout: validLayout(value.layout) ? value.layout : 'balanced',
     ...(validWidgetLayout(value.widgetLayout) ? {widgetLayout: structuredClone(value.widgetLayout)} : value.widgetLayout === null ? {widgetLayout: null} : {}),
     palette: validPalette(value.palette) ? value.palette : 'night',
+    reading: normalizeReading(value.reading),
     customAccent: colorOrDefault(value.customAccent, defaults.customAccent),
     backgroundColor: colorOrDefault(value.backgroundColor, defaults.backgroundColor),
     background: value.background === 'solid' || value.background === 'google-photo' ? value.background : 'photo',
@@ -116,6 +121,7 @@ export function normalizeAppearance(value: unknown): Appearance {
 export function appearanceDifferences(draft: Appearance, published: Appearance): string[] {
   const groups: [string, (keyof Appearance)[]][] = [
     ['layout and cards', ['layout', 'cards', 'grid', 'widgetLayout']],
+    ['fonts and reading', ['reading']],
     ['colors', ['palette', 'customAccent']],
     ['background', ['background', 'backgroundColor', 'backgroundZoom']],
     ['card styles', ['cardStyles']],

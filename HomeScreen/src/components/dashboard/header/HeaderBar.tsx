@@ -1,4 +1,5 @@
-import { StyleSheet, View, Platform, Pressable, Text } from 'react-native';
+import Text from '../../shared/ReadingText';
+import { StyleSheet, View, Platform, Pressable} from 'react-native';
 import { useState } from 'react';
 import { useGreeting } from './useGreeting';
 import { useCurrentDateTime } from './useCurrentDateTime';

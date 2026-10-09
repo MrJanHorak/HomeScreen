@@ -1,4 +1,5 @@
-import { Text } from 'react-native';
+import Text from '../../shared/ReadingText';
+import {} from 'react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 
 /** Display only: the containing TVCard owns the remote-selectable details action. */

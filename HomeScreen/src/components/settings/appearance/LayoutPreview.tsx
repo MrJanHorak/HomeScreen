@@ -1,4 +1,5 @@
-import {Image, Text, View} from 'react-native';
+import Text from '../../shared/ReadingText';
+import {Image, View} from 'react-native';
 import {useAppearance, useTheme} from '../../../theme/ThemeContext';
 import {CARD_LABELS, getCardRows} from '../../../theme/appearance';
 import type {CardId, CardPreference} from '../../../theme/appearance';

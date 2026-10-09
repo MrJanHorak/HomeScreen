@@ -1,9 +1,10 @@
+import Text from '../shared/ReadingText';
+import {useTheme} from '../../theme/ThemeContext';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   ImageSourcePropType,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { useDashboard } from '../../context/DashboardContext';
@@ -57,6 +58,7 @@ interface Props {
 }
 
 export default function AmbientScreen({ preference, selectedPhotos }: Props) {
+  const theme = useTheme();
   const { weather, schedule, upcomingEvents, health, tasks, meals } =
     useDashboard();
   const [now, setNow] = useState(() => new Date());
@@ -272,14 +274,14 @@ export default function AmbientScreen({ preference, selectedPhotos }: Props) {
           { opacity: infoOpacity },
         ]}
       >
-        <Text style={styles.date} numberOfLines={1}>
+        <Text style={[styles.date, {color: theme.colors.textSecondary}]} numberOfLines={1}>
           {now.toLocaleDateString('en-US', {
             weekday: 'long',
             month: 'long',
             day: 'numeric',
           })}
         </Text>
-        <Text style={styles.time} numberOfLines={1}>
+        <Text style={[styles.time, {color: theme.colors.textPrimary}]} numberOfLines={1}>
           {now.toLocaleTimeString('en-US', {
             hour: 'numeric',
             minute: '2-digit',
@@ -287,8 +289,8 @@ export default function AmbientScreen({ preference, selectedPhotos }: Props) {
         </Text>
         {detail && (
           <Animated.View style={{ opacity: detailOpacity }}>
-            <Text style={styles.eventLabel}>{detail.label}</Text>
-            <Text style={styles.event} numberOfLines={2}>
+            <Text style={[styles.eventLabel, {color: theme.colors.textSecondary}]}>{detail.label}</Text>
+            <Text style={[styles.event, {color: theme.colors.textPrimary}]} numberOfLines={2}>
               {detail.value}
             </Text>
           </Animated.View>

@@ -1,4 +1,5 @@
-import {StyleSheet, Text, View} from 'react-native';
+import Text from '../../shared/ReadingText';
+import {StyleSheet, View} from 'react-native';
 import type {Weather} from '../../../../../shared/src/types';
 import {useTheme} from '../../../theme/ThemeContext';
 import WeatherMetric from './WeatherMetric';

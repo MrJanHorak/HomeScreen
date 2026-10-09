@@ -1,4 +1,5 @@
-import { Text, View } from 'react-native';
+import Text from '../../shared/ReadingText';
+import { View } from 'react-native';
 import type { Activity, ActivityDay } from '../../../../../shared/src/types';
 import { useTheme } from '../../../theme/ThemeContext';
 import useCompactTVLayout from '../../../hooks/useCompactTVLayout';

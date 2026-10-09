@@ -17,7 +17,7 @@ export function pollCardLayout(width: number, height: number, scale: number, que
   const rowHeight = 44;
   const cap = family === 'summary' ? 0 : family === 'wide' ? 3 : family === 'standard' ? 2 : 4;
   const rows = Math.min(cap, Math.floor(Math.max(0, available - (qrSize ? 0 : 16)) / (rowHeight + gap)));
-  return {family, titleSize: titleSize * scale, titleLimit, gap: gap * scale, rowHeight: rowHeight * scale, rows,
+  return {family, titleSize: titleSize * scale, titleLimit, titleLines, gap: gap * scale, rowHeight: rowHeight * scale, rows,
     qrSize: qrSize * scale, rowWidth: rowWidth * scale, hero: hero * scale, heroWidth: heroWidth * scale, contentTop: contentTop * scale, sideBySide,
     footer: h - Math.max(hero, contentTop + rows * (rowHeight + gap)) >= 20 && !qrSize};
 }

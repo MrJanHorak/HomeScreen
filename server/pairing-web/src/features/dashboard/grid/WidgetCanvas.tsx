@@ -5,6 +5,7 @@ import {validWidgetGrid, widgetGridFromRows} from '../../../../../functions/src/
 import type {Widget, WidgetGrid, WidgetLayout} from '../../../../../functions/src/utils/widgets';
 import type {Appearance} from '../appearanceModel';
 import './WidgetCanvas.css';
+import {normalizeReading, readingColors, readingInk} from '../../../../../functions/src/utils/reading';
 
 type Item = WidgetGrid['items'][number];
 type Gesture = {pointerId: number; x: number; y: number; item: Item; resize: boolean; layout: WidgetLayout; handle: HTMLButtonElement};
@@ -16,6 +17,7 @@ export function WidgetCanvas({appearance, layout, busy, selected, select, label,
   commit: (layout: WidgetLayout) => void; report: (message: string) => void;
 }) {
   const canvas = useRef<HTMLDivElement>(null);
+  const reading = normalizeReading(appearance.reading), scheme = readingColors(reading);
   const gesture = useRef<Gesture | null>(null);
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const grid = layout.grid || widgetGridFromRows(layout.widgets);
@@ -108,7 +110,7 @@ export function WidgetCanvas({appearance, layout, busy, selected, select, label,
       const custom = widget.style && !widget.style.useThemeSurface ? widget.style : null;
       const active = proposal?.moved && proposal.item.id === item.id;
       return <div key={item.id} data-widget-id={item.id} className={`widget-tile${selected === item.id ? ' is-selected' : ''}${active ? ' is-dragging' : ''}${active && blocked ? ' is-blocked' : ''}${proposal?.moved && proposal.target?.id === item.id ? ' is-swap-target' : ''}`}
-        style={{gridColumn: `${item.x + 1}/span ${item.width}`, gridRow: `${item.y + 1}/span ${item.height}`, background: custom ? cardSurface(custom) : '#24344d', color: custom ? cardInk(custom, appearance.backgroundColor, appearance.customAccent).primary : '#fff', borderRadius: widget.style?.borderRadius ?? 10, borderWidth: widget.style?.borderWidth ?? 1}}>
+        style={{gridColumn: `${item.x + 1}/span ${item.width}`, gridRow: `${item.y + 1}/span ${item.height}`, background: scheme?.surface || (custom ? cardSurface(custom) : '#24344d'), color: scheme ? readingInk(reading.textColor, scheme.focused, scheme.primary) : custom ? cardInk(custom, appearance.backgroundColor, appearance.customAccent, reading.textColor).primary : readingInk(reading.textColor, '#24344d', '#fff'), fontFamily: reading.font === 'opendyslexic' ? 'OpenDyslexic, sans-serif' : undefined, fontWeight: reading.weight === 'bold' ? 700 : undefined, letterSpacing: reading.spacing === 'relaxed' ? '.02em' : undefined, borderRadius: widget.style?.borderRadius ?? 10, borderWidth: widget.style?.borderWidth ?? 1}}>
         <button type="button" className="widget-move" disabled={busy} aria-pressed={selected === item.id} aria-label={`Select or move ${label(widget)}`} onClick={() => select(item.id)}
           onPointerDown={(e) => start(e, original, false)} onPointerMove={move} onPointerUp={finish} onPointerCancel={cancel} onLostPointerCapture={cancel} onKeyDown={(e) => keyboard(e, original, false)}>
           <span className="widget-tile-label">{label(widget)}</span><small>{item.width} × {item.height}{widget.kind === 'poll' ? ` · ${votes(widget)} votes` : ''}</small>

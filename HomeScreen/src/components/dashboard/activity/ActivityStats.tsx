@@ -1,4 +1,5 @@
-import { View, StyleSheet, Text } from 'react-native';
+import Text from '../../shared/ReadingText';
+import { View, StyleSheet} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme/ThemeContext';
 import useCompactTVLayout from '../../../hooks/useCompactTVLayout';

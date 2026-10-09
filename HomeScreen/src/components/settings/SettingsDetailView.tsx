@@ -1,14 +1,15 @@
+import Text from '../shared/ReadingText';
 import React, { useRef, useState } from 'react';
 import {
   View,
   StyleSheet,
-  Text,
   ScrollView,
   Pressable,
   Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
+import ReadingSettings from './appearance/ReadingSettings';
 import AppearanceSettings, {
   AppearanceSection,
 } from './appearance/AppearanceSettings';
@@ -23,6 +24,7 @@ import { useControlFocus } from '../../hooks/useControlFocus';
 
 type SettingsSection =
   | AppearanceSection
+  | 'reading'
   | 'weather'
   | 'meals'
   | 'apps'
@@ -37,6 +39,7 @@ const SECTIONS: {
 }[] = [
   { id: 'companion', label: 'Companion site', icon: 'qrcode-scan' },
   { id: 'people', label: 'People', icon: 'account-group-outline' },
+  { id: 'reading', label: 'Fonts & reading', icon: 'format-font' },
   { id: 'colors', label: 'Colors', icon: 'palette-outline' },
   { id: 'background', label: 'Background', icon: 'image-outline' },
   { id: 'ambient', label: 'Ambient', icon: 'weather-night' },
@@ -118,6 +121,7 @@ export default function SettingsDetailView({
           section === 'background' ||
           section === 'layout' ||
           section === 'cards') && <AppearanceSettings section={section} />}
+        {section === 'reading' && <ReadingSettings />}
         {section === 'ambient' && (
           <AmbientSettings onPreview={onPreviewAmbient} />
         )}

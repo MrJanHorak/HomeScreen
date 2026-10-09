@@ -1,5 +1,6 @@
+import Text from '../components/shared/ReadingText';
 import React from 'react';
-import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../theme/ThemeContext';

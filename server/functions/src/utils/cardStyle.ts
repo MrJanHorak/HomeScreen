@@ -1,3 +1,4 @@
+import {readingInk} from "./reading";
 import {DASHBOARD_CARD_IDS} from "./dashboardLayout";
 import type {DashboardCardId} from "./dashboardLayout";
 
@@ -40,7 +41,7 @@ export function cardSurface(style: CardStyle, focused = false): string {
 }
 
 /** Choose text from the estimated composite, with a contrast-safe accent. */
-export function cardInk(style: CardStyle, backdrop: string, accent: string) {
+export function cardInk(style: CardStyle, backdrop: string, accent: string, preferredInk: string | null = null) {
   const base = rgb(backdrop);
   const composite = rgb(style.backgroundColor).map((channel, i) => channel * style.opacity + base[i] * (1 - style.opacity));
   const light = luminance(composite);
@@ -54,6 +55,8 @@ export function cardInk(style: CardStyle, backdrop: string, accent: string) {
     darkText = contrastWith("#000000") > contrastWith("#FFFFFF");
     primary = darkText ? "#000000" : "#FFFFFF";
   }
+  const compositeHex = "#" + composite.map((c) => Math.round(c).toString(16).padStart(2, "0")).join("");
+  primary = readingInk(preferredInk, compositeHex, primary);
   const secondary = darkText ? "#374151" : "#CBD5E1";
   const accentLight = luminance(rgb(accent));
   const contrast = (Math.max(light, accentLight) + 0.05) / (Math.min(light, accentLight) + 0.05);

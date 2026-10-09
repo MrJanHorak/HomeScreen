@@ -1,3 +1,6 @@
+import {DEFAULT_READING, readingColors, readingInk} from '../../../server/functions/src/utils/reading';
+import type {ReadingPreference} from '../../../server/functions/src/utils/reading';
+
 export const colors = {
   // Backgrounds
   background: '#0F172A',
@@ -70,6 +73,9 @@ export const tvAnimation = {
 } as const;
 
 export const TVTheme = {
+  reading: DEFAULT_READING,
+  fontsReady: false,
+  fontError: false,
   colors,
   spacing,
   typography,
@@ -197,6 +203,7 @@ export function themeForPalette(
   customAccent = '#38BDF8',
   backgroundColor = '#0F172A',
   backgroundMode: 'photo' | 'solid' | 'google-photo' = 'photo',
+  reading: ReadingPreference = DEFAULT_READING,
 ): TVThemeType {
   const paletteColors = palette === 'custom' ? {} : PALETTES[palette].colors;
   const result: TVThemeType['colors'] = { ...colors, ...paletteColors };
@@ -212,5 +219,19 @@ export function themeForPalette(
   if (backgroundMode === 'solid') {
     result.background = displayBackgroundColor(backgroundColor);
   }
-  return { ...TVTheme, colors: result };
+  const scheme = readingColors(reading);
+  if (scheme) Object.assign(result, {
+    background: scheme.background, backgroundOverlay: scheme.background,
+    surface: scheme.surface, surfaceOpacity: scheme.surface, modalSurface: scheme.surface,
+    surfaceFocused: scheme.focused, surfaceFocusedOpacity: scheme.focused,
+    glassSurface: scheme.surface, glassSurfaceFocused: scheme.focused,
+    textPrimary: scheme.primary, textSecondary: scheme.secondary, textFocused: scheme.primary,
+    focusRing: scheme.accent, accent: scheme.accent,
+  });
+  // The focused surface is the brightest theme surface; preserve 4.5:1 there too.
+  const ink = readingInk(reading.textColor, result.surfaceFocused, result.textPrimary);
+  result.textPrimary = ink;
+  result.textFocused = ink;
+  if (reading.textColor) result.textSecondary = ink;
+  return { ...TVTheme, reading, colors: result };
 }
