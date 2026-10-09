@@ -98,8 +98,7 @@ deploying the backend; the unit suite also covers owner isolation and revocation
 ## Operational follow-up
 
 See the [October 5 release security review](SECURITY_REVIEW.md) for confirmed
-findings, source fixes, test evidence, and remaining deployment gates. The deployed
-runtime still uses the default Compute service account with project Editor access.
+findings, source fixes, test evidence, and remaining deployment gates. The October 5 review observed the default Compute service account with project Editor access; its current state has not been rechecked in the October 9 documentation audit.
 Move functions to dedicated identities with only their required permissions before
 public release; changing source code does not remove the existing IAM binding.
 
@@ -126,7 +125,9 @@ and a report-only CSP; validate real Google sign-in and then enforce the policy.
 The Android release script rejects known debug signing unless explicitly enabled
 for internal testing. Provision production signing before distribution.
 
-Appearance documents accept a versioned 12-by-6 grid containing only the six
+Current appearance also accepts validated widget instances for built-ins, polls and activity shares (24 configured, eight visible rows or twelve fitting the canvas). Guest voting has scoped links/cookies and activity sharing has consent/expiry checks; see [Polls](pairing-web/POLLS.md) and [People](pairing-web/PEOPLE.md). `firestore.indexes.json` now includes activity-invitation TTL and the poll retention index. Preserve existing TTL policies when deploying it. General household edit roles remain absent.
+
+The legacy appearance contract accepts a versioned 12-by-6 grid containing only the six
 supported card IDs, with exactly one item per visible card. Bounds, integer
 coordinates, minimum sizes, and overlaps are checked server-side. No arbitrary
 CSS, HTML, or scripts are interpreted. The companion supplies `expectedUpdatedAtMs`
@@ -134,8 +135,8 @@ and a Firestore transaction rejects stale saves with `409`. This revision protec
 against lost edits; the verified UID and device checks remain the authorization
 boundary. Appearance is account-wide, with no household roles or public edit links.
 
-Per-card surfaces are limited to the six supported IDs, six-digit hex colors,
-and finite opacity in `[0,1]`; unknown style fields are rejected. Legacy saves
+Legacy per-card surfaces are limited to the six supported IDs, six-digit hex colors,
+and finite opacity in `[0,1]`; validated theme-surface, border width and corner radius fields are also supported. Current widget instances carry their own validated styles. Unknown style fields are rejected. Legacy saves
 omitting `cardStyles` preserve existing styles. The companion photo viewer reads
 only the account's stored background/gallery through authenticated endpoints,
 limits image MIME types to JPEG/PNG/WebP, and clears thumbnails and enlarged images

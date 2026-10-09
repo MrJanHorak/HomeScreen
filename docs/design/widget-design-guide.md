@@ -3,17 +3,17 @@
 This is the reusable design reference for existing cards and future widgets.
 The geometry below describes the current implementation. A widget's design
 proposal must identify which behavior is implemented and which is still planned.
-See [current content breakpoints](CARD_CONTENT_BREAKPOINTS.md) for shipped fitting
-behavior and [the weather design](WEATHER_LAYOUT_DESIGN.md) for the first implemented
-use of this guide. [Schedule](SCHEDULE_LAYOUT_DESIGN.md) applies it to grouped
-agendas and clock-aware previews. See [other widget opportunities](WIDGET_LAYOUT_ASSESSMENT.md)
-and the implemented [Tasks checklist](TASKS_LAYOUT_DESIGN.md) and
-[Meals/Media/Activity refinements](PREVIEW_WIDGET_REFINEMENTS.md)
+See [current content breakpoints](card-content-breakpoints.md) for shipped fitting
+behavior and [the weather design](weather-layout-design.md) for the first implemented
+use of this guide. [Schedule](schedule-layout-design.md) applies it to grouped
+agendas and clock-aware previews. See [other widget opportunities](widget-layout-assessment.md)
+and the implemented [Tasks checklist](tasks-layout-design.md) and
+[Meals/Media/Activity refinements](preview-widget-refinements.md)
 for the applicability and reuse assessment.
-The [poll widget plan](POLLS_LAYOUT_DESIGN.md) proposes reusable poll rounds,
+The [poll widget plan](polls-layout-design.md) proposes reusable poll rounds,
 multiple widget instances, protected participant access, and all 50 footprint
 mappings. Core behavior is implemented; see the
-[poll implementation guide](../server/pairing-web/POLLS.md) for release scope.
+[poll implementation guide](../../server/pairing-web/POLLS.md) for release scope.
 
 ## Size contract
 
@@ -36,7 +36,7 @@ renderers receive a measured inner box in both modes. There is no fixed total
 number of physical pixel sizes across devices and row configurations.
 
 The authoritative implementation is
-[`dashboardLayout.ts`](../server/functions/src/utils/dashboardLayout.ts), shared
+[`dashboardLayout.ts`](../../server/functions/src/utils/dashboardLayout.ts), shared
 by the TV, companion and backend. `validGrid` controls legal dimensions and
 `gridRect` controls geometry. Keep these sources authoritative if the grid changes.
 
@@ -147,7 +147,7 @@ For each new widget layout:
 - Check icons, text contrast, focus and remote selection on the target TV; browser
   geometry checks alone do not establish readability from across the room.
 
-Run the commands documented in [current content verification](CARD_CONTENT_BREAKPOINTS.md#verification)
+Run the commands documented in [current content verification](card-content-breakpoints.md#verification)
 after implementation. A new card type also needs updates to the shared supported
 IDs, appearance validation, editor and detail routing; this guide does not enable
 new widget types by itself.

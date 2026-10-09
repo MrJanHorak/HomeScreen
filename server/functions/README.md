@@ -28,7 +28,7 @@ server/functions/src/
 ├── linkedDevices.ts             # Owner TV list/name/revocation and TV self-disconnect
 ├── services/
 │   ├── googleAuth.ts            # OAuth2Client setup & token refresh handling
-│   ├── googleCalendar.ts        # Google Calendar API (events for today)
+│   ├── googleCalendar.ts        # Google Calendar API (today and 14 upcoming days)
 │   ├── googleFit.ts             # Google Fitness API (daily steps, distance, calories)
 │   ├── googleTasks.ts           # Google Tasks API (active tasks & task completion)
 │   ├── mealSheet.ts             # Google Sheets dinner-plan reader
@@ -151,6 +151,17 @@ default missing zoom to `1.05` using the pure `utils/photoFraming.ts` contract.
 No public image URL is introduced.
 
 ---
+
+## Additional implemented endpoints
+
+The export manifest in [`src/index.ts`](src/index.ts) is authoritative. In addition to the endpoints above:
+
+- `appearanceStudio` manages owner drafts, named designs, history, and revision checks; TV sessions can read saved designs only.
+- `polls` manages owner templates/rounds; `pollFeed` serves TV summaries; `pollParticipant` handles public voting credentials and cookies. `pollRetention` is a scheduled daily archived-ballot cleanup, not a dashboard-sync trigger. See [Polls](../pairing-web/POLLS.md).
+- `people` manages invitations/shares, `beginGoogleActivity` starts participant-only activity consent, and `peopleActivity` serves authorized activity summaries. See [People](../pairing-web/PEOPLE.md).
+- Appearance supports additive `widgetLayout` instances for built-ins, polls, and people activity, and typed `reading` preferences; legacy cards/grid remain compatibility fields. Card styles also accept validated `useThemeSurface`, `borderWidth` (0–4) and integer `borderRadius` (0–32). See [layout contract](../pairing-web/DASHBOARD_LAYOUT.md).
+
+The older directory tree and JSON example above illustrate core modules/data rather than enumerate every field/file. Polls and shared activity use separate feeds instead of the ten-minute dashboard summary cache.
 
 ## ⚙️ Google Cloud & API Configuration
 

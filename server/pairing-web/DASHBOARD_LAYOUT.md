@@ -9,7 +9,7 @@ All TVs paired to that account share the configuration. The header and favorite
 apps are outside the editable area. See [the roadmap](COMPANION_ROADMAP.md)
 for further widget types. Poll widgets are implemented
 through the additive instance contract described in [the poll guide](POLLS.md);
-the six-card legacy contract below remains the fallback for older TVs.
+People activity widgets also use this instance contract; see [People](PEOPLE.md). The six-card legacy contract below remains the fallback for older TVs.
 
 Free layout supports pointer/touch movement and corner resizing, numeric position
 and size controls, and keyboard arrow movement. Changes autosave to an account
@@ -22,13 +22,15 @@ reloads the latest published settings.
 
 The studio also offers per-card surface color/opacity and authenticated viewing
 of the saved TV background/gallery. Selecting a saved Google background previews
-it behind the canvas. Selecting new Google photos still starts from the TV picker.
+it behind the canvas. New Google Photos can be selected from the companion or the TV picker.
 Photo zoom ranges from 100% to 150% and applies after the image covers the screen.
 The default 105% crops a little from each edge to hide embedded photo borders.
 Zoom changes the display framing; the saved photo and enlarged gallery view remain
 the original image. It does not affect ambient slideshow framing.
 
-## Stored appearance
+## Stored appearance (legacy built-in cards/grid)
+
+The current instance layout is `appearance.widgetLayout`: up to 24 configured widgets, with up to eight visible in automatic rows or twelve fitting the free grid. Instance IDs, kind/binding and per-instance style are distinct. The legacy example and six-item limits below describe `cards`/`grid`, not the full current instance layout. See [`widgets.ts`](../functions/src/utils/widgets.ts), [Polls](POLLS.md), and [People](PEOPLE.md).
 
 The existing `users/{uid}/appearance/settings` document remains the source of
 truth. Its `appearance` retains palette, accent, background, ambient preferences,
@@ -104,16 +106,16 @@ occurrences only from the dashboard preview. Weather uses a separate planner for
 capped hourly and daily strips, and supporting metrics when space permits.
 Activity preserves its weekly step total independently of the chart
 breakpoint, alongside the original ring and all daily metrics. See the
-[card content breakpoints](../../HomeScreen/CARD_CONTENT_BREAKPOINTS.md) for the
+[card content breakpoints](../../docs/design/card-content-breakpoints.md) for the
 complete width/height thresholds and the 600-case verification matrix.
 
 For designing future card content, see the
-[widget design guide](../../HomeScreen/WIDGET_DESIGN_GUIDE.md) and the
-[weather layout design](../../HomeScreen/WEATHER_LAYOUT_DESIGN.md) and
-[Schedule layout design](../../HomeScreen/SCHEDULE_LAYOUT_DESIGN.md), including
+[widget design guide](../../docs/design/widget-design-guide.md) and the
+[weather layout design](../../docs/design/weather-layout-design.md) and
+[Schedule layout design](../../docs/design/schedule-layout-design.md), including
 implemented family mappings across all 50 footprints in both reference profiles.
-The [Tasks design](../../HomeScreen/TASKS_LAYOUT_DESIGN.md) and
-[Meals/Media/Activity refinements](../../HomeScreen/PREVIEW_WIDGET_REFINEMENTS.md)
+The [Tasks design](../../docs/design/tasks-layout-design.md) and
+[Meals/Media/Activity refinements](../../docs/design/preview-widget-refinements.md)
 document the latest bounded previews and shared components.
 
 The phone canvas has a 16:9 preview and 4-pixel gaps. It previews labels, positions,

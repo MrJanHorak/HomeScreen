@@ -1,6 +1,8 @@
 # Public-release security review — October 5, 2026
 
-**Decision: hold public release.** The database access model is sound, and several
+This is a **dated October 5 assessment**, not a current deployment report. The [October 6 release guide](../HomeScreen/RELEASE.md) subsequently records private signing, APK/AAB verification and a TV install, providing newer evidence for RELEASE-01. Current cloud IAM/deployment and later-feature validation were not rechecked by the [October 9 documentation audit](../docs/PROJECT_STATUS.md); the historical observations below remain intact.
+
+**Decision as of October 5: hold public release.** The database access model is sound, and several
 concrete application flaws have been fixed in this working tree. Production still
 has excessive runtime permissions, the existing APK has a debug signature, and
 abuse controls and dependency exposure need release evidence. The source fixes

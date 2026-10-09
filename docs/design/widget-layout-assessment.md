@@ -4,10 +4,10 @@ Assessment date: October 6, 2026. Weather, Schedule and Tasks designs and the
 Meals/Media/Activity refinements are implemented. The table below records the
 resulting behavior and remaining limits. Headers, sections, text blocks, measured
 preview fitting and details hints are shared where their behavior matches.
-See [the design guide](WIDGET_DESIGN_GUIDE.md) for geometry and validation, and
-[Weather](WEATHER_LAYOUT_DESIGN.md) and [Schedule](SCHEDULE_LAYOUT_DESIGN.md)
-for implementation examples, plus [Tasks](TASKS_LAYOUT_DESIGN.md) and
-[the remaining refinements](PREVIEW_WIDGET_REFINEMENTS.md).
+See [the design guide](widget-design-guide.md) for geometry and validation, and
+[Weather](weather-layout-design.md) and [Schedule](schedule-layout-design.md)
+for implementation examples, plus [Tasks](tasks-layout-design.md) and
+[the remaining refinements](preview-widget-refinements.md).
 
 ## What transfers
 

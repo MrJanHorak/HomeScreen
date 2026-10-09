@@ -1,6 +1,6 @@
 # Tasks layout design
 
-Implemented October 6, 2026. See the [widget design guide](WIDGET_DESIGN_GUIDE.md)
+Implemented October 6, 2026. See the [widget design guide](widget-design-guide.md)
 for the measured size contract and the 50 legal footprints.
 
 ## UI and UX decisions

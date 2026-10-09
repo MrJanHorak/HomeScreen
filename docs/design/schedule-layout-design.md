@@ -1,7 +1,7 @@
 # Schedule layout and device-time behavior
 
 Implemented October 6, 2026. Schedule uses measured content dimensions in automatic
-rows and the free canvas. The size contract is in [the widget design guide](WIDGET_DESIGN_GUIDE.md).
+rows and the free canvas. The size contract is in [the widget design guide](widget-design-guide.md).
 
 ## Hierarchy
 

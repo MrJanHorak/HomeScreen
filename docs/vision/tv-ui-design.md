@@ -1,8 +1,8 @@
 # TV Dashboard UI Design Specification
 
-## Implementation status (October 3, 2026)
+## Implementation status (October 9, 2026)
 
-This document is the broader design specification; proposals below are not a list of shipped features. The implemented dashboard has six cards, remote detail panels, favorite apps, appearance presets, and ambient mode. The companion site supports a validated 12-by-6 free layout canvas, card moving/resizing, palettes, per-card background color/opacity, saved-TV-photo viewing, Google connection controls, and owner-managed TV sessions. Grid cards adapt their content to width and height, adding data rows or visuals as space permits, and open their existing details. A permanent QR in Settings → Companion site returns to the editor. All TVs on the linked account share one appearance configuration. Polls, new daily-content widgets, household profiles/roles, typography/spacing controls, and saved design history remain future work. Consult [the TV README](README.md), [companion guide](../server/pairing-web/README.md), and [roadmap](../server/pairing-web/COMPANION_ROADMAP.md) for the current code and next milestones.
+This is the retained original design specification. Proposed standalone pages, profiles, media catalog, smart home and automatic time-of-day modes are not shipped behavior. The original MVP lists below now have checked source-completion items with qualifications. Current scope includes built-in/poll/shared-activity widgets, remote details, favorites, ambient, companion layouts/drafts/history, reading controls and optional spoken navigation. See [project status](../PROJECT_STATUS.md) for completion, deviations and release limits, and the [TV guide](../../HomeScreen/README.md) for current usage.
 
 ## Project Vision
 
@@ -1080,7 +1080,7 @@ App
 
 # 27. MVP Development Plan
 
-Do not build everything at once.
+Original phased plan, audited October 9: checked means source implementation for the named item. Calendar card is an agenda, not a week/month page; Continue Watching is Android Play Next. Bottom navigation changed to a favorite-app row and modal details. Profiles, TMDB, local watchlist, and automatic time-of-day backgrounds are absent. TV focus/carousel/back controls are implemented, but performance/readability/accessibility phases remain partial pending current-build hardware checks. Screensaver here means in-app idle ambient mode, not Android system screensaver registration.
 
 ## Phase 1 — Visual Prototype
 
@@ -1088,15 +1088,15 @@ Build the Home screen with mock data.
 
 Implement:
 
-* Background
-* Clock
-* Greeting
-* Weather card
-* Calendar card
-* Activity card
-* Continue Watching
-* Bottom navigation
-* Focus states
+- [x] Background
+- [x] Clock
+- [x] Greeting
+- [x] Weather card
+- [x] Calendar card
+- [x] Activity card
+- [x] Continue Watching
+- [ ] Bottom navigation
+- [x] Focus states
 
 Goal:
 
@@ -1108,10 +1108,10 @@ Goal:
 
 Add:
 
-* Weather API
-* Calendar
-* TMDB
-* Local watchlist
+- [x] Weather API
+- [x] Calendar
+- [ ] TMDB
+- [ ] Local watchlist
 
 Goal:
 
@@ -1123,11 +1123,11 @@ Goal:
 
 Add:
 
-* Profiles
-* Favorites
-* Widget configuration
-* Custom Home layout
-* Persistent preferences
+- [ ] Profiles
+- [x] Favorites
+- [x] Widget configuration
+- [x] Custom Home layout
+- [x] Persistent preferences
 
 Goal:
 
@@ -1139,14 +1139,14 @@ Goal:
 
 Focus heavily on:
 
-* D-pad navigation
-* Focus transitions
-* Edge behavior
-* Carousel navigation
-* Back button behavior
-* Performance
-* TV readability
-* Accessibility
+- [x] D-pad navigation
+- [x] Focus transitions
+- [x] Edge behavior
+- [x] Carousel navigation
+- [x] Back button behavior
+- [ ] Performance — caching implemented; immediate/offline cold start remains
+- [ ] TV readability — adaptive layouts implemented; couch-distance validation remains
+- [ ] Accessibility — reading controls/narration implemented; current native verification remains
 
 Goal:
 
@@ -1158,11 +1158,11 @@ Goal:
 
 Add:
 
-* Screensaver
-* Time-of-day backgrounds
-* Photo mode
-* Minimal information mode
-* Automatic transitions
+- [x] Screensaver
+- [ ] Time-of-day backgrounds
+- [x] Photo mode
+- [x] Minimal information mode
+- [x] Automatic transitions
 
 Goal:
 
@@ -1174,12 +1174,12 @@ Goal:
 
 Potential integrations:
 
-* Home Assistant
-* Lights
-* Thermostat
-* Locks
-* Garage
-* Sensors
+- [ ] Home Assistant
+- [ ] Lights
+- [ ] Thermostat
+- [ ] Locks
+- [ ] Garage
+- [ ] Sensors
 
 Goal:
 

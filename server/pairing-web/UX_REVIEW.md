@@ -1,5 +1,9 @@
 # Companion UX review and settings parity
 
+## Current-documentation note (October 9)
+
+The source now includes seven owner/setup routes (including People), plus guest voting. Add a poll is now below the dashboard layout workspace. Reading controls and shared activity landed after the dated checks below. Those checks remain historical; they do not certify the current UI. See [project status](../../docs/PROJECT_STATUS.md). Settings/appearance checks run about every 45 seconds; this is distinct from poll-result refresh (three seconds) and shared-activity refresh (30 seconds). Legacy unmanaged TVs must re-pair under current authorization.
+
 ## October 7 update: navigation and poll workflow
 
 The companion now uses a shared application shell instead of a large setup card
@@ -88,6 +92,6 @@ The Photos implementation follows [Google’s picker session model](https://deve
 
 ## Release and remaining validation
 
-Deploy Hosting and the Functions together, including the new `userPreferences` and `deviceApps` endpoints and the updated Photos handler/callback. Distribute the updated TV app for two-way weather/favorite synchronization. Old TVs can still use existing APIs, but cannot receive these new shared settings until updated. The updated TV imports local weather cities only when the account has no saved cities; local favorite apps seed only an empty per-TV record. Polls normally run every 45 seconds. Activity card data uses its existing dashboard refresh interval.
+Deploy Hosting and the Functions together, including the new `userPreferences` and `deviceApps` endpoints and the updated Photos handler/callback. Distribute the updated TV app for two-way weather/favorite synchronization. Old TVs can still use existing APIs, but cannot receive these new shared settings until updated. The updated TV imports local weather cities only when the account has no saved cities; local favorite apps seed only an empty per-TV record. Settings synchronization normally runs every 45 seconds. Activity card data uses its existing dashboard refresh interval.
 
 Before describing this as a polished public release, smoke-test real Google sign-in and Photos consent/selection on iOS Safari and Android Chrome, then verify a physical TV receives weather, ambient, and favorite changes. A small usability study should measure whether people can distinguish draft/publish and active/default city, find Photos, and recover from an expired picker without assistance. Weather currently accepts a city query; city-result autocomplete/geocoding would be a useful subsequent improvement for ambiguous names.

@@ -9,11 +9,11 @@ that obscure ownership.
 
 ```text
 App
-└── AuthProvider → ThemeProvider → ThemedScreen
+└── AuthProvider → ThemeProvider → NarrationProvider → ThemedScreen
     ├── TVScreenWrapper → Root
     │   ├── StartupScreen while authentication/appearance loads
     │   ├── PairingScreen when signed out
-    │   └── DashboardProvider → WatchNextProvider → FavoriteAppsProvider
+    │   └── DashboardProvider → WatchNextProvider → FavoriteAppsProvider → PeopleProvider → PollsProvider
     │       └── HomeScreen
     │           ├── AmbientScreen when idle or previewing
     │           └── Dashboard when active
@@ -23,7 +23,7 @@ App
     │               │   ├── Automatic rows OR DashboardGrid
     │               │   └── DashboardCard (TVCard + inner measurement)
     │               │       └── AdaptiveDashboardCard
-    │               │           └── Weather / Schedule / Activity / Media / Meals / Tasks
+    │               │           └── Weather / Schedule / Activity / Media / Meals / Tasks / Polls / Person activity
     │               │               └── CardContent and domain-specific views
     │               ├── FavoriteAppsCarousel
     │               └── DashboardDetailModal → TVDetailModal
@@ -42,11 +42,11 @@ the Settings ambient-preview callback.
 Use `components/<area>/<domain>` for private UI and `components/<area>/shared`
 for reuse within an area. `components/shared` is TV-wide UI; cross-area hooks
 and calculations belong in `src/hooks` and `src/helpers`. Providers and services
-own data access. See the [TV folder guide](HomeScreen/src/components/README.md).
+own data access. See the [TV folder guide](../../HomeScreen/src/components/README.md).
 
 ## Companion site
 
-The companion uses TypeScript DOM controllers and templates, rather than React.
+The companion uses a TypeScript DOM shell/controllers plus scoped React roots for poll management, participant voting, People, and widget editing.
 Its composition follows the same ownership rules.
 
 ```text
@@ -62,6 +62,9 @@ main.ts — configuration, Firebase authentication, active-feature wiring
     │   ├── Saved designs and history
     │   ├── Ambient editor
     │   └── Photo gallery and picker
+    ├── /polls: scoped React PollManager
+    ├── /vote/<token>: standalone PollParticipant
+    ├── /people: scoped React PeopleManager
     ├── /settings: weatherEditor
     ├── /meals: mealTemplate + mealController
     └── /account: accountTemplate + accountController
@@ -77,7 +80,7 @@ features own their forms, requests, and feature status messages.
 Reuse `src/shared/apiClient` for authenticated transport, `dom` for required
 element lookup and status presentation, and `googleAuthorization` for Google
 redirect validation. Keep feature templates beside their controller. See the
-[companion folder guide](server/pairing-web/src/README.md).
+[companion folder guide](../../server/pairing-web/src/README.md).
 
 ## Reuse boundaries
 

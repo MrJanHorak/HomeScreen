@@ -2,11 +2,11 @@
 
 Status: core implementation added October 7, 2026. The original proposal below
 is retained as a design reference; shipped scope is recorded in
-[the implementation guide](../server/pairing-web/POLLS.md).
+[the implementation guide](../../server/pairing-web/POLLS.md).
 All 100 footprint/profile combinations have passed browser bounds checks.
 The tables remain family mappings; QR inclusion also depends on content fit. This proposal
-uses the existing [widget design guide](WIDGET_DESIGN_GUIDE.md),
-[layout contract](../server/pairing-web/DASHBOARD_LAYOUT.md), and measured card system.
+uses the existing [widget design guide](widget-design-guide.md),
+[layout contract](../../server/pairing-web/DASHBOARD_LAYOUT.md), and measured card system.
 
 ## Intended experience
 

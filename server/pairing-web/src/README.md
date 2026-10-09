@@ -18,12 +18,15 @@ src/
 │   │   ├── appearanceApi.ts    Requests and response validation
 │   │   ├── appearanceModel.ts  Pure contracts, presets, normalization
 │   │   ├── appearanceTemplate.ts
+│   │   ├── readingEditor.ts   Reading controls
 │   │   ├── cards/             Card controls and card styling
 │   │   ├── grid/              Positioning, sizing, and grid gestures
 │   │   ├── preview/           Dashboard preview rendering
 │   │   ├── library/           Saved designs and published-history rows
 │   │   ├── ambient/           Ambient editor and its preference helpers
 │   │   └── photos/            Photo gallery and picker lifecycle
+│   ├── polls/                React management/voting/widget editor and private CSS
+│   ├── people/               React sharing manager and private CSS
 │   ├── weather/
 │   │   └── weatherEditor.ts
 │   ├── pairing/                Pairing controller and form template
@@ -38,7 +41,9 @@ src/
 │   ├── dom.ts                 Required element lookup and status messages
 │   └── googleAuthorization.ts Validate Google authorization redirect URLs
 └── styles/
-    └── style.css              Current app-wide stylesheet
+    ├── style.css              Base stylesheet
+    ├── companion.css          Companion shell
+    └── reading.css            Reading controls
 ```
 
 ## Placement rules

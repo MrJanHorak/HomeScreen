@@ -24,6 +24,7 @@ components/
 │   ├── media/
 │   ├── meals/
 │   ├── tasks/
+│   ├── polls/
 │   ├── header/             HeaderBar and its private clock/greeting hooks
 │   └── favorites/
 ├── details/
@@ -33,7 +34,8 @@ components/
 │   ├── schedule/
 │   ├── media/
 │   ├── meals/
-│   └── tasks/
+│   ├── tasks/
+│   └── polls/
 ├── settings/
 │   ├── SettingsDetailView.tsx
 │   ├── shared/             Panels and Photos picker used by settings sections
@@ -43,6 +45,8 @@ components/
 │   ├── device/
 │   ├── favorites/
 │   ├── meals/
+│   ├── people/
+│   ├── accessibility/
 │   └── companion/
 ├── ambient/                AmbientScreen, PlasmaBackdrop, idle-mode hook
 └── layout/                 App wrapper and exit confirmation

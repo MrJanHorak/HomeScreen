@@ -1,5 +1,7 @@
 # Code readability and reuse
 
+Historical refactoring review, reconciled with source October 9, 2026. The check counts below describe earlier refactoring runs, not current test totals. Poll/People React roots, narration, reading controls and newer details/settings now extend the recorded scope. Shared types/transport/people contracts already exist in `shared/src`; appearance/layout/reading helpers still live in the Functions tree. See [project status](../PROJECT_STATUS.md) for fresh audit checks and product gaps.
+
 This review focused on the TV settings UI, both clients' request handling,
 backend dashboard fetching, and the companion appearance editor and page markup.
 The existing card components, hooks, provider
@@ -103,7 +105,7 @@ below improve the busiest paths; they do not certify every file as finished.
 | Area | Concern | Useful next refactor |
 | --- | --- | --- |
 | `server/pairing-web/src/features/dashboard/appearanceEditor.ts` | Views and API access are separated; the coordinator still owns the draft lifecycle. | Keep new features in the relevant view/service; extract a draft state module only when its behavior needs reuse. |
-| Appearance types/defaults in TV, browser, and backend | Palette, layout, and ambient contracts are repeated; clients also import pure helpers from the backend source tree. | Establish a shared contract module with build support in all three projects, retaining strict server validation and tolerant legacy client normalization. |
+| Appearance types/defaults in TV, browser, and backend | Palette, layout, and ambient contracts are repeated; clients also import pure helpers from the backend source tree. | Extend the existing shared contract modules/build support to remaining appearance contracts, retaining strict server validation and tolerant legacy client normalization. |
 | `HomeScreen/src/context/DashboardContext.tsx` and `src/theme/ThemeContext.tsx` | Providers combine storage, polling, synchronization, and state updates. | Extract persistence/sync hooks around existing account-generation guards. |
 | Larger detail views and companion editors | Several files still mix long render sections and compressed callbacks. | Extract repeated rows/controls when behavior matches and expand callbacks when working on those features. |
 | TV tooling | The TV TypeScript configuration does not enable strict checking, and the clients lack a common lint/format setup. | Introduce rules incrementally and resolve existing violations before making them required. |
@@ -137,7 +139,7 @@ moving its styles alone would not have done that.
 The dashboard cards now have separate domain, rendering, and measurement
 responsibilities, and obsolete card implementations have been removed. The TV
 typecheck, 14 unit tests, six browser tests, and Expo web export
-pass. Browser checks cover all six cards at 50 footprints in both layout modes,
+passed during that earlier refactoring. Browser checks cover all six cards at 50 footprints in both layout modes,
 loading transitions, meal ordering, completed tasks, real zero weather values,
 Play Next status changes, and weather detail selection, keyboard focus, and
 missing forecast data. These checks do not verify provider lifecycle
@@ -146,7 +148,7 @@ behavior, every detail view, or native remote navigation.
 ## Local checks
 
 The current composition and reuse boundaries for both clients are documented in
-[the component hierarchy](COMPONENT_HIERARCHY.md). HomeScreen delegates row/grid
+[the component hierarchy](../architecture/components.md). HomeScreen delegates row/grid
 composition and detail routing. The shared dashboard shell incorporates the old
 measurement-only wrapper. Companion pairing, meals, and account flows now have
 feature controllers; shared status and Google redirect validation replace repeated
@@ -167,7 +169,7 @@ start Vite in `server/pairing-web`, then run `npm run test:browser` there with
 Playwright and Chromium available. See that project's README for runtime overrides.
 The tests mock authentication and upstream APIs and do not publish to production.
 The TV has its own `npm run test:browser` script for the rendered-card fixture;
-see `HomeScreen/HOMESCEEN_STRUCTURE.md` for the fixture server command.
+see `docs/architecture/tv-client.md` for the fixture server command.
 
 TV settings focus and keyboard behavior should also be exercised on an Android
 TV remote before release; browser tests and TypeScript cannot establish native

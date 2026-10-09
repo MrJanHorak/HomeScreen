@@ -1,16 +1,22 @@
 # Dashboard card content and sizing
 
+The six built-in card families below remain current fitting references. Polls
+and per-person activity use the additive widget-instance layout; see the
+[Polls](../../server/pairing-web/POLLS.md) and [People](../../server/pairing-web/PEOPLE.md)
+guides. Native observations in the verification section describe earlier builds,
+not a hardware audit of October 9 reading/narration/detail changes.
+
 This document describes implemented behavior. For the reusable size contract,
 all 50 reference dimensions, and future-widget design process, see the
-[widget design guide](WIDGET_DESIGN_GUIDE.md). The implemented
-[weather layout design](WEATHER_LAYOUT_DESIGN.md) maps visual layout families
-across every footprint. The implemented [Schedule design](SCHEDULE_LAYOUT_DESIGN.md)
+[widget design guide](widget-design-guide.md). The implemented
+[weather layout design](weather-layout-design.md) maps visual layout families
+across every footprint. The implemented [Schedule design](schedule-layout-design.md)
 maps grouped agenda families and device-clock behavior across those sizes.
-The implemented [Tasks design](TASKS_LAYOUT_DESIGN.md) maps the bounded checklist;
-[Meals/Media/Activity refinements](PREVIEW_WIDGET_REFINEMENTS.md) document shared
+The implemented [Tasks design](tasks-layout-design.md) maps the bounded checklist;
+[Meals/Media/Activity refinements](preview-widget-refinements.md) document shared
 grouping and enlargement.
-The [poll widget design](POLLS_LAYOUT_DESIGN.md) documents all 50 families;
-[the implementation guide](../server/pairing-web/POLLS.md) records shipped scope.
+The [poll widget design](polls-layout-design.md) documents all 50 families;
+[the implementation guide](../../server/pairing-web/POLLS.md) records shipped scope.
 
 Automatic rows and the free canvas both render `AdaptiveDashboardCard` inside a
 measured content box. Padding and the actual configured border width are excluded
@@ -83,7 +89,7 @@ exist. The columns read down the left, then down the right. Preview caps are two
 below height 110, four below 220 and six thereafter. Names grow from 14 to 18 dp
 in taller/sparse cards only if they retain the prefix. Due labels yield first if
 they displace names. Provider order stays intact, and yearless due labels receive
-no guessed overdue status. See [Tasks design](TASKS_LAYOUT_DESIGN.md) for all 50 mappings.
+no guessed overdue status. See [Tasks design](tasks-layout-design.md) for all 50 mappings.
 
 ### Schedule modes and time
 
@@ -98,7 +104,7 @@ Absolute occurrence timestamps let the shared TV clock label timed events
 `Happening now` during their scheduled interval and exclude ended occurrences
 from the preview. All-day entries remain until their calendar day's end, and
 full details retain the original day. Missing timestamps produce no guessed
-status. See [Schedule design](SCHEDULE_LAYOUT_DESIGN.md) for all 50 mappings,
+status. See [Schedule design](schedule-layout-design.md) for all 50 mappings,
 timezone rules, partial data and rollout requirements.
 
 ### Activity modes
@@ -120,7 +126,7 @@ the daily average. The chart modes retain both, so increasing card height never
 removes a previously visible weekly total.
 
 Roomy daily values and rings enlarge within their existing modes, and Today / Last
-7 days grouping uses shared header/section components. See [the refinement guide](PREVIEW_WIDGET_REFINEMENTS.md).
+7 days grouping uses shared header/section components. See [the refinement guide](preview-widget-refinements.md).
 Summary cards that retain the weekly average add miniature day bars beside the
 total/average from width 220 dp. The 34 dp chart fits within the existing 62 dp
 summary reservation, without reducing metrics or adding height. The miniature
@@ -131,7 +137,7 @@ and full charts reuse the same supplied-day renderer and goal/peak scaling.
 Weather uses 40–104 dp condition artwork and a 32–80 dp temperature across six
 families. The icon is omitted before a long signed/unit-bearing temperature loses
 space. The shortest cards omit optional context; forecasts are capped at four
-entries per strip (three at minimum width). See [weather layout design](WEATHER_LAYOUT_DESIGN.md)
+entries per strip (three at minimum width). See [weather layout design](weather-layout-design.md)
 for thresholds and data fallbacks. Media's leading poster appears at
 width ≥180 dp when at least 40 dp remains below its header. Short posters normally
 use 48 dp, growing toward 42% of the card height, capped at 120 dp and by available

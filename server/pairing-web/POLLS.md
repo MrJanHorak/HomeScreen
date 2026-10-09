@@ -126,8 +126,11 @@ Built-ins keep their stable IDs; polls receive `poll_<random ID>` and a round
 reference. The server derives built-in-only legacy cards/grid/styles, preserves
 new fields when old TVs omit them, and rejects incompatible legacy arrangements.
 Drafts, saved designs, and history retain instances. Loading a legacy design
-preserves current instances. Native color/background controls stay available;
-poll arrangements are edited in the companion and cannot be erased by TV presets.
+preserves current instances in the companion's legacy-loading path. The TV's saved-design
+loader explicitly clears the instance layout when applying a legacy design.
+Native color/background controls stay available; TV Cards can hide/show widget
+instances and TV presets hide extra widgets while retaining them in the Cards list.
+The companion remains the poll-management and instance-creation editor.
 
 Scoped React roots implement management, voting, and widget editing without
 rewriting the TypeScript companion shell. Shared pure domain types, validation,
@@ -163,4 +166,4 @@ scan distance. No production deployment or physical-TV verification was performe
 Optional proposal extensions outside the initial release: shared-browser invitation
 voting, template style defaults, per-option bar-shape controls, automatic abuse
 challenges, and individual ballot invalidation. See the retained
-[original design proposal](../../HomeScreen/POLLS_LAYOUT_DESIGN.md).
+[original design proposal](../../docs/design/polls-layout-design.md).

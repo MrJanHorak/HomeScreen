@@ -1,7 +1,7 @@
 # Current HomeScreen structure
 
 ```text
-TVScreenWrapper / ThemeProvider / DashboardProvider
+TVScreenWrapper / AuthProvider / ThemeProvider / NarrationProvider / DashboardProvider / PeopleProvider / PollsProvider
 └── HomeScreen
     ├── HeaderBar (greeting, clock/date, settings)
     ├── Data-error banner, when needed
@@ -10,18 +10,20 @@ TVScreenWrapper / ThemeProvider / DashboardProvider
     │   └── DashboardGrid from appearance.grid (12 columns × 6 rows)
     │       └── DashboardCard (TVCard + inner measurement) → AdaptiveDashboardCard
     │           └── components/dashboard/<domain>/*DashboardCard
-    │   Weather · Schedule · Activity · Media · Meals · Tasks
+    │   Weather · Schedule · Activity · Media · Meals · Tasks · Polls · Person activity
     ├── FavoriteAppsCarousel (outside the movable grid)
     └── DashboardDetailModal → TVDetailModal
-        └── Weather / Schedule / Activity / Media / Meals / Tasks / Settings
+        └── Weather / Schedule / Activity / Media / Meals / Tasks / Polls / Person activity / Settings
 
 Idle → AmbientScreen; remote input → dashboard
 ```
 
-`SettingsDetailView` handles tab navigation and delegates weather and device
+The current `appearance.widgetLayout` adds stable widget instances and independent bindings/styles; legacy `cards`/`grid` remain a built-in fallback. People and Polls providers use separate feeds. Source paths below are relative to `HomeScreen/` unless explicitly rooted.
+
+`SettingsDetailView` handles side-menu navigation and delegates weather and device
 controls to `WeatherSettings` and `DeviceSettings`. These sections reuse
 `SettingsPanel` and `useControlFocus`. See the repository's
-[readability and reuse guide](../CODE_QUALITY.md) for responsibilities and checks.
+[readability and reuse guide](../reviews/code-quality.md) for responsibilities and checks.
 `WeatherDetailView` similarly composes the focused components in
 `src/components/details/weather`; those components receive weather data and
 callbacks rather than performing requests or storing location preferences.
@@ -31,7 +33,7 @@ controls live in `src/components/shared`; card rendering shared only by dashboar
 cards lives in `src/components/dashboard/shared`. Settings sections live in
 `src/components/settings/<feature>` with shared settings controls in
 `src/components/settings/shared`. See the
-[component folder guide](src/components/README.md) for the complete map and rules.
+[component folder guide](../../HomeScreen/src/components/README.md) for the complete map and rules.
 
 `src/theme/appearance.ts` normalizes old settings and falls back to rows for an
 invalid or unsupported grid. `src/theme/ThemeContext.tsx` caches account-scoped
@@ -68,11 +70,11 @@ palette/background/ambient controls and a permanent companion QR. Choosing a TV
 layout preset replaces the free grid with automatic rows. All devices on the
 account share one configuration.
 
-See [README](README.md) for current features, [layout contract](../server/pairing-web/DASHBOARD_LAYOUT.md)
-for geometry and compatibility, and [roadmap](../server/pairing-web/COMPANION_ROADMAP.md)
-for planned polls, new widgets, saved designs/history, and expanded style controls.
+See [README](../../HomeScreen/README.md) for current features, [layout contract](../../server/pairing-web/DASHBOARD_LAYOUT.md)
+for geometry and compatibility, and [roadmap](../../server/pairing-web/COMPANION_ROADMAP.md)
+for remaining profiles, new feed widgets, independent per-TV designs, and expanded style controls. Polls, shared activity, saved designs/history, and reading controls are implemented.
 
-Run `npm test` for request, layout-planner, and activity-summary checks. To test
+Run `npm test` from `HomeScreen/` for request, layout-planner, and activity-summary checks. To test
 rendered cards, start the fixture from the repository root:
 
 ```sh

@@ -1,8 +1,12 @@
 # TV pairing site
 
-This small TypeScript/Vite app lives beside the Cloud Functions under `server/` because both deploy to the same Firebase project. Firebase Hosting serves it at `/pair`; the Hosting root redirects there for easier typing. The TV also displays a QR link containing its six-character code, which this page pre-fills for the user. The QR does **not** include the private TV poll secret.
+This small TypeScript/Vite app lives beside the Cloud Functions under `server/` because both deploy to the same Firebase project. Firebase Hosting serves pairing at `/pair`; the Hosting root redirects to `/dashboard`. The TV also displays a QR link containing its six-character code, which this page pre-fills for the user. The QR does **not** include the private TV poll secret.
 
-The [TV app README](../../HomeScreen/README.md) shows the current dashboard and settings screenshots. The companion handles pairing, dashboard appearance, ambient settings, weather cities, Google Photos selection, meal Sheets, and per-TV favorite apps. All five pages adapt from phones to tablets and laptops. See the [UX review and settings coverage](UX_REVIEW.md) for the design assessment and release checks.
+The [TV app README](../../HomeScreen/README.md) shows the current dashboard and settings screenshots. The companion handles pairing, dashboard appearance, ambient settings, weather cities, Google Photos selection, meal Sheets, and per-TV favorite apps. All seven owner/setup pages adapt from phones to tablets and laptops. See the [UX review and settings coverage](UX_REVIEW.md) for the design assessment and release checks.
+
+## Polls and People
+
+The signed-in companion also has **Polls** (`/polls`) for reusable questions, voting rounds, moderation/results and dashboard widgets, and **People** (`/people`) for consented activity-only sharing from other Google accounts. Participant QR links open a separate `/vote/<token>` page without owner navigation or sign-in requirements. See [Polls](POLLS.md) and [People](PEOPLE.md) for privacy limits, retention, deployment/index/TTL configuration, and real-account smoke tests. These features are implemented in source; their current production rollout is not established by this guide.
 
 ## Weather, ambient, and favorite apps
 
@@ -65,13 +69,13 @@ Open **Photos · choose images for your TV** below the save actions. **Choose da
 
 Dashboard selection uses the first image as the saved background. Ambient selection replaces the shared gallery without replacing the background. Tap a saved gallery photo for a larger view and **Use as dashboard background**. Choosing photos stores media immediately; **Save to TV** publishes the background/ambient source in your design. Existing TVs already using the selected-photo source can receive replacement images even before a new design publish. The updated TV checks lightweight photo revisions with appearance updates, fetching image data only when it changes. The companion receives only selected/saved images; the library stays in Google’s picker. Signing out clears the gallery and stops polling.
 
-**TVs & account** shows whether Calendar/Tasks/activity, Sheets, and Photos are connected and explains their access. Account controls can remove connections or revoke sessions. Household invitations and separate per-TV dashboard designs are not implemented yet; favorite apps already have per-TV settings.
+**TVs & account** shows whether Calendar/Tasks/activity, Sheets, and Photos are connected and explains their access. Account controls can remove connections or revoke sessions. Activity-sharing invitations are implemented through People; general household roles and separate per-TV dashboard designs remain future work. Favorite apps already have per-TV settings.
 
 ## Return to the site and manage TVs
 
 On the TV, open **Settings → Companion site** and scan the permanent QR code, or type the displayed address on a phone or computer. The code opens `/dashboard` without a pairing code or credentials and still requires Google sign-in. Its canonical address comes from the backend's `PAIRING_URL`; the TV's configured public site is the fallback.
 
-Under **Linked TVs**, rename a TV (up to 40 characters) or remove its access. A running TV normally signs out on its next appearance refresh, within about a minute; an offline TV is blocked when it reconnects. Removing one managed TV preserves the owner's browser session and other TVs. Older TV sessions register automatically when the updated TV app connects. **Sign out on every device** still covers older app builds.
+Under **Linked TVs**, rename a TV (up to 40 characters) or remove its access. A running TV normally signs out on its next appearance refresh, within about a minute; an offline TV is blocked when it reconnects. Removing one managed TV preserves the owner's browser session and other TVs. Unmanaged legacy TV sessions receive `401` and must pair again; the removed installation-key migration no longer registers them automatically. **Sign out on every device** still covers older app builds.
 
 For the next layout, sharing, and widget milestones, see [companion roadmap](COMPANION_ROADMAP.md).
 
@@ -109,7 +113,7 @@ The draft/design/history milestone requires deploying both `appearanceStudio` an
 
 Studio browser regression tests use a local Vite fixture with mocked authenticated APIs, without Google sign-in or production writes. With Playwright and its Chromium runtime available, start Vite and run `node --test test/appearanceEditor.test.cjs`. `STUDIO_TEST_URL` can override `http://127.0.0.1:5173`; `NODE_PATH` can point to bundled Playwright packages, and `PLAYWRIGHT_CHROMIUM_EXECUTABLE` can select an installed headless Chromium. The fixture is outside the production bundle. Backend tests run with `npm --prefix ../functions test`.
 
-Run `node --test test/appearanceEditor.test.cjs test/companion.test.cjs` for the full browser suite. Companion tests mock Firebase modules and all APIs, blocking external network calls. They verify all five routes at 320/390/768/1024/1440px, weather conflict handling, ambient publishing, photo purposes/expiry/sign-out, and per-TV favorites. Set `COMPANION_SCREENSHOTS` to an output directory to save phone/tablet/laptop screenshots.
+Run `npm run test:browser` for the full companion browser suite, including polls and people. Companion tests mock Firebase modules and all APIs, blocking external network calls. The original companion fixtures verify five routes at 320/390/768/1024/1440px, weather conflict handling, ambient publishing, photo purposes/expiry/sign-out, and per-TV favorites. Set `COMPANION_SCREENSHOTS` to an output directory to save phone/tablet/laptop screenshots.
 
 ## Google sign-in returns `auth/invalid-credential`
 

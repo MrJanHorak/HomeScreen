@@ -1,6 +1,6 @@
 # Meals, Media and Activity refinements
 
-Implemented October 6, 2026, alongside [Tasks](TASKS_LAYOUT_DESIGN.md).
+Implemented October 6, 2026, alongside [Tasks](tasks-layout-design.md).
 The existing domain components and full detail views remain the foundation.
 
 ## Shared Meals / Media preview composition

@@ -6,7 +6,7 @@ Layout budgets were refined for actual content dimensions. Browser verification
 covers all 50 footprints in both reference profiles, with the production icon/font
 assets, partial forecasts, long labels, real zeros and remote detail selection.
 Native TV readability remains a separate device check.
-See [the widget design guide](WIDGET_DESIGN_GUIDE.md) for geometry and reuse rules.
+See [the widget design guide](widget-design-guide.md) for geometry and reuse rules.
 
 ## Primary question and hierarchy
 

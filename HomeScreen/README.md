@@ -6,13 +6,13 @@ HomeScreen is an ad-free household dashboard built with Expo, React Native TV, a
 
 ## Current implementation
 
-- The home dashboard shows a clock and greeting, six configurable cards (schedule, activity, media, weather, meals, and tasks), and a favorite-app row. Selecting a card opens a larger detail panel.
+- The home dashboard shows a clock and greeting, six built-in configurable cards plus optional poll and shared-activity widgets (schedule, activity, media, weather, meals, and tasks), and a favorite-app row. Selecting a card opens a larger detail panel.
 - A TV pairing code and QR link connect the app to a Google account through the companion [pairing site](../server/pairing-web/README.md). Firebase Authentication persists the TV session.
 - The [Cloud Functions backend](../server/functions/README.md) provides Google Calendar, Google Tasks, Google Fit activity, OpenWeatherMap weather, and an optional Google Sheets dinner plan. Dashboard data refreshes every five minutes. Individual upstream failures do not prevent the other cards from loading.
 - Native Firebase sign-in now persists in Expo SecureStore. Rebuild and reinstall the Android TV binary after updating dependencies or native plugins; a Metro reload cannot add the native SecureStore module.
 - On Android TV, Continue Watching reads titles that installed apps publish to the system Play Next row. The web preview uses sample media data.
 - Settings include color palettes, a custom accent, backgrounds, layout presets, card order/visibility/width, saved weather locations, favorite apps, meal connection, and device controls. Appearance settings sync through the backend; some TV-specific preferences are local to the device.
-- The companion studio can position and resize the six cards on a 12-by-6 grid. Cards adapt to both width and height: tall/narrow tiles show wrapped titles and additional data rows, while short tiles keep the essentials. Media can show poster/progress, and larger weather/activity cards include forecasts or goal visuals. Remote selection opens the existing detail panels. The header and favorite-app row remain outside the grid.
+- The companion studio can position and resize built-in cards and widget instances on a 12-by-6 grid. Cards adapt to both width and height: tall/narrow tiles show wrapped titles and additional data rows, while short tiles keep the essentials. Media can show poster/progress, and larger weather/activity cards include forecasts or goal visuals. Remote selection opens the existing detail panels. The header and favorite-app row remain outside the grid.
 - Per-card background colors and opacity sync from the companion and apply to both row and grid layouts. Opacity changes the surface only; text and artwork retain their own visibility. Themed foreground colors adapt to the estimated surface contrast.
 - Medium Activity cards reuse the centered-percentage ring and colored metric icons; medium Media shows primary and following artwork with playback progress when supplied by TV Play Next. Short Tasks cards fit compact task rows. The favorites viewport reaches the screen edges and keeps focused apps visible.
 - Dashboard photos cover the measured screen, then use the companion's 100–150% photo zoom (105% by default) to crop embedded image borders. Original saved photos and ambient slideshow framing are unaffected.
@@ -164,6 +164,12 @@ To return to the companion after pairing, open **Settings → Companion site**. 
 
 The companion also offers **Weather & goals** for shared weather cities and activity targets, **Dashboard → Ambient mode** and **Photos** for ambient preferences and direct Google Photos selection, and **TVs & account → Favorite apps** for each TV's app row. The updated TV syncs weather/favorites every 45 seconds and fetches changed photos using lightweight revisions. Local cities and favorites seed only an empty cloud configuration. These controls require the updated Functions, Hosting, and TV binary; see the [companion UX review](../server/pairing-web/UX_REVIEW.md).
 
+### People, polls, and saved layouts
+
+Open **Settings → People** to invite another Google account to consent to activity-only sharing. Each person can have an independently arranged activity widget and revoke their share; this does not switch the dashboard login or grant layout editing. See [People](../server/pairing-web/PEOPLE.md).
+
+Create reusable polls and voting rounds on the companion **Polls** page; add round widgets in Dashboard Studio, publish, and let participants scan the QR. Names stay private to the owner; browser-level duplicate protection is not verified-person identity. See [Polls](../server/pairing-web/POLLS.md). The TV Cards section can hide/show built-ins, polls, and shared activity; Layout can apply saved companion designs.
+
 ### Connect a meal plan
 
 Open **Settings → Meals** on the TV and scan its QR link, or open `/meals` on the pairing site's domain. Grant Sheets read access and provide a Sheet URL that the connected Google account can open. The Sheet needs `Date` and `Meal_Name` (or `Main`, `Meal`, or `Dinner`) headers. See the [pairing site guide](../server/pairing-web/README.md#connect-a-meal-sheet) for accepted columns and date formats.
@@ -174,7 +180,7 @@ Open **Settings → Layout** for presets or **Settings → Cards** to reorder, s
 
 For free placement, scan **Settings → Companion site**, sign in, and select **Arrangement → Free layout**. Drag a card to move it or its lower-right corner to resize it; position/size fields provide an alternative. Cards cannot overlap and must stay inside the grid. **Save to TV** publishes the change, normally picked up within 45 seconds. Tall cards use their space for more information, and short cards keep a concise overview; selecting either opens the full detail panel. Colors and ambient settings still work on the TV while a free layout is active. Edit free-layout card positions, sizes, and visibility on the site; choosing a TV layout preset or restoring defaults replaces the canvas with automatic rows.
 
-On the companion, open **Personalize each card**, turn off **Use theme surface** for a card, then choose its color and background opacity (0–100%). Save to TV applies the style. Re-enable **Use theme surface** to restore that card's palette surface. Selecting a layout preset keeps card styles; **Restore default appearance** clears them. The companion also displays the saved background and selected TV photo gallery; tap a thumbnail to enlarge it. Selecting **Selected Google photo** uses the saved background. Choosing new photos still starts from the TV's Google Photos picker.
+On the companion, open **Personalize each card**, turn off **Use theme surface** for a card, then choose its color and background opacity (0–100%). Save to TV applies the style. Re-enable **Use theme surface** to restore that card's palette surface. Selecting a layout preset keeps card styles; **Restore default appearance** clears them. The companion also displays the saved background and selected TV photo gallery; tap a thumbnail to enlarge it. Selecting **Selected Google photo** uses the saved background. New photos can be selected from either the companion Photos section or the TV picker.
 
 Older TV builds continue to display the saved card list as rows. They preserve a stored canvas when changing compatible appearance settings; visibility changes incompatible with that canvas are rejected by the backend. Update the TV app to display free placement. See the [layout contract](../server/pairing-web/DASHBOARD_LAYOUT.md).
 
@@ -200,22 +206,22 @@ retains its ring, all four daily metrics and a weekly summary whenever space per
 before adding a chart. Wider/taller cards add entries and weekly/forecast information
 when supplied. All six cards and all
 50 supported footprints are checked at compact and full TV dimensions. See
-[card content breakpoints](CARD_CONTENT_BREAKPOINTS.md) for thresholds, content
+[card content breakpoints](../docs/design/card-content-breakpoints.md) for thresholds, content
 priorities and verification commands.
 
-The [widget design guide](WIDGET_DESIGN_GUIDE.md) documents the complete size
+The [widget design guide](../docs/design/widget-design-guide.md) documents the complete size
 contract and a reusable process for future layouts. The implemented
-[weather design](WEATHER_LAYOUT_DESIGN.md) maps six layout families across all
+[weather design](../docs/design/weather-layout-design.md) maps six layout families across all
 50 footprints in both reference profiles. The implemented
-[Schedule design](SCHEDULE_LAYOUT_DESIGN.md) maps all sizes, sparse/busy behavior
+[Schedule design](../docs/design/schedule-layout-design.md) maps all sizes, sparse/busy behavior
 and TV-clock event status. With updated Functions, Schedule marks timed events
 as **Happening now** and removes ended events from the dashboard preview while
 retaining the full day in details. All-day entries remain for their calendar day;
 legacy feeds with missing timestamps keep their existing behavior. The
-[Tasks design](TASKS_LAYOUT_DESIGN.md) maps its checklist across all 50 sizes.
-[Meals/Media/Activity refinements](PREVIEW_WIDGET_REFINEMENTS.md) cover named
+[Tasks design](../docs/design/tasks-layout-design.md) maps its checklist across all 50 sizes.
+[Meals/Media/Activity refinements](../docs/design/preview-widget-refinements.md) cover named
 sections and selective enlargement. These refinements need updated TV code, with
-no backend migration. The [other widget assessment](WIDGET_LAYOUT_ASSESSMENT.md) identifies follow-up
+no backend migration. The [other widget assessment](../docs/design/widget-layout-assessment.md) identifies follow-up
 opportunities and the shared components that support them.
 
 ## Android TV artwork
@@ -224,7 +230,7 @@ The app includes `assets/tv-banner.png` for the launcher tile, `assets/icon.png`
 
 ## Next steps
 
-The [companion roadmap](../server/pairing-web/COMPANION_ROADMAP.md) tracks saved designs/history, owner-created polls, feed widgets, and deeper style controls. Polls, quotes, jokes, Bible verses, household roles, and separate per-TV configurations are not implemented. TV readability, remote focus behavior, and reliability remain ongoing work.
+The [companion roadmap](../server/pairing-web/COMPANION_ROADMAP.md) and [project status](../docs/PROJECT_STATUS.md) track remaining work. Polls, shared activity, saved designs/history, and reading controls are implemented in source. Profiles/general household roles, independent per-TV appearance, new feed widgets, full calendar/task management, broader media, and offline cold-start behavior remain open. Current-build TV readability, remote focus, accessibility, and reliability still need hardware checks.
 
 ## Asset credits and license
 
