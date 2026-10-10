@@ -24,6 +24,8 @@ import {
 } from '../services/api';
 import { getUserPreferences, saveUserPreferences } from '../services/api';
 import { useAuth } from './AuthContext';
+import { loadDashboardCache, saveDashboardCache } from '../services/dashboardCache';
+import { createDashboardSession } from '../services/dashboardSession';
 import {
   DEFAULT_LOCATIONS,
   ExtendedWeather,
@@ -41,6 +43,8 @@ interface DashboardContextValue {
   health: Activity | null;
   isLoading: boolean;
   isLive: boolean;
+  isCached: boolean;
+  lastUpdated: string | null;
   error: string | null;
   locationError: string | null;
   refresh: () => Promise<void>;
@@ -81,6 +85,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [health, setHealth] = useState<Activity | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isLive, setIsLive] = useState<boolean>(false);
+  const [isCached, setIsCached] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
 
@@ -90,6 +96,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [activeLocation, setActiveLocationState] = useState<SavedLocation>(
     DEFAULT_LOCATIONS[0],
   );
+  const locationsRef = useRef(savedLocations);
+  locationsRef.current = savedLocations;
+  const sessionRef = useRef<ReturnType<typeof createDashboardSession> | null>(null);
+  const mountedRef = useRef(false);
   const preferenceState = useRef<{
     value: UserPreferences;
     revision: number;
@@ -223,47 +233,61 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     [uid],
   );
 
-  const loadData = useCallback(async () => {
-    try {
-      const data: DashboardSummaryResponse = await fetchDashboardSummary();
-
-      setSchedule((previous) => keepIfUnchanged(previous, data.schedule || []));
-      setUpcomingEvents((previous) =>
-        keepIfUnchanged(previous, data.upcomingEvents || []),
-      );
-      setMeals((previous) =>
-        keepIfUnchanged(
-          previous,
-          data.meals || { status: 'not_connected', items: [] },
-        ),
-      );
-      setTasks((previous) => keepIfUnchanged(previous, data.tasks || []));
-      setHealth((previous) => keepIfUnchanged(previous, data.health));
-      const defaultLocation =
-        savedLocations.find((location) => location.isDefault) ||
-        savedLocations[0];
-      if (defaultLocation && data.weather) {
-        setWeatherByLocation((previous) => ({
-          ...previous,
-          [defaultLocation.id]: keepIfUnchanged(
-            previous[defaultLocation.id],
-            data.weather,
-          ),
-        }));
-      }
+  const applySummary = useCallback((data: DashboardSummaryResponse, cached: boolean) => {
+    setSchedule((previous) => keepIfUnchanged(previous, data.schedule || []));
+    setUpcomingEvents((previous) =>
+      keepIfUnchanged(previous, data.upcomingEvents || []),
+    );
+    setMeals((previous) =>
+      keepIfUnchanged(previous, data.meals || { status: 'not_connected', items: [] }),
+    );
+    setTasks((previous) => keepIfUnchanged(previous, data.tasks || []));
+    setHealth((previous) => keepIfUnchanged(previous, data.health));
+    const locations = data.savedLocations?.length ? data.savedLocations : locationsRef.current;
+    const defaultLocation = locations.find((location) => location.isDefault) || locations[0];
+    if (defaultLocation && data.weather) {
+      setWeatherByLocation((previous) => ({
+        ...previous,
+        [defaultLocation.id]: keepIfUnchanged(previous[defaultLocation.id], data.weather),
+      }));
+    }
+    setIsCached(cached);
+    setLastUpdated(data.updatedAt);
+    if (!cached) {
       setIsLive(true);
       setError(null);
-    } catch (err) {
-      console.warn('Backend unavailable:', err);
-      // Keep the last successful snapshot visible during a temporary outage.
-      setIsLive(false);
-      setError(
-        err instanceof Error ? err.message : 'Failed to fetch live data',
-      );
-    } finally {
-      setIsLoading(false);
     }
-  }, [savedLocations]);
+    setIsLoading(false);
+  }, []);
+
+  const loadData = useCallback(async () => {
+    await sessionRef.current?.refresh();
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    const session = createDashboardSession({
+      restore: () => loadDashboardCache(uid),
+      fetch: fetchDashboardSummary,
+      save: (data) => saveDashboardCache(uid, data),
+      apply: applySummary,
+      failed: (err) => {
+        setIsLive(false);
+        setError(err instanceof Error ? err.message : 'Failed to fetch live data');
+      },
+      settled: () => setIsLoading(false),
+    });
+    sessionRef.current = session;
+    void session.restore();
+    void session.refresh();
+    const interval = setInterval(() => void session.refresh(), REFRESH_INTERVAL_MS);
+    return () => {
+      mountedRef.current = false;
+      session.dispose();
+      sessionRef.current = null;
+      clearInterval(interval);
+    };
+  }, [uid, applySummary]);
 
   const completeTask = useCallback(
     async (taskId: string) => {
@@ -363,12 +387,14 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const loadLocationWeather = useCallback(async (loc: SavedLocation) => {
     try {
       const result = await fetchLocationWeather(loc.query);
+      if (!mountedRef.current) return;
       setWeatherByLocation((previous) => {
         if (keepIfUnchanged(previous[loc.id], result) === previous[loc.id])
           return previous;
         return { ...previous, [loc.id]: result };
       });
     } catch (error) {
+      if (!mountedRef.current) return;
       console.warn(`Weather unavailable for ${loc.query}:`, error);
       setWeatherByLocation((previous) => {
         // A failed refresh should not replace weather we already displayed.
@@ -400,11 +426,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     ]);
   }, [activeLocation, loadData, loadLocationWeather]);
 
-  useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, REFRESH_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, [loadData]);
+  // Preferences may select a new default city; refresh without restarting cache hydration.
+  useEffect(() => { void loadData(); }, [savedLocations, loadData]);
 
   return (
     <DashboardContext.Provider
@@ -417,6 +440,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         health,
         isLoading,
         isLive,
+        isCached,
+        lastUpdated,
         error,
         locationError,
         refresh,

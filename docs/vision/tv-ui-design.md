@@ -1144,7 +1144,7 @@ Focus heavily on:
 - [x] Edge behavior
 - [x] Carousel navigation
 - [x] Back button behavior
-- [ ] Performance — caching implemented; immediate/offline cold start remains
+- [ ] Performance — cached dashboard cold startup implemented; first-ever/expired-cache startup, other offline feeds, prefetch, and hardware verification remain
 - [ ] TV readability — adaptive layouts implemented; couch-distance validation remains
 - [ ] Accessibility — reading controls/narration implemented; current native verification remains
 

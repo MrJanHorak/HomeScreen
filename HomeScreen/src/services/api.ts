@@ -183,8 +183,9 @@ export async function saveUserAppearance(appearance: DashboardAppearance): Promi
 /**
  * Fetch the unified dashboard summary (Calendar, Tasks, Fitness, Weather)
  */
-export async function fetchDashboardSummary(): Promise<DashboardSummaryResponse> {
+export async function fetchDashboardSummary(signal?: AbortSignal): Promise<DashboardSummaryResponse> {
   return authenticatedRequest('getDashboardSummary', 'Failed to fetch dashboard', {
+    signal,
     headers: {'X-Time-Zone': Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'},
   });
 }

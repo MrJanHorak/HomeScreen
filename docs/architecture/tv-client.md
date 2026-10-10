@@ -74,7 +74,61 @@ See [README](../../HomeScreen/README.md) for current features, [layout contract]
 for geometry and compatibility, and [roadmap](../../server/pairing-web/COMPANION_ROADMAP.md)
 for remaining profiles, new feed widgets, independent per-TV designs, and expanded style controls. Polls, shared activity, saved designs/history, and reading controls are implemented.
 
-Run `npm test` from `HomeScreen/` for request, layout-planner, and activity-summary checks. To test
+## Cached cold start
+
+After Firebase restores a signed-in session, `ThemeProvider` loads account-scoped
+local appearance settings (or defaults if storage fails) and releases the startup
+screen without waiting for remote appearance or photo requests. Appearance sync
+continues in the background; a late response does not overwrite pending or saved
+local edits made after startup.
+
+`DashboardProvider` then starts local
+snapshot hydration and a summary request independently. A valid local snapshot
+clears card loading immediately; a successful network response replaces it and
+persists the new summary. A late disk read cannot overwrite a network response.
+The five-minute refresh and Settings refresh reuse one in-flight summary request,
+with a 15-second abort timer. Failed refreshes keep the last displayed summary.
+
+`src/services/dashboardCache.ts` stores a versioned, UID-scoped AsyncStorage entry
+containing schedule, upcoming events, tasks, meals, activity, default-city weather,
+saved location metadata, and the backend's `updatedAt` timestamp. Restoration
+rejects malformed, incompatible, oversized, future-dated, or more-than-24-hour-old
+entries. Age is measured from the source timestamp, rather than the time the TV
+received the response. Storage errors do not prevent live startup. Once displayed,
+a snapshot stays visible during an outage; the 24-hour limit applies to restoration.
+Saved data can include yesterday's schedule or completed tasks until refresh succeeds.
+
+The dashboard labels restored data with its saved timestamp and refresh state.
+After a live refresh fails, the error banner includes the last summary timestamp.
+`src/services/dashboardSession.ts` coordinates restore/refresh races and prevents
+updates or persistence after provider disposal. Sign-out and server-reported
+session revocation remove the account's snapshot through `clearLocalUserData`;
+removal waits for any already-started cache write. Other accounts' snapshots are
+never restored for the current account.
+
+This covers returning TVs with a recoverable authentication session and a usable
+snapshot. First-ever launches and expired/missing caches still need a connection.
+Non-default-city weather, Polls, and consented People activity use separate feeds
+and are not persisted in this summary. People activity intentionally retains its
+existing memory-only expiry/revocation behavior. Provider-specific Calendar/Tasks
+failures still become empty arrays in a successful backend summary. Backend
+prefetch, image caching, and current-build physical TV testing remain separate work.
+
+`npm test` includes cache and session regression checks for offline restoration,
+refresh recovery, account isolation/cleanup, disk failure, invalid/expired entries,
+deduplicated requests, late disk/network responses, and appearance readiness while
+the network is pending or unavailable. For hardware verification:
+
+1. Load a paired TV online; note its populated summary and selected default city.
+2. Force-stop the app, disconnect the network, and relaunch. Confirm cards appear
+   after session restoration with the saved timestamp and remain after refresh fails.
+   Also test a stalled connection: remote appearance must not hold the startup screen.
+3. Reconnect and use Settings refresh. Confirm current data replaces the snapshot
+   and the saved-data banner clears.
+4. Sign out/revoke the TV and pair another account. Confirm prior-account data is
+   absent. Also verify first-ever launch and a cache older than 24 hours offline.
+
+Run `npm test` from `HomeScreen/` for request, cache/session, layout-planner, and activity-summary checks. To test
 rendered cards, start the fixture from the repository root:
 
 ```sh

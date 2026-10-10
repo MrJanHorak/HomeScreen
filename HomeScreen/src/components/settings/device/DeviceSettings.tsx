@@ -13,7 +13,7 @@ import SettingsPanel from '../shared/SettingsPanel';
 export default function DeviceSettings() {
   const theme = useTheme();
   const { user, signOut } = useAuth();
-  const { isLive, refresh } = useDashboard();
+  const { isLive, isCached, refresh } = useDashboard();
   const { focusProps, focusStyle } = useControlFocus();
   const [deviceName, setDeviceName] = useState('HomeScreen TV');
   useEffect(() => {
@@ -44,7 +44,7 @@ export default function DeviceSettings() {
         <DeviceInfoRow
           icon='cloud-sync'
           label='Data Sync'
-          value={isLive ? 'Connected & Live' : 'Unavailable'}
+          value={isLive ? 'Connected & Live' : isCached ? 'Saved dashboard' : 'Unavailable'}
           iconColor={isLive ? '#10B981' : '#F59E0B'}
           valueColor={isLive ? '#10B981' : '#F59E0B'}
         />

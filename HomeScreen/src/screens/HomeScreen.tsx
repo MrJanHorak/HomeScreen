@@ -16,7 +16,8 @@ import AmbientScreen from '../components/ambient/AmbientScreen';
 import {useNarration} from '../accessibility/NarrationContext';
 
 function HomeScreen() {
-  const { error } = useDashboard();
+  const { error, isCached, lastUpdated } = useDashboard();
+  const savedData = lastUpdated ? `Saved dashboard from ${new Date(lastUpdated).toLocaleString()}` : '';
   const { appearance, ambientPhotos } = useAppearance();
   const theme = useTheme();
   const compact = useCompactTVLayout();
@@ -54,10 +55,12 @@ function HomeScreen() {
       {/* Top Header */}
       <HeaderBar onOpenSettings={() => setActiveModal('settings')} />
 
-      {error && (
+      {(error || isCached) && (
         <View style={styles.errorBanner}>
           <TVText
-            text={`Live data unavailable: ${error}`}
+            text={isCached
+              ? `${savedData}. ${error ? 'Refresh unavailable; will retry.' : 'Refreshing…'}`
+              : `Live data unavailable: ${error}${savedData ? `. ${savedData}` : ''}`}
             typography="caption"
             color="accent"
           />

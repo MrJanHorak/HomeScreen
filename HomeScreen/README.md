@@ -9,6 +9,7 @@ HomeScreen is an ad-free household dashboard built with Expo, React Native TV, a
 - The home dashboard shows a clock and greeting, six built-in configurable cards plus optional poll and shared-activity widgets (schedule, activity, media, weather, meals, and tasks), and a favorite-app row. Selecting a card opens a larger detail panel.
 - A TV pairing code and QR link connect the app to a Google account through the companion [pairing site](../server/pairing-web/README.md). Firebase Authentication persists the TV session.
 - The [Cloud Functions backend](../server/functions/README.md) provides Google Calendar, Google Tasks, Google Fit activity, OpenWeatherMap weather, and an optional Google Sheets dinner plan. Dashboard data refreshes every five minutes. Individual upstream failures do not prevent the other cards from loading.
+- Cached cold startup restores the signed-in account's last successful dashboard summary while refreshing in the background. Snapshots up to 24 hours old show a saved-data timestamp and remain visible during outages; sign-out or session revocation removes them. First-ever startup and expired caches need a connection. See [cache behavior and verification](../docs/architecture/tv-client.md#cached-cold-start).
 - Native Firebase sign-in now persists in Expo SecureStore. Rebuild and reinstall the Android TV binary after updating dependencies or native plugins; a Metro reload cannot add the native SecureStore module.
 - On Android TV, Continue Watching reads titles that installed apps publish to the system Play Next row. The web preview uses sample media data.
 - Settings include color palettes, a custom accent, backgrounds, layout presets, card order/visibility/width, saved weather locations, favorite apps, meal connection, and device controls. Appearance settings sync through the backend; some TV-specific preferences are local to the device.
@@ -230,7 +231,7 @@ The app includes `assets/tv-banner.png` for the launcher tile, `assets/icon.png`
 
 ## Next steps
 
-The [companion roadmap](../server/pairing-web/COMPANION_ROADMAP.md) and [project status](../docs/PROJECT_STATUS.md) track remaining work. Polls, shared activity, saved designs/history, and reading controls are implemented in source. Profiles/general household roles, independent per-TV appearance, new feed widgets, full calendar/task management, broader media, and offline cold-start behavior remain open. Current-build TV readability, remote focus, accessibility, and reliability still need hardware checks.
+The [companion roadmap](../server/pairing-web/COMPANION_ROADMAP.md) and [project status](../docs/PROJECT_STATUS.md) track remaining work. Polls, shared activity, saved designs/history, reading controls, and cached dashboard cold startup are implemented in source. Profiles/general household roles, independent per-TV appearance, new feed widgets, full calendar/task management, broader media, first-load prefetch, and offline coverage for other feeds remain open. Current-build TV readability, remote focus, accessibility, and reliability still need hardware checks.
 
 ## Asset credits and license
 

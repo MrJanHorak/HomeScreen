@@ -100,9 +100,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         console.warn('Could not load local appearance settings:', error);
       }
+      if (cancelled) return;
+      // Root can mount the cached dashboard as soon as local settings are ready.
+      // Remote appearance and photos must not hold startup behind the network.
+      const localJson = JSON.stringify(local);
+      syncedJson.current = localJson;
+      setAppearance(local);
+      setHydratedFor(uid);
       try {
         const remote = await getUserAppearance();
-        if (cancelled) return;
+        // A user may have edited settings while this startup request was pending.
+        if (cancelled || pendingWrites.current || syncedJson.current !== localJson) return;
         if (remote.appearance) {
           if (
             Platform.OS === 'web' &&
@@ -143,12 +151,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.warn('Could not sync appearance settings:', error);
-        if (!cancelled) {
-          syncedJson.current = JSON.stringify(local);
-          setAppearance(local);
-        }
-      } finally {
-        if (!cancelled) setHydratedFor(uid);
       }
     })();
     void getSavedGooglePhoto()

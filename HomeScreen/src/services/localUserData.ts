@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { clearDashboardCache } from './dashboardCache';
 import {
   STORAGE_KEY_ACTIVE_LOC,
   STORAGE_KEY_LOCATIONS,
@@ -6,6 +7,7 @@ import {
 
 /** Remove TV-local preferences when an account is signed out or revoked. */
 export async function clearLocalUserData(uid: string): Promise<void> {
+  await clearDashboardCache(uid);
   await AsyncStorage.multiRemove([
     `@tv_appearance_v1:${uid}`,
     `@tv_favorite_apps_v1:${uid}`,

@@ -435,7 +435,7 @@ rather than:
 Open App → Call APIs → Wait → Wait → Wait → Display
 ```
 
-The summary request fetches upstream data when its cache expires, and the TV retains its last successful snapshot during a temporary request failure.
+The summary request fetches upstream data when its backend cache expires. After restoring the signed-in session, the TV restores an account-scoped local summary up to 24 hours old while refreshing in the background, labels it with its source timestamp, and retains it during temporary request failures. Sign-out or session revocation clears the local snapshot. First-ever startup, expired local caches, separate Polls/People feeds, and non-default-city weather still require network data; there is no scheduled backend prefetch.
 
 ---
 
