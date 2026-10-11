@@ -96,13 +96,27 @@ test('feed snapshots are account-scoped, reject damaged links, and serialize sig
     articles: [{id: 'story', title: 'Story', summary: 'Summary', url: 'https://news.example.org/story', publishedAtMs: null}]};
   await cache.saveFeedCache('owner', {[url]: item}); assert.deepEqual(await cache.loadFeedCache('owner'), {[url]: item});
   assert.deepEqual(await cache.loadFeedCache('another'), {});
-  for (const patch of [{updatedAtMs: Date.now()-8*86400000}, {articles: [{...item.articles[0], url: 'javascript:alert(1)'}]}, {articles: [{title: 'Incomplete'}]}]) {
+  for (const patch of [{updatedAtMs: Date.now()-8*86400000}, {articles: [{...item.articles[0], url: 'javascript:alert(1)'}]},
+    {articles: [{...item.articles[0], imageUrl: 'https://127.0.0.1/photo.jpg'}]}, {articles: [{...item.articles[0], content: 'x'.repeat(12001)}]}, {articles: [{title: 'Incomplete'}]}]) {
     disk.set('@tv_feeds_v1:owner', JSON.stringify({version:1, uid:'owner', feeds:{[url]:{...item, ...patch}}}));
     assert.deepEqual(await cache.loadFeedCache('owner'), {});
   }
   delayed=true; const saved=cache.saveFeedCache('owner', {[url]:item}); const cleared=cache.clearFeedCache('owner');
   const other=cache.saveFeedCache('another', {[url]:item}); pending.resolve(); await Promise.all([saved, cleared, other]);
   assert.deepEqual(await cache.loadFeedCache('owner'), {}); assert.ok((await cache.loadFeedCache('another'))[url]);
+});
+
+test('large feed snapshots retain offline headlines when rich content exceeds the disk budget', async () => {
+  const disk = new Map(); const storage = {getItem: async (key) => disk.get(key), setItem: async (key, raw) => disk.set(key, raw)};
+  const contract = load('../server/functions/src/utils/feedConfig.ts');
+  const cache = load('src/services/feedCache.ts', {'@react-native-async-storage/async-storage': storage, '../../../server/functions/src/utils/feedConfig': contract});
+  const feeds = Object.fromEntries(contract.FEED_PRESETS.slice(0, 4).map(({url, title}) => [url, {url, title, updatedAtMs: Date.now(), stale: false, error: null,
+    articles: Array.from({length: 30}, (_, i) => ({id: String(i), title: 'Headline', summary: 'Summary', url: null, publishedAtMs: null,
+      content: 'x'.repeat(12000), contentTruncated: false, imageUrl: 'https://images.example.org/photo.jpg'}))}]));
+  await cache.saveFeedCache('owner', feeds); const saved = await cache.loadFeedCache('owner');
+  assert.equal(Object.keys(saved).length, 4); assert.equal(Object.values(saved)[0].articles.length, 30);
+  assert.equal(Object.values(saved)[0].articles[0].content, undefined); assert.equal(feeds[contract.FEED_PRESETS[0].url].articles[0].content.length, 12000);
+  assert.ok(disk.get('@tv_feeds_v1:owner').length < 1024 * 1024);
 });
 function themeSetup({diskFails = false} = {}) {
   const states = [], refs = [], dependencies = [], cleanup = [];

@@ -4,7 +4,7 @@ const dns = require('node:dns/promises');
 const https = require('node:https');
 const {EventEmitter} = require('node:events');
 const {parseFeed, publicFeedAddress, downloadFeed, articleUrl} = require('../lib/services/feedService');
-const {normalizeFeedUrl, FEED_PRESETS} = require('../lib/utils/feedConfig');
+const {normalizeFeedUrl, FEED_PRESETS, FEED_CATEGORIES, FEED_CATALOG, validFeedOptions} = require('../lib/utils/feedConfig');
 const {validWidgetLayout, legacyWidgetProjection} = require('../lib/utils/widgets');
 const {auth, db} = require('../lib/utils/db');
 const service = require('../lib/services/feedService');
@@ -35,6 +35,34 @@ test('custom URL validation and DNS guards reject internal targets and redirects
   await assert.rejects(downloadFeed('https://public.example.org/feed'), /public HTTPS/);
   await assert.rejects(downloadFeed('https://public.example.org/feed', 4));
   assert.equal(articleUrl('file:///etc/passwd', url), null); assert.equal(articleUrl('https://192.168.1.1/', url), null);
+});
+
+test('preset categories are complete, unique and produce valid persisted options', () => {
+  assert.equal(FEED_PRESETS.length, 24); assert.equal(new Set(FEED_PRESETS.map((source) => source.url)).size, 24);
+  for (const category of FEED_CATEGORIES) assert.ok(FEED_CATALOG.some((source) => source.category === category));
+  for (const source of FEED_PRESETS) assert.ok(validFeedOptions({...source, itemCount: 8}));
+});
+
+test('feed images and richer text preserve paragraphs, reject unsafe media and bound content', () => {
+  const rss = parseFeed(`<rss xmlns:content="urn:content" xmlns:media="urn:media"><channel><title>Rich</title>
+    <item><title>Full story</title><link>https://news.example.org/story</link><description>Short teaser</description>
+      <content:encoded><![CDATA[<p>First paragraph with <b>bold</b>.</p><p>Second paragraph.</p><script>bad()</script>]]></content:encoded>
+      <media:content url="https://images.example.org/large.jpg" medium="image"/></item>
+    <item><title>Enclosure</title><enclosure url="https://images.example.org/photo.png" type="image/png"/></item>
+    <item><title>Group</title><media:group><media:thumbnail url="https://images.example.org/thumb.jpg"/></media:group></item>
+    <item><title>HTML image</title><description><![CDATA[<img src="https://images.example.org/pixel.gif" width="1"><img src="/photo.jpg"><p>Some text</p>]]></description></item>
+    <item><title>Unsafe</title><media:thumbnail url="https://127.0.0.1/image.jpg"/><description><![CDATA[<img src="http://images.example.org/insecure.jpg">]]></description></item>
+    <item><title>Long text</title><description>${'Word '.repeat(5000)}</description></item>
+    </channel></rss>`, url);
+  const [full, enclosure, group, html, unsafe, long] = rss.articles;
+  assert.equal(full.summary, 'Short teaser'); assert.equal(full.content, 'First paragraph with bold .\n\nSecond paragraph.');
+  assert.equal(full.imageUrl, 'https://images.example.org/large.jpg'); assert.equal(enclosure.imageUrl, 'https://images.example.org/photo.png');
+  assert.equal(group.imageUrl, 'https://images.example.org/thumb.jpg'); assert.equal(html.imageUrl, 'https://feeds.bbci.co.uk/photo.jpg');
+  assert.equal(unsafe.imageUrl, null); assert.equal(long.content.length, 12000); assert.equal(long.contentTruncated, true);
+  const atom = parseFeed('<feed><title>Atom</title><entry><title>Photo</title><link rel="enclosure" type="image/jpeg" href="/photo.jpg"/><content type="html">&lt;p&gt;Longer body&lt;/p&gt;</content></entry></feed>', url);
+  assert.equal(atom.articles[0].imageUrl, 'https://feeds.bbci.co.uk/photo.jpg'); assert.equal(atom.articles[0].content, 'Longer body');
+  const many = parseFeed(`<rss><channel>${Array.from({length: 30}, (_, i) => `<item><title>${i}</title><description>${'宇宙'.repeat(5000)}</description></item>`).join('')}</channel></rss>`, url);
+  assert.ok(many.articles.reduce((bytes, article) => bytes + Buffer.byteLength(article.content), 0) <= 240000);
 });
 test('HTTPS sockets pin the checked address and redirects recheck DNS before another request', async (t) => {
   const requests=[];

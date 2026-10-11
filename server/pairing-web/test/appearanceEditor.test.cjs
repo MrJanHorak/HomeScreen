@@ -12,13 +12,21 @@ const pollId = `poll_${'a'.repeat(32)}`;
 for (const width of [390, 1440]) test(`feed widgets preview, stay independent, survive drafts and publish at ${width}px`, async (t) => {
   const {page, state, open, waitIdle} = await setup(t, {}, {viewport: {width, height: 1000}});
   const previews = [];
+  await page.route('https://images.example.org/story.jpg', (route) => route.fulfill({path: require('node:path').join(__dirname, '../../../HomeScreen/assets/media/heic1518a.jpg'), contentType:'image/jpeg'}));
   await page.route('**/__fixture-api/feeds', async (route) => {
     const url = route.request().postDataJSON().urls[0]; previews.push(url);
-    await route.fulfill({json: {feeds: [{url, title: 'Sample feed', articles: [{id: 'story', title: '<script>Publisher headline</script>', summary: 'Summary', url: 'https://news.example.org/story', publishedAtMs: Date.now()}], stale: false, error: null, updatedAtMs: Date.now()}]}});
+    await route.fulfill({json: {feeds: [{url, title: 'Sample feed', articles: [{id: 'story', title: '<script>Publisher headline</script>', summary: 'Summary',
+      content: 'Feed-provided paragraph.\n\n'.repeat(40), imageUrl:'https://images.example.org/story.jpg', url: 'https://news.example.org/story', publishedAtMs: Date.now()}], stale: false, error: null, updatedAtMs: Date.now()}]}});
   });
   const add = page.locator('.studio-add-poll').filter({has: page.getByRole('heading', {name: 'Add a feed widget', exact: true})});
+  assert.deepEqual(await add.locator('select[aria-label="Feed source"] optgroup').evaluateAll((groups) => groups.map((group) => group.label)),
+    ['Science & discovery', 'Technology', 'Space', 'Nature & curiosities', 'News & world']);
+  assert.equal(await add.locator('select[aria-label="Feed source"] option').count(), 25);
   await add.getByRole('button', {name: 'Preview feed', exact: true}).click();
   await add.getByRole('region', {name: 'Feed preview'}).waitFor();
+  await add.getByText('Read feed text', {exact:true}).click();
+  assert.equal(await add.locator('.feed-preview-text').evaluate((element) => element.scrollHeight > element.clientHeight), true);
+  await page.waitForFunction(() => document.querySelector('.feed-preview-image')?.naturalWidth > 0);
   assert.equal(await add.locator('script').count(), 0); assert.match(await add.innerText(), /<script>Publisher headline<\/script>/);
   await add.getByRole('button', {name: 'Add feed widget', exact: true}).click();
   await waitIdle();

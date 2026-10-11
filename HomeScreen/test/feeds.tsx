@@ -15,11 +15,13 @@ import type {WidgetLayout} from '../../server/functions/src/utils/widgets';
 import {NarrationProvider} from '../src/accessibility/NarrationContext';
 import {gridRect} from '../../server/functions/src/utils/dashboardLayout';
 
-const widget = {id: `feed_${'a'.repeat(32)}` as const, kind: 'feed' as const, feed: {...FEED_PRESETS[0], itemCount: 5 as const}, visible: true, size: 'standard' as const};
+const widget = {id: `feed_${'a'.repeat(32)}` as const, kind: 'feed' as const, feed: {...FEED_PRESETS[0], itemCount: 8 as const}, visible: true, size: 'standard' as const};
 const initial: WidgetLayout = {version: 1, grid: null, widgets: [widget]};
 const result = (url: string, title: string): FeedResult => ({url, title, stale: false, error: null, updatedAtMs: Date.now(),
   articles: Array.from({length: 8}, (_, i) => ({id: `${title}${i}`, title: i === 0 ? `${title}: Researchers unveil a new way to explore the universe with a remarkably detailed survey` : `${title}: Story ${i + 1}`,
-    summary: 'A readable summary supplied by the publisher. The full article is available by scanning the QR code on your phone.', url: 'https://news.example.org/story', publishedAtMs: Date.now() - 3600000}))});
+    summary: 'A readable summary supplied by the publisher. The full article is available by scanning the QR code on your phone.',
+    content: Array.from({length: 24}, (_, paragraph) => `Paragraph ${paragraph + 1}. A readable article supplied in the feed. This discovery opens new possibilities for exploring our universe and understanding the world around us.`).join('\n\n'),
+    imageUrl: 'https://images.example.org/story.png', url: 'https://news.example.org/story', publishedAtMs: Date.now() - 3600000}))});
 const allFeeds = Object.fromEntries(FEED_PRESETS.map((feed) => [feed.url, result(feed.url, feed.title)]));
 function Fixture() {
   const [layout, setLayout] = useState(initial); const [topic, setTopic] = useState<`feed_${string}` | null>(null);

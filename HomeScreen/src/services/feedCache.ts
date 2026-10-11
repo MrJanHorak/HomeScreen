@@ -11,6 +11,9 @@ function validResult(value: unknown): value is FeedResult {
     !time(value.updatedAtMs) || Date.now() - value.updatedAtMs > 7 * 86400000 || typeof value.stale !== 'boolean' ||
     value.error !== null && !text(value.error, 200) || !Array.isArray(value.articles) || value.articles.length > 30) return false;
   return value.articles.every((article) => record(article) && text(article.id, 64) && text(article.title, 240) && text(article.summary, 1200) &&
+    (article.content === undefined || text(article.content, 12000)) &&
+    (article.contentTruncated === undefined || typeof article.contentTruncated === 'boolean') &&
+    (article.imageUrl === undefined || article.imageUrl === null || typeof article.imageUrl === 'string' && normalizeFeedUrl(article.imageUrl) === article.imageUrl) &&
     (article.publishedAtMs === null || time(article.publishedAtMs, 86400000)) &&
     (article.url === null || typeof article.url === 'string' && /^https?:\/\//.test(article.url) &&
       normalizeFeedUrl(article.url.replace(/^http:/, 'https:')) !== null));
@@ -35,7 +38,18 @@ function queue(uid: string, action: () => Promise<void>): Promise<void> {
 export function saveFeedCache(uid: string, feeds: Record<string, FeedResult>): Promise<void> {
   if (!uid) return Promise.resolve();
   const safe = Object.fromEntries(Object.entries(feeds).filter(([url, feed]) => validResult(feed) && feed.url === url));
-  const raw = JSON.stringify({version: 1, uid, feeds: safe});
-  return raw.length > 1024 * 1024 ? Promise.resolve() : queue(uid, () => AsyncStorage.setItem(key(uid), raw));
+  let raw = JSON.stringify({version: 1, uid, feeds: safe});
+  // Preserve offline headlines even when several feeds supply long articles.
+  if (raw.length > 1024 * 1024) {
+    for (const [url, feed] of Object.entries(safe)) safe[url] = {...feed, articles: feed.articles.map(({content, contentTruncated, ...article}) => article)};
+    raw = JSON.stringify({version: 1, uid, feeds: safe});
+  }
+  while (raw.length > 1024 * 1024) {
+    const largest = Object.values(safe).sort((a, b) => b.articles.length - a.articles.length)[0];
+    if (!largest?.articles.length) return Promise.resolve();
+    safe[largest.url] = {...largest, articles: largest.articles.slice(0, -1)};
+    raw = JSON.stringify({version: 1, uid, feeds: safe});
+  }
+  return queue(uid, () => AsyncStorage.setItem(key(uid), raw));
 }
 export function clearFeedCache(uid: string): Promise<void> {return queue(uid, () => AsyncStorage.removeItem(key(uid)));}

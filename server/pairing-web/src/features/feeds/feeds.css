@@ -3,5 +3,9 @@
 .feed-preview {border: 1px solid #496259; border-radius: 12px; padding: 16px; background: #142823; overflow-wrap: anywhere;}
 .feed-preview h3 {margin-top: 0;}
 .feed-preview ul {display: grid; gap: 12px; padding-left: 20px; line-height: 1.5;}
+.feed-preview li {min-width: 0;}
+.feed-preview-image {width: 100%; max-height: 220px; object-fit: contain; border-radius: 8px; margin-bottom: 8px;}
+.feed-preview-summary {margin: 6px 0; color: #c0d0ca; font-size: .9rem;}
+.feed-preview-text {max-height: 320px; overflow: auto; white-space: pre-line; padding: 8px 0;}
 .feed-editor :focus-visible {outline: 3px solid #b9e6d1; outline-offset: 3px;}
 @media (max-width: 600px) {.feed-editor .widget-fields {grid-template-columns: 1fr;}}

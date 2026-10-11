@@ -17,6 +17,35 @@ export function plainFeedText(value: unknown, limit: number): string {
     // eslint-disable-next-line no-control-regex -- Strip control bytes from publisher content.
     .replace(/<[^>]*>/g, " ").replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, "").replace(/\s+/g, " ").trim().slice(0, limit);
 }
+/** Preserve publisher paragraphs without rendering any HTML or executable content. */
+export function readableFeedText(value: unknown, limit = 12000): string {
+  return decode(content(value).replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1"))
+    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, " ")
+    .replace(/<\/?(?:p|div|h[1-6]|li|blockquote|br)\b[^>]*>/gi, "\n\n").replace(/<[^>]*>/g, " ")
+    // eslint-disable-next-line no-control-regex -- Strip control bytes from publisher content.
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, "").replace(/[^\S\n]+/g, " ")
+    .replace(/ *\n */g, "\n").replace(/\n{3,}/g, "\n\n").trim().slice(0, limit);
+}
+function feedImage(item: Record<string, unknown>, base: string): string | null {
+  const group = object(item.group);
+  const candidates: unknown[] = [];
+  for (const entry of [...list(item.content), ...list(group.content), ...list(item.enclosure), ...list(item.link)]) {
+    const media = object(entry); const type = content(media["@_type"]);
+    if (media["@_medium"] === "image" || type.startsWith("image/") || media["@_url"] && !type && !media["@_medium"]) candidates.push(media["@_url"] || media["@_href"]);
+  }
+  for (const entry of [...list(item.thumbnail), ...list(group.thumbnail)]) candidates.push(object(entry)["@_url"]);
+  const html = decode(content(item.encoded || item.content || item.description || item.summary))
+    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, " ");
+  for (const match of html.matchAll(/<img\b[^>]*>/gi)) {
+    if (/\b(?:width|height)\s*=\s*["']?[012](?:["'\s>]|$)/i.test(match[0])) continue;
+    candidates.push(match[0].match(/\bsrc\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s>]+))/i)?.slice(1).find(Boolean));
+  }
+  for (const candidate of candidates) {
+    const url = articleUrl(candidate, base);
+    if (url && normalizeFeedUrl(url) && !/\.svg(?:[?#]|$)/i.test(new URL(url).pathname)) return url;
+  }
+  return null;
+}
 export function articleUrl(value: unknown, base: string): string | null {
   try {
     const text = decode(content(value)).trim();
@@ -40,6 +69,7 @@ export function parseFeed(xml: string, base: string): {title: string; articles: 
   const feed = root.feed !== undefined ? atom : root.rss !== undefined ? channel : root.RDF !== undefined ? object(rdf.channel) : null;
   if (!feed) throw new Error("This URL did not return an RSS or Atom feed.");
   const seen = new Set<string>(); const articles: FeedArticle[] = [];
+  let contentBytes = 240000;
   for (const value of list(root.feed !== undefined ? atom.entry : root.RDF !== undefined ? rdf.item : channel.item).slice(0, 200)) {
     const item = object(value); const title = plainFeedText(item.title, 240);
     if (!title) continue;
@@ -49,7 +79,12 @@ export function parseFeed(xml: string, base: string): {title: string; articles: 
     if (seen.has(id)) continue;
     seen.add(id);
     const date = Date.parse(content(item.pubDate || item.published || item.updated || item.date));
+    const bodies = [item.encoded, item.content, item.description, item.summary].map((body) => readableFeedText(body, 12001));
+    const body = bodies.reduce((longest, next) => next.length > longest.length ? next : longest, "");
+    const clipped = Buffer.from(body.slice(0, 12000)).subarray(0, contentBytes).toString("utf8").replace(/\uFFFD$/, "");
+    contentBytes -= Buffer.byteLength(clipped);
     articles.push({id, title, url, summary: plainFeedText(item.description || item.summary || item.encoded || item.content, 1200),
+      content: clipped, contentTruncated: clipped.length < body.length, imageUrl: feedImage(item, url || base),
       publishedAtMs: Number.isFinite(date) && date >= 0 && date <= Date.now() + 86400000 ? date : null});
     if (articles.length === 30) break;
   }
