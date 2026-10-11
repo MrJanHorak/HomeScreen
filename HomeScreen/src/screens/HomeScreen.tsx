@@ -9,6 +9,7 @@ import type {DetailTopic} from '../components/details/DashboardDetailModal';
 
 import { useDashboard } from '../context/DashboardContext';
 import {usePollVisibility} from '../context/PollsContext';
+import {useFeedVisibility} from '../context/FeedsContext';
 import { useAppearance, useTheme } from '../theme/ThemeContext';
 import useCompactTVLayout from '../hooks/useCompactTVLayout';
 import useAmbientMode from '../components/ambient/useAmbientMode';
@@ -27,6 +28,8 @@ function HomeScreen() {
     appearance.ambient.enabled, appearance.ambient.idleMinutes, activeModal !== null
   );
   const setVisible = usePollVisibility();
+  const setFeedsVisible = useFeedVisibility();
+  useEffect(() => {setFeedsVisible(!ambient.active);}, [ambient.active, setFeedsVisible]);
   useEffect(() => {setVisible(!ambient.active);}, [ambient.active, setVisible]);
   useEffect(() => {if (ambient.active) stop();}, [ambient.active, stop]);
   const closeModal = useCallback(() => {stop(); setActiveModal(null);}, [stop]);

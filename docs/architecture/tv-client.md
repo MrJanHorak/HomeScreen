@@ -1,7 +1,7 @@
 # Current HomeScreen structure
 
 ```text
-TVScreenWrapper / AuthProvider / ThemeProvider / NarrationProvider / DashboardProvider / PeopleProvider / PollsProvider
+TVScreenWrapper / AuthProvider / ThemeProvider / NarrationProvider / DashboardProvider / PeopleProvider / PollsProvider / FeedsProvider
 └── HomeScreen
     ├── HeaderBar (greeting, clock/date, settings)
     ├── Data-error banner, when needed
@@ -18,7 +18,7 @@ TVScreenWrapper / AuthProvider / ThemeProvider / NarrationProvider / DashboardPr
 Idle → AmbientScreen; remote input → dashboard
 ```
 
-The current `appearance.widgetLayout` adds stable widget instances and independent bindings/styles; legacy `cards`/`grid` remain a built-in fallback. People and Polls providers use separate feeds. Source paths below are relative to `HomeScreen/` unless explicitly rooted.
+The current `appearance.widgetLayout` adds stable widget instances and independent bindings/styles; legacy `cards`/`grid` remain a built-in fallback. People, Polls and RSS/Atom providers use separate feeds. RSS/Atom snapshots have their own account-scoped, validated disk cache. Source paths below are relative to `HomeScreen/` unless explicitly rooted.
 
 `SettingsDetailView` handles side-menu navigation and delegates weather and device
 controls to `WeatherSettings` and `DeviceSettings`. These sections reuse
@@ -72,7 +72,7 @@ account share one configuration.
 
 See [README](../../HomeScreen/README.md) for current features, [layout contract](../../server/pairing-web/DASHBOARD_LAYOUT.md)
 for geometry and compatibility, and [roadmap](../../server/pairing-web/COMPANION_ROADMAP.md)
-for remaining profiles, new feed widgets, independent per-TV designs, and expanded style controls. Polls, shared activity, saved designs/history, and reading controls are implemented.
+for remaining profiles, daily-content widgets, independent per-TV designs, and expanded style controls. Polls, shared activity, RSS/Atom feeds, saved designs/history, and reading controls are implemented.
 
 ## Cached cold start
 

@@ -6,6 +6,20 @@ const {DEFAULT_APPEARANCE, normalizeAppearance} = load('src/theme/appearance.ts'
 const {validWidgetLayout, widgetGridFromRows, legacyWidgetProjection} = load('../server/functions/src/utils/widgets.ts');
 const poll = {id: `poll_${'a'.repeat(32)}`, kind: 'poll', roundId: 'b'.repeat(32), visible: true, size: 'standard', accent: '#FF0000', presentation: 'join'};
 const person = {id: `activity_${'c'.repeat(32)}`, kind: 'activity', personId: 'c'.repeat(32), visible: true, size: 'wide'};
+const feed = {id: `feed_${'f'.repeat(32)}`, kind: 'feed', feed: {url: 'https://feeds.bbci.co.uk/news/world/rss.xml', title: 'World', itemCount: 5}, visible: true, size: 'standard'};
+
+test('feed instances can be added, hidden, resized, moved and removed independently', () => {
+  let layout = {version: 1, grid: null, widgets: [feed]};
+  const second = {...feed, id: `feed_${'e'.repeat(32)}`};
+  layout = addDashboardWidget(layout, second); assert.equal(layout.widgets.length, 2);
+  layout = changeWidget(layout, feed.id, {type: 'size'}); assert.equal(layout.widgets[0].size, 'wide'); assert.equal(layout.widgets[1].size, 'standard');
+  assert.equal(widgetLabel(feed), 'Feed · World');
+  layout = {...layout, grid: widgetGridFromRows(layout.widgets)};
+  layout = changeWidget(layout, feed.id, {type: 'visibility'}); assert.equal(layout.grid.items.length, 1);
+  layout = changeWidget(layout, feed.id, {type: 'remove'}); assert.equal(layout.widgets.length, 1); assert.equal(layout.widgets[0].id, second.id);
+  assert.throws(() => changeWidget(layout, second.id, {type: 'remove'}), /at least one/);
+  assert.equal(normalizeAppearance({...DEFAULT_APPEARANCE, widgetLayout: layout}).widgetLayout.widgets[0].feed.url, second.feed.url);
+});
 
 test('settings list every widget instance and missing built-ins without exposing the legacy fallback as visible', () => {
   const widgetLayout = {version: 1, grid: null, widgets: [poll, person]};

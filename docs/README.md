@@ -16,6 +16,7 @@ Reviewed and reorganized October 9, 2026. Start with [project status](PROJECT_ST
 | [Layout contract](../server/pairing-web/DASHBOARD_LAYOUT.md) | Published appearance, legacy grid, and instance compatibility |
 | [Polls](../server/pairing-web/POLLS.md) | Voting, privacy, retention, API behavior, deployment |
 | [People](../server/pairing-web/PEOPLE.md) | Activity invitations, consent, revocation, deployment |
+| [Feeds](../server/pairing-web/FEEDS.md) | RSS/Atom widgets, companion/TV controls, caching and release |
 | [Security setup](../server/SECURITY.md) | Authorization, rules, TTL, and operational requirements |
 
 ## Architecture and development

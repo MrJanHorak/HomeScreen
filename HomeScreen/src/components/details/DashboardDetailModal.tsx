@@ -10,10 +10,11 @@ import MealDetailView from './meals/MealDetailView';
 import ToDoDetailView from './tasks/ToDoDetailView';
 import SettingsDetailView from '../settings/SettingsDetailView';
 import PollDetailView from './polls/PollDetailView';
+import FeedDetailView from './feeds/FeedDetailView';
 import {useAppearance} from '../../theme/ThemeContext';
 import {usePeople} from '../../context/PeopleContext';
 
-export type DetailTopic = CardId | 'settings' | `poll_${string}` | `activity_${string}`;
+export type DetailTopic = CardId | 'settings' | `poll_${string}` | `activity_${string}` | `feed_${string}`;
 
 type DetailDefinition = Pick<TVDetailModalProps,
   'title' | 'subtitle' | 'icon' | 'iconColor' | 'badgeText'> & {
@@ -67,6 +68,12 @@ export default function DashboardDetailModal({topic, onClose, onPreviewAmbient}:
   const {appearance} = useAppearance();
   const {people} = usePeople();
   if (!topic) return null;
+  if (topic.startsWith('feed_')) {
+    const widget = appearance.widgetLayout?.widgets.find((w) => w.id === topic && w.kind === 'feed');
+    return <TVDetailModal visible onClose={onClose} title={widget?.feed?.title || 'Feed'} subtitle="Stories and feed sources" icon="rss" iconColor="#F59E0B">
+      <FeedDetailView widgetId={topic}/>
+    </TVDetailModal>;
+  }
   if (topic.startsWith('activity_')) {
     const widget = appearance.widgetLayout?.widgets.find((w) => w.id === topic && w.kind === 'activity');
     const person = people.find((p) => p.id === widget?.personId);

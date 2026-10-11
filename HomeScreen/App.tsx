@@ -11,6 +11,7 @@ import { FavoriteAppsProvider } from './src/hooks/useFavoriteApps';
 import ExitConfirmationModal from './src/components/layout/ExitConfirmationModal';
 import {PollsProvider} from './src/context/PollsContext';
 import {PeopleProvider} from './src/context/PeopleContext';
+import {FeedsProvider} from './src/context/FeedsContext';
 import {NarrationProvider} from './src/accessibility/NarrationContext';
 
 import backgroundImage from './assets/media/wp8860764-nasa-4k-wallpapers.jpg';
@@ -35,7 +36,7 @@ function Root() {
     <DashboardProvider key={user.uid}>
       <WatchNextProvider>
         <FavoriteAppsProvider>
-          <PeopleProvider><PollsProvider><HomeScreen /></PollsProvider></PeopleProvider>
+          <PeopleProvider><PollsProvider><FeedsProvider><HomeScreen /></FeedsProvider></PollsProvider></PeopleProvider>
         </FavoriteAppsProvider>
       </WatchNextProvider>
     </DashboardProvider>

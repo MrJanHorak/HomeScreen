@@ -19,6 +19,7 @@ Implemented in source, audited October 9, 2026:
 - Reusable household polls, QR voting, results, and independently arranged poll widgets.
 - Consented activity sharing from other Google accounts, with one activity widget per person.
 - OpenDyslexic and reading controls, optional device-local spoken navigation, and responsive settings/detail layouts.
+- Multiple RSS/Atom feed widgets, companion presets/custom URLs/previews, and TV source selection, story summaries and QR links. Added October 10; see [Feed widgets](server/pairing-web/FEEDS.md).
 
 **Most of the core household dashboard is implemented.** The broader vision is still incomplete: personal profiles, independent per-TV layouts, watchlists/recently watched, a broader media catalog, calendar week/month views, full task editing, universal search, smart-home integrations, and automatic time-of-day modes remain open.
 

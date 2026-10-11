@@ -202,6 +202,13 @@ Layout presets preserve the map; restoring default appearance clears it.
 
 ## Release and verification
 
+RSS/Atom cards use `kind: "feed"`, a stable `feed_<32 hex>` instance ID, and
+`feed: {url, title, itemCount}` with a normalized public HTTPS URL, a 1–80 character
+title and a 3/5/8 headline limit. Duplicate sources are allowed across independent
+instances. Feed configuration follows the same draft, design, history, styling
+and layout validation as other widgets. See [Feed widgets](FEEDS.md) for the
+separate data endpoint, retention and rollout requirements.
+
 Deploy updated Functions and Hosting together, then distribute an updated TV
 build. A Hosting-only release cannot provide server validation or conflict
 detection; an older TV binary cannot display free placement. No Firestore rules

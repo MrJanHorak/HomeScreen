@@ -2,10 +2,13 @@ import {DASHBOARD_CARD_IDS, overlaps} from "./dashboardLayout";
 import type {DashboardCardId, DashboardGridLayout, GridItem} from "./dashboardLayout";
 import {validCardStyles} from "./cardStyle";
 import type {CardStyle, CardStyles} from "./cardStyle";
+import {validFeedOptions} from "./feedConfig";
+import type {FeedOptions} from "./feedConfig";
 
 export interface Widget {
   id: string;
-  kind: DashboardCardId | "poll";
+  kind: DashboardCardId | "poll" | "feed";
+  feed?: FeedOptions;
   roundId?: string;
   personId?: string;
   visible: boolean;
@@ -43,12 +46,13 @@ export function validWidgetLayout(value: unknown): value is WidgetLayout {
   const seen = new Set<string>();
   for (const w of value.widgets) {
     if (!record(w) || typeof w.id !== "string" || seen.has(w.id) ||
-      Object.keys(w).some((k) => !["id", "kind", "roundId", "personId", "visible", "size", "style", "accent", "presentation"].includes(k)) ||
+      Object.keys(w).some((k) => !["id", "kind", "roundId", "personId", "feed", "visible", "size", "style", "accent", "presentation"].includes(k)) ||
       typeof w.visible !== "boolean" || !["standard", "wide"].includes(String(w.size)) ||
-      (w.kind === "poll" ? !/^poll_[a-f0-9]{32}$/.test(w.id) || !validPollId(w.roundId) || w.personId !== undefined :
-        w.kind === "activity" && w.personId !== undefined ?
-          !validPollId(w.personId) || w.id !== `activity_${w.personId}` || w.roundId !== undefined :
-          !DASHBOARD_CARD_IDS.includes(w.kind as DashboardCardId) || w.id !== w.kind || w.roundId !== undefined || w.personId !== undefined) ||
+      (w.kind === "feed" ? !/^feed_[a-f0-9]{32}$/.test(w.id) || !validFeedOptions(w.feed) || w.roundId !== undefined || w.personId !== undefined :
+        w.feed !== undefined || (w.kind === "poll" ? !/^poll_[a-f0-9]{32}$/.test(w.id) || !validPollId(w.roundId) || w.personId !== undefined :
+          w.kind === "activity" && w.personId !== undefined ?
+            !validPollId(w.personId) || w.id !== `activity_${w.personId}` || w.roundId !== undefined :
+            !DASHBOARD_CARD_IDS.includes(w.kind as DashboardCardId) || w.id !== w.kind || w.roundId !== undefined || w.personId !== undefined)) ||
       (w.style !== undefined && !validCardStyles({weather: w.style})) ||
       (w.accent !== undefined && (typeof w.accent !== "string" || !/^#[0-9a-fA-F]{6}$/.test(w.accent))) ||
       (w.presentation !== undefined && !["auto", "results", "join"].includes(String(w.presentation)))) return false;
@@ -120,7 +124,7 @@ export function legacyWidgetProjection(layout: WidgetLayout) {
   });
   if (!cards.some((c) => c.visible)) cards[0].visible = true;
   const cardStyles: CardStyles = {};
-  for (const w of layout.widgets) if (w.id === w.kind && w.kind !== "poll" && w.style) cardStyles[w.kind] = w.style;
+  for (const w of layout.widgets) if (w.id === w.kind && w.kind !== "poll" && w.kind !== "feed" && w.style) cardStyles[w.kind] = w.style;
   const items = layout.grid?.items.filter((i) => DASHBOARD_CARD_IDS.includes(i.id as DashboardCardId)) ?? [];
   const grid = layout.grid && items.length === cards.filter((c) => c.visible).length ? {...layout.grid, items} as DashboardGridLayout : null;
   return {cards, cardStyles, grid};

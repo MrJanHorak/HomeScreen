@@ -9,6 +9,8 @@ import type {useWatchNext as useWatchNextContract} from '../src/hooks/useWatchNe
 import type {PollView} from '../../server/functions/src/utils/polls';
 import type {DashboardAppearance} from '../src/theme/appearance';
 import type {PeopleActivityFeed} from '../../shared/src/people';
+import type {FeedResult} from '../../server/functions/src/utils/feedConfig';
+import type {WidgetLayout} from '../../server/functions/src/utils/widgets';
 
 export type FixtureDashboard = Pick<ReturnType<typeof useDashboardContract>,
   'isLoading' | 'activeLocation' | 'savedLocations' | 'getWeatherForLoc' | 'setActiveLocation' |
@@ -22,6 +24,8 @@ interface FixtureState {
   polls?: Record<string, PollView>;
   appearance?: DashboardAppearance;
   people?: PeopleActivityFeed['people'];
+  feeds?: Record<string, FeedResult>;
+  setWidgetLayout?: (layout: WidgetLayout) => void;
 }
 
 const Fixture = createContext<FixtureState | null>(null);
@@ -42,7 +46,8 @@ export function useTheme() {
   const appearance = useFixture().appearance || DEFAULT_APPEARANCE;
   return scoped || {...themeForPalette(appearance.palette, appearance.customAccent, appearance.backgroundColor, appearance.background, appearance.reading), fontsReady: true};
 }
-export function useAppearance() {return {appearance: useFixture().appearance || DEFAULT_APPEARANCE};}
+export function useAppearance() {const fixture = useFixture(); return {appearance: fixture.appearance || DEFAULT_APPEARANCE, ready: true, setWidgetLayout: fixture.setWidgetLayout || (() => undefined)};}
+export function useFeeds() {return {feeds: useFixture().feeds || {}, loading: false, offline: false, refresh: () => undefined};}
 export function usePolls() {return {rounds: useFixture().polls || {}, loading: false, stale: false, offsetMs: 0, updatedAtMs: Date.now(), setVisible: () => undefined};}
 export const usePollVisibility = () => () => undefined;
 export function CardThemeProvider({children, theme}: {children: ReactNode; theme: TVThemeType}) {return <ScopedTheme.Provider value={theme}>{children}</ScopedTheme.Provider>;}

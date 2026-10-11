@@ -27,6 +27,7 @@ src/
 │   │   └── photos/            Photo gallery and picker lifecycle
 │   ├── polls/                React management/voting/widget editor and private CSS
 │   ├── people/               React sharing manager and private CSS
+│   ├── feeds/                Feed source/title controls, previews and private CSS
 │   ├── weather/
 │   │   └── weatherEditor.ts
 │   ├── pairing/                Pairing controller and form template

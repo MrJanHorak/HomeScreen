@@ -32,6 +32,7 @@ export const useDashboard = () => ({isLoading: false, isLive: true, error: null,
   completeTask: async (id: string) => {Object.assign(window, {lastCompletedTask: id});},
 });
 export const usePeople = () => ({people: [], error: null});
+export const useFeeds = () => ({feeds: {}, loading: false, offline: false, refresh: noop});
 export const useFavoriteApps = () => ({availableApps: [], favoriteApps: [], visible: true, status: 'ready', syncError: null,
   setVisible: noop, toggleFavorite: noop, moveFavorite: noop, refresh: noop});
 export const useWatchNext = () => ({status: 'ready', hidden: [], items: Array.from({length: 5}, (_, i) => ({id: i,

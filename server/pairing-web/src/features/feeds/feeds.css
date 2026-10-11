@@ -1,0 +1,7 @@
+.feed-editor {display: grid; gap: 12px; min-width: 0;}
+.feed-editor .field-hint {margin: 0;}
+.feed-preview {border: 1px solid #496259; border-radius: 12px; padding: 16px; background: #142823; overflow-wrap: anywhere;}
+.feed-preview h3 {margin-top: 0;}
+.feed-preview ul {display: grid; gap: 12px; padding-left: 20px; line-height: 1.5;}
+.feed-editor :focus-visible {outline: 3px solid #b9e6d1; outline-offset: 3px;}
+@media (max-width: 600px) {.feed-editor .widget-fields {grid-template-columns: 1fr;}}

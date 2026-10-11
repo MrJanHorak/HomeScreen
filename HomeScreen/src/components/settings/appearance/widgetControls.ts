@@ -12,12 +12,13 @@ export function editableWidgetLayout(appearance: DashboardAppearance): WidgetLay
 }
 
 export function widgetLabel(widget: Widget, people: {id: string; name: string}[] = [], polls: {id: string; question: string}[] = []): string {
+  if (widget.kind === 'feed') return `Feed · ${widget.feed?.title || 'Headlines'}`;
   if (widget.kind === 'poll') return `Poll · ${polls.find((poll) => poll.id === widget.roundId)?.question || 'Saved poll'}`;
   if (widget.personId) return `Activity · ${people.find((person) => person.id === widget.personId)?.name || 'Shared person'}`;
   return CARD_LABELS[widget.kind] || widget.kind;
 }
 
-export type WidgetAction = {type: 'order' | 'swap'; direction: -1 | 1} | {type: 'visibility'} | {type: 'size'} |
+export type WidgetAction = {type: 'order' | 'swap'; direction: -1 | 1} | {type: 'visibility' | 'remove'} | {type: 'size'} |
   {type: 'geometry'; field: 'x' | 'y' | 'width' | 'height'; amount: -1 | 1};
 
 export function changeWidget(layout: WidgetLayout, id: string, action: WidgetAction): WidgetLayout {
@@ -26,7 +27,11 @@ export function changeWidget(layout: WidgetLayout, id: string, action: WidgetAct
   const widget = layout.widgets[index];
   let widgets = [...layout.widgets];
   let grid = layout.grid;
-  if (action.type === 'swap' && grid) {
+  if (action.type === 'remove') {
+    if (widget.kind !== 'feed') return layout;
+    widgets = widgets.filter((item) => item.id !== id);
+    if (grid) grid = {...grid, items: grid.items.filter((item) => item.id !== id)};
+  } else if (action.type === 'swap' && grid) {
     const positions = [...grid.items].sort((a, b) => a.y - b.y || a.x - b.x);
     const position = positions.findIndex((item) => item.id === id);
     const other = positions[position + action.direction];

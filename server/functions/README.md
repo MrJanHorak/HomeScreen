@@ -159,7 +159,8 @@ The export manifest in [`src/index.ts`](src/index.ts) is authoritative. In addit
 - `appearanceStudio` manages owner drafts, named designs, history, and revision checks; TV sessions can read saved designs only.
 - `polls` manages owner templates/rounds; `pollFeed` serves TV summaries; `pollParticipant` handles public voting credentials and cookies. `pollRetention` is a scheduled daily archived-ballot cleanup, not a dashboard-sync trigger. See [Polls](../pairing-web/POLLS.md).
 - `people` manages invitations/shares, `beginGoogleActivity` starts participant-only activity consent, and `peopleActivity` serves authorized activity summaries. See [People](../pairing-web/PEOPLE.md).
-- Appearance supports additive `widgetLayout` instances for built-ins, polls, and people activity, and typed `reading` preferences; legacy cards/grid remain compatibility fields. Card styles also accept validated `useThemeSurface`, `borderWidth` (0–4) and integer `borderRadius` (0–32). See [layout contract](../pairing-web/DASHBOARD_LAYOUT.md).
+- `feeds` reads authenticated public HTTPS RSS/Atom sources with bounded parsing, private-network/redirect protection and per-account cached fallback. See [Feed widgets](../pairing-web/FEEDS.md), including `feedCache.expiresAt` TTL configuration.
+- Appearance supports additive `widgetLayout` instances for built-ins, polls, people activity and feeds, and typed `reading` preferences; legacy cards/grid remain compatibility fields. Card styles also accept validated `useThemeSurface`, `borderWidth` (0–4) and integer `borderRadius` (0–32). See [layout contract](../pairing-web/DASHBOARD_LAYOUT.md).
 
 The older directory tree and JSON example above illustrate core modules/data rather than enumerate every field/file. Polls and shared activity use separate feeds instead of the ten-minute dashboard summary cache.
 

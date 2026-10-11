@@ -4,7 +4,9 @@ This small TypeScript/Vite app lives beside the Cloud Functions under `server/` 
 
 The [TV app README](../../HomeScreen/README.md) shows the current dashboard and settings screenshots. The companion handles pairing, dashboard appearance, ambient settings, weather cities, Google Photos selection, meal Sheets, and per-TV favorite apps. All seven owner/setup pages adapt from phones to tablets and laptops. See the [UX review and settings coverage](UX_REVIEW.md) for the design assessment and release checks.
 
-## Polls and People
+## Polls, People and feeds
+
+Dashboard → Layout & cards can add multiple independent RSS/Atom feed widgets. Select a preset or custom public HTTPS URL, preview it, choose a title/headline limit and Save to TV. See [Feed widgets](FEEDS.md) for TV selection, caching, release and verification details.
 
 The signed-in companion also has **Polls** (`/polls`) for reusable questions, voting rounds, moderation/results and dashboard widgets, and **People** (`/people`) for consented activity-only sharing from other Google accounts. Participant QR links open a separate `/vote/<token>` page without owner navigation or sign-in requirements. See [Polls](POLLS.md) and [People](PEOPLE.md) for privacy limits, retention, deployment/index/TTL configuration, and real-account smoke tests. These features are implemented in source; their current production rollout is not established by this guide.
 

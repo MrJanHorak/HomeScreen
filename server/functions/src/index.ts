@@ -26,6 +26,7 @@ import {userPreferencesHandler} from "./userPreferences";
 import {deviceAppsHandler} from "./deviceApps";
 import {pollsHandler, pollFeedHandler, pollParticipantHandler, pollRetention} from "./polls";
 import {peopleHandler, peopleActivityHandler} from "./people";
+import {feedsHandler} from "./feeds";
 
 
 // import {onRequest} from "firebase-functions/https";
@@ -75,3 +76,4 @@ export {pollRetention};
 export const people = peopleHandler;
 export const peopleActivity = peopleActivityHandler;
 export const beginGoogleActivity = beginGoogleActivityHandler;
+export const feeds = feedsHandler;

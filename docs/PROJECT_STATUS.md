@@ -17,6 +17,7 @@ The core household dashboard is substantially accomplished: the six original inf
 - [x] Today's and upcoming dinners from an optional read-only Google Sheet, including supplied meal metadata.
 - [ ] Full meal planning: editing, recipes/groceries views, and broader household meal management are missing.
 - [x] Household polls for movie/game/dinner/activity questions, reusable rounds, QR participation, and aggregate TV results. These are generic polls; no movie/game catalog is attached.
+- [x] RSS/Atom feed widget instances with per-card source/title/headline limits, companion previews/custom URLs, TV source selection/story summaries/QR links, and cached outage fallback. Added October 10; see [Feeds](../server/pairing-web/FEEDS.md) for release and validation scope.
 
 ### Personalization and idle use
 
@@ -42,7 +43,7 @@ The core household dashboard is substantially accomplished: the six original inf
 - [x] Unified cached dashboard endpoint and isolation of upstream failures.
 - [x] Cached TV cold startup: an account-scoped dashboard summary persists locally and restores after session recovery while a background refresh runs. Saved snapshots up to 24 hours old show their source timestamp and remain visible on a refresh failure; sign-out/revocation clears them.
 - [ ] Immediate/offline-first startup remains partial for first-ever launches, expired/missing caches, non-default-city weather, and separate Polls/People feeds. The backend still fetches providers on a cache miss. No scheduled dashboard prefetch exists; `syncUserData` is on demand.
-- [ ] Universal search, Home Assistant/smart-home controls, news/information feeds, quotes/jokes/opt-in verses remain unimplemented.
+- [ ] Universal search, Home Assistant/smart-home controls, quotes/jokes/opt-in verses remain unimplemented. RSS/Atom news/information feeds were added October 10.
 - [ ] Other Smart TV platforms remain unimplemented; Android TV/Google TV is the native target, with a browser preview.
 
 ## Where the implementation deviated
@@ -56,7 +57,7 @@ The core household dashboard is substantially accomplished: the six original inf
 | General customization | Bounded 12×6 geometry and typed appearance, with fixed header/favorites | Predictable sizing and validation; arbitrary layouts/design tokens remain constrained. |
 | Mostly TV-centric implementation | Companion studio, draft/history lifecycle, voting portal, and account controls | Makes remote-unfriendly editing practical, but increases maintenance and deployment scope. |
 | Possible household polls and activity | Browser/invitation voting and explicit activity consent/expiry | Beyond the old signed-in-only poll roadmap; browser voting is not one verified person per vote. |
-| Six fixed cards | Versioned widget instances for built-ins, polls, and per-person activity | Expands the vision while preserving legacy fallback; this is not an unrestricted plugin/feed system. |
+| Six fixed cards | Versioned widget instances for built-ins, polls, per-person activity, and RSS/Atom feeds | Expands the vision while preserving legacy fallback; arbitrary plugin widgets remain outside scope. |
 
 These changes broadly preserve the ad-free, useful, calm dashboard intent. The material departures are platform-limited entertainment, shared rather than individual dashboards, and first-load provider fetching when no usable TV cache exists. Richer editing and larger widgets need real couch-distance usability evidence to confirm the calm/readable goal.
 
@@ -66,7 +67,7 @@ These changes broadly preserve the ad-free, useful, calm dashboard intent. The m
 2. **Migrate activity away from Google Fit.** The current adapters use Fit REST. Google's [Fit migration guide](https://developer.android.com/health-and-fitness/health-connect/migration/fit) says support lasts only through the end of 2026. The [Google Health API page](https://developers.google.com/health) currently says new projects are not being onboarded. Validate project eligibility and needed metrics before choosing the replacement; Health Connect would need a phone-side ingestion path. These vendor statements were checked October 9.
 3. **Close core-use gaps before adding more widgets.** Validate cached cold startup on hardware, improve first-load/cache freshness and remaining offline feeds, and expose provider-specific failure/staleness states (Calendar/Tasks currently become empty arrays when their providers fail). Decide whether week/month calendar views, task editing/history, or watchlists are the next household priority.
 4. **Decide the ownership model.** Choose whether profiles, household roles/source-specific sharing, or independent per-TV designs are needed. Activity invitations grant activity viewing only; they do not solve collaborative dashboard management.
-5. **Expand optional scope deliberately.** Media catalogs/linking, time-of-day modes, feed widgets, universal search, and smart-home controls can follow. The original plan listed possibilities rather than a commitment to implement all of them.
+5. **Expand optional scope deliberately.** Media catalogs/linking, time-of-day modes, universal search, and smart-home controls can follow. RSS/Atom feed widgets were added October 10. The original plan listed possibilities rather than a commitment to implement all of them.
 
 ## Release and verification evidence
 

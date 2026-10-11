@@ -25,6 +25,7 @@ components/
 │   ├── meals/
 │   ├── tasks/
 │   ├── polls/
+│   ├── feeds/               RSS/Atom headlines and measured layout budgets
 │   ├── header/             HeaderBar and its private clock/greeting hooks
 │   └── favorites/
 ├── details/
@@ -35,7 +36,8 @@ components/
 │   ├── media/
 │   ├── meals/
 │   ├── tasks/
-│   └── polls/
+│   ├── polls/
+│   └── feeds/               Source selection and story/QR detail views
 ├── settings/
 │   ├── SettingsDetailView.tsx
 │   ├── shared/             Panels and Photos picker used by settings sections

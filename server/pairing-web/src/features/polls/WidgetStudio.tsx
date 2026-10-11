@@ -10,6 +10,8 @@ import {WidgetCanvas} from '../dashboard/grid/WidgetCanvas';
 import {pollApi} from './pollApi';
 import type {PollRequest, PollLibrary, RoundSummary} from './pollApi';
 import './polls.css';
+import {FeedEditor} from '../feeds/FeedEditor';
+import type {FeedOptions} from '../../../../functions/src/utils/feedConfig';
 
 function WidgetStudio({appearance, busy, request, update, previewRoot, addRoot}: {appearance: Appearance; busy: boolean; request: PollRequest; update: (layout: WidgetLayout) => void; previewRoot: HTMLElement; addRoot: HTMLElement}) {
   const layout = appearance.widgetLayout;
@@ -33,7 +35,7 @@ function WidgetStudio({appearance, busy, request, update, previewRoot, addRoot}:
       setMessage(requested && !available.some((r) => r.id === requested) ? 'That poll is no longer available. Choose another voting round below.' : '');
     }}).catch((e) => {if (active) setMessage(e.message);}).finally(() => {if (active) setLoading(false);});
     return () => {active = false;};}, [request, refresh]);
-  const label = (widget: Widget) => widget.kind === 'poll' ? rounds.find((r) => r.id === widget.roundId)?.question || 'Poll' :
+  const label = (widget: Widget) => widget.kind === 'feed' ? `Feed · ${widget.feed?.title || 'Headlines'}` : widget.kind === 'poll' ? rounds.find((r) => r.id === widget.roundId)?.question || 'Poll' :
     widget.personId ? `Activity · ${people.find((p) => p.id === widget.personId)?.name || 'Person unavailable'}` : CARD_LABELS[widget.kind];
   function addActivity() {
     if (!personId || !people.some((p) => p.id === personId)) return;
@@ -64,7 +66,21 @@ function WidgetStudio({appearance, busy, request, update, previewRoot, addRoot}:
     if (!validWidgetLayout(next)) {setMessage('Your automatic rows are full. Hide a card or switch to Free layout before adding another poll.'); return;}
     commit(next); setSelected(widget.id);
   }
+  function addFeed(feed: FeedOptions) {
+    const current = layout || widgetsFromLegacy(appearance.cards, appearance.grid, appearance.cardStyles);
+    const widget: Widget = {id: `feed_${crypto.randomUUID().replaceAll('-', '')}`, kind: 'feed', feed, visible: true, size: 'standard'};
+    let grid = current.grid;
+    if (grid) {const space = freeWidgetSpace(grid, widget.id); if (!space) {setMessage('Make space on the canvas before adding another feed.'); return;} grid = {...grid, items: [...grid.items, space]};}
+    const next = {...current, grid, widgets: [...current.widgets, widget]};
+    if (!validWidgetLayout(next)) {setMessage('Hide a widget or choose Free layout before adding another feed.'); return;}
+    commit(next); setSelected(widget.id);
+  }
   return <section className="widget-studio" aria-label="Widgets and arrangement">
+    {createPortal(<section className="studio-add-poll" aria-labelledby="studio-add-feed-title">
+      <div className="poll-section-heading"><div><h2 id="studio-add-feed-title">Add a feed widget</h2><p className="field-hint">Add several feeds, each with its own source, title, and layout.</p></div></div>
+      <FeedEditor request={request} busy={busy} apply={addFeed} actionLabel="Add feed widget"/>
+      {!layout && message && <p role="alert" className="status" data-kind="error">{message}</p>}
+    </section>, addRoot)}
     {createPortal(<section className="studio-add-poll" aria-labelledby="studio-add-activity-title">
       <div className="poll-section-heading"><div><h2 id="studio-add-activity-title">Add a person’s activity</h2><p className="field-hint">Each person has an independent card. Joining does not change your layout.</p></div><a className="guide-link" href="/people">Manage People →</a></div>
       <div className="widget-add-controls"><select aria-label="Person’s activity to add" disabled={busy || peopleLoading || !people.length} value={personId} onChange={(e) => setPersonId(e.target.value)}>
@@ -87,9 +103,10 @@ function WidgetStudio({appearance, busy, request, update, previewRoot, addRoot}:
         <div className="widget-toolbar widget-heading"><h3>{label(widget)}</h3><button type="button" className="button button-secondary" aria-expanded={selected === widget.id} disabled={busy} onClick={() => setSelected(selected === widget.id ? '' : widget.id)}>{selected === widget.id ? 'Hide controls' : 'Edit widget'}</button></div>
         <div className="widget-toolbar"><label><input type="checkbox" disabled={busy} checked={widget.visible} onChange={(e) => visibility(widget, e.target.checked)}/>Visible</label>
           {!layout.grid && <><button type="button" className="button button-secondary" aria-label={`Move ${label(widget)} earlier`} disabled={busy || index === 0} onClick={() => {const widgets = [...layout.widgets]; [widgets[index - 1], widgets[index]] = [widgets[index], widgets[index - 1]]; commit({...layout, widgets});}}>↑</button><button type="button" className="button button-secondary" aria-label={`Move ${label(widget)} later`} disabled={busy || index === layout.widgets.length - 1} onClick={() => {const widgets = [...layout.widgets]; [widgets[index], widgets[index + 1]] = [widgets[index + 1], widgets[index]]; commit({...layout, widgets});}}>↓</button></>}
-          {(widget.kind === 'poll' || widget.personId) && <button type="button" className="button button-text" disabled={busy} onClick={() => commit({...layout, widgets: layout.widgets.filter((w) => w.id !== widget.id), grid: layout.grid ? {...layout.grid, items: layout.grid.items.filter((i) => i.id !== widget.id)} : null})}>Remove widget</button>}
+          {(widget.kind === 'poll' || widget.kind === 'feed' || widget.personId) && <button type="button" className="button button-text" disabled={busy} onClick={() => commit({...layout, widgets: layout.widgets.filter((w) => w.id !== widget.id), grid: layout.grid ? {...layout.grid, items: layout.grid.items.filter((i) => i.id !== widget.id)} : null})}>Remove widget</button>}
         </div>
         {selected === widget.id && <fieldset disabled={busy} className="poll-form-fields">
+          {widget.kind === 'feed' && <FeedEditor feed={widget.feed} request={request} busy={busy} apply={(feed) => change(widget.id, {feed})} actionLabel="Apply feed settings"/>}
           <div className="widget-fields"><label>Surface preset<select value={widget.style?.useThemeSurface !== false ? 'theme' : 'custom'} onChange={(e) => change(widget.id, {style: e.target.value === 'theme' ? undefined : {backgroundColor: '#142338', opacity: .95, useThemeSurface: false, borderWidth: 1, borderRadius: 20}})}><option value="theme">Follow dashboard theme</option><option value="custom">Custom color</option></select></label>
             {!layout.grid && <label>Row width<select value={widget.size} onChange={(e) => change(widget.id, {size: e.target.value as Widget['size']})}><option value="standard">Standard</option><option value="wide">Wide where space permits</option></select></label>}
             {widget.style && !widget.style.useThemeSurface && <>

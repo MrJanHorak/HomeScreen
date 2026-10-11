@@ -64,7 +64,9 @@ export default function TVDetailModal({
         target?.isContentEditable ||
         target?.tagName === 'INPUT' ||
         target?.tagName === 'TEXTAREA';
-      if (e.key === 'Escape' || (e.key === 'Backspace' && !isEditing)) {
+      // React Native Web's Modal delivers Escape through onRequestClose on keyup.
+      // Handling it again on keydown would pop a nested view and close the modal.
+      if (e.key === 'Backspace' && !isEditing) {
         handleBack();
       }
     };

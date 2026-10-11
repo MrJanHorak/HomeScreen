@@ -8,6 +8,45 @@ after(async () => {await browser?.close();});
 const base = {layout: 'balanced', palette: 'night', customAccent: '#38BDF8', background: 'photo', backgroundColor: '#0F172A', backgroundZoom: 1.05,
   cards: ['weather', 'schedule', 'activity', 'media', 'meal', 'todo'].map((id, i) => ({id, visible: true, size: i === 1 ? 'wide' : 'standard'})), grid: null, cardStyles: {}};
 const pollId = `poll_${'a'.repeat(32)}`;
+
+for (const width of [390, 1440]) test(`feed widgets preview, stay independent, survive drafts and publish at ${width}px`, async (t) => {
+  const {page, state, open, waitIdle} = await setup(t, {}, {viewport: {width, height: 1000}});
+  const previews = [];
+  await page.route('**/__fixture-api/feeds', async (route) => {
+    const url = route.request().postDataJSON().urls[0]; previews.push(url);
+    await route.fulfill({json: {feeds: [{url, title: 'Sample feed', articles: [{id: 'story', title: '<script>Publisher headline</script>', summary: 'Summary', url: 'https://news.example.org/story', publishedAtMs: Date.now()}], stale: false, error: null, updatedAtMs: Date.now()}]}});
+  });
+  const add = page.locator('.studio-add-poll').filter({has: page.getByRole('heading', {name: 'Add a feed widget', exact: true})});
+  await add.getByRole('button', {name: 'Preview feed', exact: true}).click();
+  await add.getByRole('region', {name: 'Feed preview'}).waitFor();
+  assert.equal(await add.locator('script').count(), 0); assert.match(await add.innerText(), /<script>Publisher headline<\/script>/);
+  await add.getByRole('button', {name: 'Add feed widget', exact: true}).click();
+  await waitIdle();
+  await add.getByRole('button', {name: 'Add feed widget', exact: true}).click();
+  const persisted = async () => {await page.waitForFunction(() => document.querySelector('#draft-status').textContent.startsWith('Draft saved to your account')); await waitIdle(); return state.library.draft.appearance.widgetLayout;};
+  let layout = await persisted(); const added = layout.widgets.filter((w) => w.kind === 'feed');
+  assert.equal(added.length, 2); assert.notEqual(added[0].id, added[1].id); assert.equal(state.publishes, 0);
+  const row = page.locator('.widget-row').filter({has: page.getByRole('heading', {name: 'Feed · BBC World', exact: true})}).last();
+  if (await row.getByRole('button', {name: 'Edit widget', exact: true}).count()) await row.getByRole('button', {name: 'Edit widget', exact: true}).click();
+  await row.getByLabel('Feed source', {exact: true}).selectOption('custom');
+  await row.getByLabel('Feed URL', {exact: true}).fill('http://localhost/feed');
+  await row.getByRole('button', {name: 'Apply feed settings', exact: true}).click();
+  await row.getByRole('alert').waitFor();
+  await row.getByLabel('Feed URL', {exact: true}).fill('https://news.example.org/rss');
+  await row.getByLabel('Widget title', {exact: true}).fill('Local headlines');
+  await row.getByLabel('Stories to show', {exact: true}).selectOption('3');
+  await row.getByRole('button', {name: 'Apply feed settings', exact: true}).click();
+  layout = await persisted(); assert.equal(layout.widgets.find((w) => w.id === added[0].id).feed.title, 'BBC World');
+  assert.deepEqual(layout.widgets.find((w) => w.id === added[1].id).feed, {url: 'https://news.example.org/rss', title: 'Local headlines', itemCount: 3});
+  const saved = structuredClone(layout); await open();
+  assert.equal(await page.getByRole('heading', {name: 'Feed · Local headlines', exact: true}).count(), 1);
+  assert.equal(state.publishes, 0);
+  await page.getByRole('button', {name: /Save to TV/}).click();
+  await page.waitForFunction(() => document.querySelector('#draft-status').textContent === 'No unpublished draft.');
+  assert.deepEqual(state.appearance.widgetLayout, saved);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth), false);
+  if (process.env.STUDIO_SCREENSHOT_DIR) await page.screenshot({path: `${process.env.STUDIO_SCREENSHOT_DIR}/feeds-companion-${width}.png`, fullPage: true});
+});
 test('reading controls preview, undo, recover drafts and publish through the companion', async (t) => {
   const {page, state, open, waitIdle} = await setup(t, {appearance: widgetAppearance()});
   await page.getByText('Fonts & reading', {exact: true}).click();

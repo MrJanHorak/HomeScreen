@@ -6,7 +6,7 @@ HomeScreen is an ad-free household dashboard built with Expo, React Native TV, a
 
 ## Current implementation
 
-- The home dashboard shows a clock and greeting, six built-in configurable cards plus optional poll and shared-activity widgets (schedule, activity, media, weather, meals, and tasks), and a favorite-app row. Selecting a card opens a larger detail panel.
+- The home dashboard shows a clock and greeting, six built-in configurable cards plus optional poll, shared-activity and RSS/Atom feed widgets (schedule, activity, media, weather, meals, and tasks), and a favorite-app row. Selecting a card opens a larger detail panel.
 - A TV pairing code and QR link connect the app to a Google account through the companion [pairing site](../server/pairing-web/README.md). Firebase Authentication persists the TV session.
 - The [Cloud Functions backend](../server/functions/README.md) provides Google Calendar, Google Tasks, Google Fit activity, OpenWeatherMap weather, and an optional Google Sheets dinner plan. Dashboard data refreshes every five minutes. Individual upstream failures do not prevent the other cards from loading.
 - Cached cold startup restores the signed-in account's last successful dashboard summary while refreshing in the background. Snapshots up to 24 hours old show a saved-data timestamp and remain visible during outages; sign-out or session revocation removes them. First-ever startup and expired caches need a connection. See [cache behavior and verification](../docs/architecture/tv-client.md#cached-cold-start).
@@ -167,6 +167,8 @@ The companion also offers **Weather & goals** for shared weather cities and acti
 
 ### People, polls, and saved layouts
 
+RSS/Atom feed cards can be added on the TV or in companion Dashboard → Layout & cards. Each instance has an independent source and headline limit. Open its detail panel to change sources, browse stories and scan original-article QR links. Custom URLs, titles and previews are configured on the companion. See [Feed widgets](../server/pairing-web/FEEDS.md).
+
 Open **Settings → People** to invite another Google account to consent to activity-only sharing. Each person can have an independently arranged activity widget and revoke their share; this does not switch the dashboard login or grant layout editing. See [People](../server/pairing-web/PEOPLE.md).
 
 Create reusable polls and voting rounds on the companion **Polls** page; add round widgets in Dashboard Studio, publish, and let participants scan the QR. Names stay private to the owner; browser-level duplicate protection is not verified-person identity. See [Polls](../server/pairing-web/POLLS.md). The TV Cards section can hide/show built-ins, polls, and shared activity; Layout can apply saved companion designs.
@@ -231,7 +233,7 @@ The app includes `assets/tv-banner.png` for the launcher tile, `assets/icon.png`
 
 ## Next steps
 
-The [companion roadmap](../server/pairing-web/COMPANION_ROADMAP.md) and [project status](../docs/PROJECT_STATUS.md) track remaining work. Polls, shared activity, saved designs/history, reading controls, and cached dashboard cold startup are implemented in source. Profiles/general household roles, independent per-TV appearance, new feed widgets, full calendar/task management, broader media, first-load prefetch, and offline coverage for other feeds remain open. Current-build TV readability, remote focus, accessibility, and reliability still need hardware checks.
+The [companion roadmap](../server/pairing-web/COMPANION_ROADMAP.md) and [project status](../docs/PROJECT_STATUS.md) track remaining work. Polls, shared activity, RSS/Atom feeds, saved designs/history, reading controls, and cached dashboard cold startup are implemented in source. Profiles/general household roles, independent per-TV appearance, daily-content widgets, full calendar/task management, broader media, first-load prefetch, and offline coverage for other feeds remain open. Current-build TV readability, remote focus, accessibility, and reliability still need hardware checks.
 
 ## Asset credits and license
 

@@ -10,6 +10,11 @@ import { Platform } from 'react-native';
 import type {PollView} from '../../../server/functions/src/utils/polls';
 import type {PeopleActivityFeed, PeopleSettings, PeopleInvitation} from '../../../shared/src/people';
 import type {SavedDesign} from '../../../server/functions/src/utils/appearanceLibrary';
+import type {FeedResponse} from '../../../server/functions/src/utils/feedConfig';
+
+export async function fetchFeeds(urls: string[], signal?: AbortSignal): Promise<FeedResponse> {
+  return authenticatedRequest('feeds', 'Could not refresh feeds', {method: 'POST', body: JSON.stringify({urls}), signal});
+}
 
 export async function getSavedDashboardLayouts(): Promise<SavedDesign[]> {
   const result = await authenticatedRequest<{designs: SavedDesign[]}>('appearanceStudio?designs=1', 'Could not load saved layouts');

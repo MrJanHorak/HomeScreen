@@ -79,12 +79,31 @@ test('local account cleanup includes the dashboard snapshot', async () => {
   const local = load('src/services/localUserData.ts', {
     '@react-native-async-storage/async-storage': {multiRemove: async () => events.push('preferences')},
     './dashboardCache': {clearDashboardCache: async (uid) => events.push(uid)},
+    './feedCache': {clearFeedCache: async (uid) => events.push(`feeds:${uid}`)},
     './weatherLocationService': {STORAGE_KEY_LOCATIONS: 'locations', STORAGE_KEY_ACTIVE_LOC: 'active'},
   });
   await local.clearLocalUserData('owner');
-  assert.deepEqual(events, ['owner', 'preferences']);
+  assert.deepEqual(events, ['owner', 'feeds:owner', 'preferences']);
 });
 const {createDashboardSession} = load('src/services/dashboardSession.ts');
+test('feed snapshots are account-scoped, reject damaged links, and serialize sign-out after pending writes', async () => {
+  const disk = new Map(); const pending = deferred(); let delayed = false;
+  const storage = {getItem: async (key) => disk.get(key) || null, removeItem: async (key) => disk.delete(key),
+    setItem: async (key, raw) => {if (delayed) await pending.promise; disk.set(key, raw);}};
+  const contract = load('../server/functions/src/utils/feedConfig.ts');
+  const cache = load('src/services/feedCache.ts', {'@react-native-async-storage/async-storage': storage, '../../../server/functions/src/utils/feedConfig': contract});
+  const url = contract.FEED_PRESETS[0].url; const item = {url, title: 'News', updatedAtMs: Date.now()-1000, error: null, stale: false,
+    articles: [{id: 'story', title: 'Story', summary: 'Summary', url: 'https://news.example.org/story', publishedAtMs: null}]};
+  await cache.saveFeedCache('owner', {[url]: item}); assert.deepEqual(await cache.loadFeedCache('owner'), {[url]: item});
+  assert.deepEqual(await cache.loadFeedCache('another'), {});
+  for (const patch of [{updatedAtMs: Date.now()-8*86400000}, {articles: [{...item.articles[0], url: 'javascript:alert(1)'}]}, {articles: [{title: 'Incomplete'}]}]) {
+    disk.set('@tv_feeds_v1:owner', JSON.stringify({version:1, uid:'owner', feeds:{[url]:{...item, ...patch}}}));
+    assert.deepEqual(await cache.loadFeedCache('owner'), {});
+  }
+  delayed=true; const saved=cache.saveFeedCache('owner', {[url]:item}); const cleared=cache.clearFeedCache('owner');
+  const other=cache.saveFeedCache('another', {[url]:item}); pending.resolve(); await Promise.all([saved, cleared, other]);
+  assert.deepEqual(await cache.loadFeedCache('owner'), {}); assert.ok((await cache.loadFeedCache('another'))[url]);
+});
 function themeSetup({diskFails = false} = {}) {
   const states = [], refs = [], dependencies = [], cleanup = [];
   let stateIndex, refIndex, effectIndex, queued;

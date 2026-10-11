@@ -14,7 +14,7 @@ export default {
   plugins: [{name: 'detail-fixtures', enforce: 'pre', resolveId(id) {
     if (id === './speechDriver') return path.resolve(root, '../src/accessibility/speechDriver.web.ts');
     if (id === './narrationEnvironment') return path.resolve(root, '../src/accessibility/narrationEnvironment.web.ts');
-    if (/\/(context\/(DashboardContext|AuthContext|PollsContext|PeopleContext)|hooks\/(useWatchNext|useFavoriteApps)|theme\/ThemeContext|services\/(api|firebase))$/.test(id) || id === '@react-native-async-storage/async-storage') return path.join(root, 'detailFixture.ts');
+    if (/\/(context\/(DashboardContext|AuthContext|PollsContext|PeopleContext|FeedsContext)|hooks\/(useWatchNext|useFavoriteApps)|theme\/ThemeContext|services\/(api|firebase))$/.test(id) || id === '@react-native-async-storage/async-storage') return path.join(root, 'detailFixture.ts');
   }}],
   server: {host: '127.0.0.1', port: 5177, strictPort: true, fs: {allow: [path.resolve(root, '../..')]}},
 };

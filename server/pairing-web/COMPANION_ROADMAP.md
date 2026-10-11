@@ -13,6 +13,7 @@ Reviewed October 9, 2026. Checked milestones are implemented in source; use the 
 - [x] Reusable poll templates/rounds, phone QR participation, results/moderation/export, independent widget instances and retention. See [Polls](POLLS.md).
 - [x] Invitations with explicit activity-only consent from other accounts, independent activity widgets, and participant/owner revocation. See [People](PEOPLE.md).
 - [x] Fonts/reading colors, bold/spacing choices and OpenDyslexic preset in the studio; TV-local narration is configured on the TV.
+- [x] Independent RSS/Atom feed widgets, preset/custom source selection, title/headline limits, previews, TV story/QR/source controls and cached fallback. Added October 10; see [Feeds](FEEDS.md).
 - [x] Dashboard, Polls, People, Weather & goals, Meals, TVs & account, Pair TV routes, plus separate guest voting; responsive companion shell.
 
 ## Remaining priorities
@@ -22,7 +23,7 @@ Reviewed October 9, 2026. Checked milestones are implemented in source; use the 
 - [ ] Personal profiles, general household roles/source-specific sharing beyond activity, independent per-TV appearance, or separate compact layouts.
 - [ ] Week/month calendar UI and in-app source selection, fuller task management, richer media/watchlists, and offline/cold-start behavior across the product.
 - [ ] Additional typed design controls such as text-size scale, layout spacing and selectable widget variants. Reading weight/letter spacing already exist; arbitrary web CSS is not supported on React Native TV.
-- [ ] Daily-content widgets (quotes, jokes, opt-in verses) with attribution, filtering, caching and provider fallback. The instance model supports built-ins, polls, and people activity; broader registry/provider support remains work.
+- [ ] Daily-content widgets (quotes, jokes, opt-in verses) with attribution, filtering, caching and provider fallback. The instance model supports built-ins, polls, people activity and RSS/Atom feeds; broader registry/provider support remains work.
 - [ ] Universal search, smart-home integrations, automatic time-of-day modes, and broader media intents/catalog integrations.
 
 The account owner remains the layout/connection authority. Activity participants share only consented activity; guest links authorize only their voting round. All linked TVs share published appearance and account data; favorites/narration are device-specific.

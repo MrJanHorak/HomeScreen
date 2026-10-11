@@ -14,6 +14,7 @@ import type {WidgetAction} from './widgetControls';
 import Option from './AppearanceOption';
 import LayoutPreview from './LayoutPreview';
 import {styles} from './appearanceStyles';
+import {FEED_PRESETS} from '../../../../../server/functions/src/utils/feedConfig';
 
 export default function WidgetCardSettings() {
   const theme = useTheme();
@@ -75,6 +76,7 @@ export default function WidgetCardSettings() {
           <Option label={widget.visible ? 'Shown' : 'Hidden'} selected={widget.visible} accessibilityLabel={`${name} ${widget.visible ? 'shown' : 'hidden'}`}
             disabled={!ready || widget.visible && visibleCount === 1} onPress={() => edit(widget.id, {type: 'visibility'})}/>
           {!layout.grid && action(widget.size === 'wide' ? 'Wide' : 'Standard', {type: 'size'})}
+          {widget.kind === 'feed' && action('Remove feed', {type: 'remove'}, widget.visible && visibleCount === 1)}
           {item && <>
             {action('Previous spot', {type: 'swap', direction: -1}, positions[0]?.id === widget.id)}
             {action('Next spot', {type: 'swap', direction: 1}, positions[positions.length - 1]?.id === widget.id)}
@@ -105,6 +107,9 @@ export default function WidgetCardSettings() {
       {sideBySide ? <>{controls}{preview}</> : <>{preview}{controls}</>}
     </View>
     <Text style={[styles.heading, {color: theme.colors.textPrimary}]}>Add cards</Text>
+    <Text style={[styles.description, copy]}>Add several feed widgets. Open a feed card to choose its source; use the companion site for custom URLs and titles.</Text>
+    <View style={styles.options}>{FEED_PRESETS.map((feed) => <Option key={feed.url} label={`Add ${feed.title} feed`} disabled={!ready}
+      onPress={() => run(() => setWidgetLayout(addDashboardWidget(layout, {id: `feed_${Array.from({length: 32}, () => Math.floor(Math.random() * 16).toString(16)).join('')}`, kind: 'feed', feed: {...feed, itemCount: 5}, visible: true, size: 'standard'})))}/>)}</View>
     <View style={styles.options}>{available.map((widget) => <Option key={widget.id} label={`Add ${label(widget)}`} disabled={!ready || loading}
       onPress={() => run(() => setWidgetLayout(addDashboardWidget(layout, widget)))}/>)}</View>
     {loading && <Text style={[styles.description, copy]}>Loading available cards…</Text>}
