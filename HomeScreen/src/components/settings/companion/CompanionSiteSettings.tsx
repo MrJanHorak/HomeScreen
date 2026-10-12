@@ -4,14 +4,12 @@ import { useEffect, useState } from 'react';
 import {Linking, StyleSheet, View} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
-import { useAuth } from '../../../context/AuthContext';
 import { useTheme } from '../../../theme/ThemeContext';
 import { companionSiteUrl } from '../../../services/companionSite';
 import { getDeviceConnectionInfo } from '../../../services/api';
 
 export default function CompanionSiteSettings() {
   const theme = useTheme();
-  const { user } = useAuth();
   const [focused, setFocused] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [url, setUrl] = useState(() => companionSiteUrl('/dashboard'));
@@ -55,7 +53,7 @@ export default function CompanionSiteSettings() {
         need the site.
       </Text>
       <Text style={[styles.account, { color: theme.colors.textPrimary }]}>
-        Sign in with {user?.email || 'the Google account linked to this TV'}.
+        Sign in with the Google account linked to this TV.
       </Text>
       {url ? (
         <View style={styles.qrRow}>

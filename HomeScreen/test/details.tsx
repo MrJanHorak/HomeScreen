@@ -17,7 +17,7 @@ function Fixture() {
   const topic = new URLSearchParams(location.search).get('topic') || 'settings';
   const Content = topics[topic as keyof typeof topics];
   return <NarrationProvider><button onClick={() => setVisible(true)}>Open detail</button>
-    <TVDetailModal visible={visible} title={topic === 'settings' ? 'Settings' : `${topic[0].toUpperCase()}${topic.slice(1)}`}
+    <TVDetailModal visible={visible} title={topic === 'settings' ? 'Settings' : topic === 'schedule' ? 'Calendar & Timeline' : `${topic[0].toUpperCase()}${topic.slice(1)}`}
       subtitle='Details for the household' icon='view-dashboard-outline' spacious={topic === 'settings'} onClose={() => setVisible(false)}>
       <Content/>
     </TVDetailModal></NarrationProvider>;

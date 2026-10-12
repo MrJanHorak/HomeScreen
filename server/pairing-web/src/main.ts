@@ -81,7 +81,7 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
     const userId = user?.uid ?? null;
     if (previousUserId !== undefined && previousUserId !== userId) feature.clear();
     previousUserId = userId;
-    accountName.textContent = user?.email || (user ? 'Signed in' : 'Not signed in');
+    accountName.textContent = user ? 'Signed in' : 'Not signed in';
     signInButton.hidden = Boolean(user);
     signOutButton.hidden = !user;
     if (user) {

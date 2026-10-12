@@ -50,8 +50,8 @@ export default function DeviceSettings() {
         />
         <DeviceInfoRow
           icon='account-circle-outline'
-          label='Signed-in User'
-          value={user?.email || 'Not signed in'}
+          label='Google Account'
+          value={user ? 'Connected' : 'Not signed in'}
         />
         <DeviceInfoRow
           icon='aspect-ratio'

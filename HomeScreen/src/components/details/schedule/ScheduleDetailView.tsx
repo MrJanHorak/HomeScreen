@@ -1,266 +1,116 @@
 import Pressable from '../../shared/NarratedPressable';
 import Text from '../../shared/ReadingText';
-import React, { useState } from 'react';
-import {View, StyleSheet, ScrollView} from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useTheme } from '../../../theme/ThemeContext';
-import { useDashboard } from '../../../context/DashboardContext';
-import type { CalendarEvent } from '../../../../../shared/src/types';
+import React, {useState} from 'react';
+import {View, StyleSheet} from 'react-native';
+import {MaterialCommunityIcons} from '@expo/vector-icons';
+import {useTheme} from '../../../theme/ThemeContext';
+import {useDashboard} from '../../../context/DashboardContext';
+import useTVClock from '../../../hooks/useTVClock';
+import type {CalendarEvent} from '../../../../../shared/src/types';
 import {useDetailLayout} from '../../shared/DetailLayout';
-
-function formatEventDate(date: string): string {
-  return new Intl.DateTimeFormat('en-US', {
-    weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC',
-  }).format(new Date(`${date}T12:00:00Z`));
-}
+import {calendarDisplayName, scheduleDate, scheduleEnd, scheduleEventState, scheduleTime} from '../../dashboard/schedule/schedulePresentation';
+import {scheduleAgenda} from './scheduleAgenda';
+import ScheduleScrollView from './ScheduleScrollView';
 
 export default function ScheduleDetailView() {
   const theme = useTheme();
-  const {twoColumns, compact} = useDetailLayout();
-  const { schedule, upcomingEvents, isLoading } = useDashboard();
+  const {compact, width} = useDetailLayout();
+  const {schedule, upcomingEvents, isLoading} = useDashboard();
+  const now = useTVClock();
+  const agenda = scheduleAgenda(schedule, upcomingEvents, now);
   const [activeTab, setActiveTab] = useState<'today' | 'upcoming'>('today');
-  const upcomingByDate = upcomingEvents.reduce<Record<string, CalendarEvent[]>>((groups, event) => {
-    if (event.date) (groups[event.date] ||= []).push(event);
-    return groups;
-  }, {});
+  const [focusedTab, setFocusedTab] = useState<string | null>(null);
+  const scale = compact ? 1 : 1.4;
+  const narrow = width < 560;
+  const timeWidth = (theme.reading.font === 'opendyslexic' ? 190 : 140) * scale;
+  const ink = theme.colors.textPrimary;
+  const secondary = theme.colors.textSecondary;
+  const tabs = [{id: 'today' as const, title: 'Today', count: agenda.today.length},
+    {id: 'upcoming' as const, title: 'Upcoming', count: agenda.upcomingCount}];
+  const groups = activeTab === 'today' ? [{date: agenda.today.find(event => event.date)?.date, events: agenda.today}] : agenda.upcoming;
+  const empty = activeTab === 'today' ? agenda.today.length === 0 : agenda.upcomingCount === 0;
 
-  const renderEvent = (evt: CalendarEvent) => (
-    <View key={evt.id} style={[styles.eventCard, compact && {paddingVertical: 10, paddingHorizontal: 12, gap: 10}]}>
-      <View style={[styles.timeBox, { borderColor: `${evt.color || '#38BDF8'}66` }]}>
-        <Text style={[styles.timeText, { color: theme.colors.textPrimary }]}>{evt.time}</Text>
-        {evt.endTime !== evt.time && !!evt.endTime && (
-          <Text style={[styles.endTimeText, { color: theme.colors.textSecondary }]}>{evt.endTime}</Text>
-        )}
+  const renderEvent = (event: CalendarEvent) => {
+    const state = scheduleEventState(event, now);
+    const status = state === 'in-progress' ? 'Happening now' : state === 'ended' ? 'Ended' : '';
+    const calendar = calendarDisplayName(event.category);
+    const start = scheduleTime(event), end = scheduleEnd(event);
+    const title = event.title || 'Untitled event';
+    const color = /^#[0-9a-f]{6}$/i.test(event.color) ? event.color : theme.colors.focusRing;
+    return <View key={`${event.id}|${event.date || ''}`} testID='schedule-detail-event' accessible
+      accessibilityLabel={[start, end, title, calendar, status].filter(Boolean).join(', ')}
+      style={[styles.event, {paddingVertical: 16 * scale, paddingHorizontal: 18 * scale, gap: 20 * scale,
+        borderColor: state === 'in-progress' ? theme.colors.focusRing : theme.colors.glassBorder,
+        backgroundColor: state === 'in-progress' ? theme.colors.glassSurfaceFocused : theme.colors.glassSurface},
+        narrow && styles.stackedEvent]}>
+      <View testID='schedule-detail-time' style={{width: narrow ? '100%' : timeWidth, gap: 4 * scale}}>
+        <Text style={{color: ink, fontSize: 20 * scale, fontWeight: '700'}}>{start}</Text>
+        {!!end && <Text style={{color: secondary, fontSize: 16 * scale}}>{end}</Text>}
       </View>
-
-      <View style={styles.eventInfo}>
-        <Text style={[styles.eventTitle, { color: theme.colors.textPrimary }]}>{evt.title}</Text>
-        {!compact && <View style={styles.metaRow}>
-          <MaterialCommunityIcons name="clock-outline" size={15} color={theme.colors.textSecondary} />
-          <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>
-            {evt.endTime && evt.endTime !== evt.time ? `${evt.time} – ${evt.endTime}` : evt.time}
-          </Text>
+      <View style={[styles.eventInfo, {gap: 6 * scale}]}>
+        <Text testID='schedule-detail-title' style={{color: ink, fontSize: 22 * scale, fontWeight: '600'}}>{title}</Text>
+        {(!!calendar || !!status) && <View style={[styles.metadata, {gap: 14 * scale}]}>
+          {!!status && <Text style={{color: ink, fontSize: 16 * scale, fontWeight: state === 'in-progress' ? '700' : '400'}}>{status}</Text>}
+          {!!calendar && <View style={[styles.calendarLabel, {gap: 7 * scale}]}>
+            <View style={[styles.calendarDot, {backgroundColor: color}]} />
+            <Text style={{color: secondary, fontSize: 16 * scale, flexShrink: 1}}>{calendar}</Text>
+          </View>}
         </View>}
       </View>
+    </View>;
+  };
 
-      <View style={[styles.categoryPill, {
-        backgroundColor: `${evt.color || '#38BDF8'}22`,
-        borderColor: `${evt.color || '#38BDF8'}66`,
-      }]}>
-        <Text style={[styles.categoryText, { color: evt.color || theme.colors.focusRing }]}>
-          {evt.category.toUpperCase()}
-        </Text>
-      </View>
+  return <View style={styles.container}>
+    <View accessibilityLabel='Schedule views' style={[styles.tabBar, {gap: 12 * scale}]}>
+      {tabs.map(tab => {
+        const selected = activeTab === tab.id;
+        const focused = focusedTab === tab.id;
+        return <Pressable key={tab.id} accessibilityLabel={`${tab.title}, ${tab.count} events`}
+          accessibilityState={{selected}} onPress={() => setActiveTab(tab.id)}
+          onFocus={() => setFocusedTab(tab.id)} onBlur={() => setFocusedTab(null)}
+          style={[styles.tab, {paddingVertical: 10 * scale, paddingHorizontal: 18 * scale,
+            borderColor: focused ? theme.colors.focusRing : selected ? ink : theme.colors.glassBorder,
+            backgroundColor: focused || selected ? theme.colors.glassSurfaceFocused : theme.colors.glassSurface}]}>
+          <Text style={{fontSize: 18 * scale, fontWeight: selected ? '700' : '500', color: ink}}>{tab.title} · {tab.count}</Text>
+        </Pressable>;
+      })}
     </View>
-  );
-
-  return (
-    <View style={styles.container}>
-      {/* Tab Switcher */}
-      <View style={styles.tabBar}>
-        <Pressable
-          accessibilityState={{selected: activeTab === 'today'}}
-          onPress={() => setActiveTab('today')}
-          style={[
-            styles.tabItem,
-            activeTab === 'today' && [
-              styles.activeTabItem,
-              { borderColor: theme.colors.focusRing, backgroundColor: 'rgba(56, 189, 248, 0.15)' },
-            ],
-          ]}
-        >
-          <MaterialCommunityIcons
-            name="calendar-today"
-            size={18}
-            color={activeTab === 'today' ? theme.colors.focusRing : theme.colors.textSecondary}
-          />
-          <Text
-            style={[
-              styles.tabText,
-              { color: activeTab === 'today' ? theme.colors.textPrimary : theme.colors.textSecondary },
-            ]}
-          >
-            Today's Schedule ({schedule.length})
+    <ScheduleScrollView key={activeTab} testID='schedule-detail-scroll' style={styles.scroll}
+      tabIndex={0} accessibilityLabel={`${activeTab === 'today' ? 'Today' : 'Upcoming'} agenda. Scroll for more events.`}
+      contentContainerStyle={{paddingBottom: 24 * scale}} showsVerticalScrollIndicator>
+      <View style={[styles.agenda, {gap: 24 * scale}]}>
+        {empty ? <View style={[styles.empty, {borderColor: theme.colors.glassBorder, backgroundColor: theme.colors.glassSurface}]}>
+          <MaterialCommunityIcons name='calendar-blank-outline' size={36 * scale} color={secondary} />
+          <Text style={{color: ink, fontSize: 22 * scale, fontWeight: '600'}}>
+            {isLoading ? 'Loading schedule…' : activeTab === 'today' ? 'No events to show today' : 'No upcoming events to show'}
           </Text>
-        </Pressable>
-
-        <Pressable
-          accessibilityState={{selected: activeTab === 'upcoming'}}
-          onPress={() => setActiveTab('upcoming')}
-          style={[
-            styles.tabItem,
-            activeTab === 'upcoming' && [
-              styles.activeTabItem,
-              { borderColor: theme.colors.focusRing, backgroundColor: 'rgba(56, 189, 248, 0.15)' },
-            ],
-          ]}
-        >
-          <MaterialCommunityIcons
-            name="calendar-month"
-            size={18}
-            color={activeTab === 'upcoming' ? theme.colors.focusRing : theme.colors.textSecondary}
-          />
-          <Text
-            style={[
-              styles.tabText,
-              { color: activeTab === 'upcoming' ? theme.colors.textPrimary : theme.colors.textSecondary },
-            ]}
-          >
-            Upcoming Days
-          </Text>
-        </Pressable>
+          {!isLoading && <Text style={{color: secondary, fontSize: 16 * scale}}>Events from your connected calendars appear here.</Text>}
+        </View> : groups.map((group, index) => <View key={group.date || `undated-${index}`} testID='schedule-detail-day' style={{gap: 10 * scale}}>
+          <View style={[styles.dayHeading, {gap: 12 * scale}]}>
+            <Text accessibilityRole='header' style={{color: ink, fontSize: 20 * scale, fontWeight: '700'}}>
+              {group.date ? scheduleDate(group.date) : activeTab === 'today' ? 'Today' : 'Date unavailable'}
+            </Text>
+            <Text style={{color: secondary, fontSize: 16 * scale}}>{group.events.length} {group.events.length === 1 ? 'event' : 'events'}</Text>
+          </View>
+          {group.events.map(renderEvent)}
+        </View>)}
       </View>
-
-      {/* Content */}
-      <ScrollView style={styles.scrollList} showsVerticalScrollIndicator>
-        {activeTab === 'today' ? (
-          <View style={styles.eventsWrapper}>
-            {schedule.length === 0 && (
-              <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>
-                {isLoading ? 'Loading schedule…' : 'No events scheduled today.'}
-              </Text>
-            )}
-            <View style={[styles.eventsWrapper, twoColumns && styles.eventGrid]}>
-              {schedule.map((event) => <View key={event.id} style={twoColumns && styles.eventCell}>{renderEvent(event)}</View>)}
-            </View>
-          </View>
-        ) : (
-          <View style={[styles.eventsWrapper, twoColumns && styles.eventGrid]}>
-            {upcomingEvents.length === 0 && (
-              <Text style={[styles.metaText, { color: theme.colors.textSecondary }]}>
-                {isLoading ? 'Loading upcoming events…' : 'No events in the next 14 days.'}
-              </Text>
-            )}
-            {Object.entries(upcomingByDate).sort(([a], [b]) => a.localeCompare(b)).map(([date, events]) => (
-              <View key={date} style={[styles.dayGroup, twoColumns && styles.eventCell]}>
-                <Text style={[styles.dayHeading, { color: theme.colors.textPrimary }]}>
-                  {formatEventDate(date)}
-                </Text>
-                {events.map(renderEvent)}
-              </View>
-            ))}
-          </View>
-        )}
-      </ScrollView>
-    </View>
-  );
+    </ScheduleScrollView>
+  </View>;
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  tabBar: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 18,
-  },
-  tabItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    gap: 8,
-  },
-  activeTabItem: {
-    borderWidth: 1.5,
-  },
-  tabText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  scrollList: {
-    flex: 1,
-  },
-  eventsWrapper: {
-    gap: 10,
-  },
-  eventGrid: {flexDirection: 'row', flexWrap: 'wrap'},
-  eventCell: {width: '49%', minWidth: 0},
-  dayGroup: {
-    gap: 10,
-    marginBottom: 12,
-  },
-  dayHeading: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-  eventCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.07)',
-    gap: 16,
-  },
-  timeBox: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.06)',
-    borderWidth: 1,
-    minWidth: 96,
-    alignItems: 'center',
-  },
-  timeText: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  endTimeText: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  eventInfo: {
-    flex: 1,
-    minWidth: 0,
-  },
-  eventTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 4,
-  },
-  metaText: {
-    fontSize: 14,
-  },
-  categoryPill: {
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  categoryText: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
-  confirmedPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 10,
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.25)',
-  },
-  confirmedText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#10B981',
-  },
+  container: {flex: 1, minHeight: 0},
+  tabBar: {width: '100%', maxWidth: 1280, alignSelf: 'center', flexDirection: 'row', flexWrap: 'wrap', padding: 3, marginBottom: 12},
+  tab: {borderWidth: 3, borderRadius: 12, minHeight: 48},
+  scroll: {flex: 1},
+  agenda: {width: '100%', maxWidth: 1280, alignSelf: 'center', paddingHorizontal: 3},
+  dayHeading: {flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline'},
+  event: {flexDirection: 'row', alignItems: 'flex-start', borderRadius: 12, borderWidth: 1},
+  stackedEvent: {flexDirection: 'column'},
+  eventInfo: {flex: 1, minWidth: 0},
+  metadata: {flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center'},
+  calendarLabel: {flexDirection: 'row', alignItems: 'center', maxWidth: '100%', flexShrink: 1},
+  calendarDot: {width: 8, height: 8, borderRadius: 4},
+  empty: {alignItems: 'center', padding: 28, gap: 12, borderRadius: 12, borderWidth: 1},
 });

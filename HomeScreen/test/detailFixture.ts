@@ -1,4 +1,6 @@
 import {themeForPalette} from '../src/theme/tvTheme';
+import {useSyncExternalStore} from 'react';
+import type {CalendarEvent} from '../../shared/src/types';
 import {DEFAULT_APPEARANCE} from '../src/theme/appearance';
 import {DYSLEXIA_READING} from '../../server/functions/src/utils/reading';
 import './readingFixture.css';
@@ -22,7 +24,15 @@ const health = {status: 'ok', steps: 8123, stepGoal: 10000, progress: .8123, dis
   estimatedRestingCalories: 800, fetchedAt: new Date().toISOString(), weekly: Array.from({length: 7}, (_, i) => ({date: date(-6+i), steps: 6000+i*350, activeMinutes: 35}))};
 const locations = [{id: 'home', name: 'Home', query: 'Home', isDefault: true}];
 const many = params.has('busy');
-export const useDashboard = () => ({isLoading: false, isLive: true, error: null, refresh: noop, locationError: null,
+let scheduleOverride: {schedule?: CalendarEvent[]; upcomingEvents?: CalendarEvent[]} = {};
+const scheduleListeners = new Set<() => void>();
+Object.assign(window, {updateScheduleFixture: (patch: typeof scheduleOverride) => {
+  scheduleOverride = {...scheduleOverride, ...patch};
+  scheduleListeners.forEach(listener => listener());
+}});
+export const useDashboard = () => {
+  const override = useSyncExternalStore(listener => {scheduleListeners.add(listener); return () => {scheduleListeners.delete(listener);};}, () => scheduleOverride);
+  return {isLoading: false, isLive: true, error: null, refresh: noop, locationError: null,
   activeLocation: locations[0], savedLocations: locations, getWeatherForLoc: () => weather, setActiveLocation: noop, setDefaultLocation: noop,
   addLocation: noop, removeLocation: noop, weather, health,
   meals: {status: 'ok', items: Array.from({length: many ? 14 : 7}, (_, i) => ({date: date(i), title: ['Roasted chicken and vegetables', 'Pasta with tomato sauce', 'Vegetable curry', 'Baked salmon', 'Taco night', 'Rice and beans', 'Homemade pizza'][i % 7], servings: '4', side: 'Green salad', cook: 'Alex', note: i ? '' : 'Prepare vegetables before dinner.'}))},
@@ -30,7 +40,8 @@ export const useDashboard = () => ({isLoading: false, isLive: true, error: null,
   upcomingEvents: Array.from({length: 6}, (_, i) => ({id: `next${i}`, title: 'Upcoming appointment', time: '11:00 AM', endTime: '12:00 PM', category: 'Home', color: '#38bdf8', date: date(i+1)})),
   tasks: Array.from({length: many ? 30 : 8}, (_, i) => ({id: String(i), title: ['Pick up household supplies', 'Water the garden', 'Call a friend', 'Organize the bookshelf'][i%4], due: 'Tomorrow', completed: false})),
   completeTask: async (id: string) => {Object.assign(window, {lastCompletedTask: id});},
-});
+  ...override,
+};};
 export const usePeople = () => ({people: [], error: null});
 export const useFeeds = () => ({feeds: {}, loading: false, offline: false, refresh: noop});
 export const useFavoriteApps = () => ({availableApps: [], favoriteApps: [], visible: true, status: 'ready', syncError: null,

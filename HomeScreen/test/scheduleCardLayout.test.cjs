@@ -2,12 +2,46 @@ const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const load = require('./loadPureModule.cjs');
 const {planScheduleCard} = load('src/components/dashboard/schedule/scheduleCardLayout.ts');
-const {schedulePreview, scheduleEventState, scheduleDate, scheduleTime, scheduleEnd} = load('src/components/dashboard/schedule/schedulePresentation.ts');
+const {schedulePreview, scheduleEventState, scheduleDate, scheduleTime, scheduleEnd, scheduleDetail, scheduleLabel, calendarDisplayName} = load('src/components/dashboard/schedule/schedulePresentation.ts');
+const {scheduleAgenda} = load('src/components/details/schedule/scheduleAgenda.ts');
 const {gridRect} = load('../server/functions/src/utils/dashboardLayout.ts');
 const event = (id, extra={}) => ({id,title:`Appointment ${id}`,time:'10:30 AM',endTime:'11:30 AM',category:'Personal',color:'#38BDF8',...extra});
 const today = Array.from({length:20},(_,i)=>event(`today-${i}`));
 const upcoming = Array.from({length:20},(_,i)=>event(`future-${i}`,{date:`2026-10-${String(7+i).padStart(2,'0')}`}));
 const defaults={scale:1,title:'Family appointment',hasEvent:true,hasDetail:true,today,upcoming};
+
+test('calendar account labels are absent from visual and spoken event metadata, including cached feeds', () => {
+  for (const category of ['owner@example.com', 'Owner <owner@example.com>', 'id@group.calendar.google.com']) {
+    const sample = event('private', {category});
+    assert.equal(calendarDisplayName(category), '');
+    assert.equal(scheduleDetail(sample), 'Until 11:30 AM');
+    assert.doesNotMatch(scheduleLabel(sample, true), /@/);
+  }
+  assert.equal(calendarDisplayName(' Family '), 'Family');
+});
+
+test('full agenda preserves ended events, all-day reminders, unknown dates and provider order for legacy timing', () => {
+  const source = [event('late', {startMs:3000,endMs:4000}), event('ended', {startMs:1000,endMs:2000}),
+    event('day', {allDay:true,time:'',startMs:0,endMs:10000}), event('legacy')];
+  const future = [event('undated'), event('invalid-date', {date:'2026-02-31'}), event('next', {date:'2026-10-08'})];
+  const agenda = scheduleAgenda(source, [...future, source[0]], 2500);
+  assert.deepEqual(agenda.today.map(e => e.id), ['day','ended','late','legacy']);
+  assert.deepEqual(agenda.upcoming.map(g => [g.date, g.events.map(e => e.id)]), [
+    ['2026-10-08',['next']], [undefined,['undated','invalid-date']]]);
+  assert.equal(agenda.upcomingCount, 3);
+  assert.equal(schedulePreview(source, future, 2500).todayCount, 3);
+  assert.equal(scheduleTime(source[2]), 'All day');
+  assert.deepEqual(source.map(e => e.id), ['late','ended','day','legacy']);
+});
+
+test('full agenda advances at calendar midnight while retaining ended events on the new day', () => {
+  const now = Date.parse('2026-10-08T04:30:00Z');
+  const old = event('yesterday', {date:'2026-10-07',startMs:now-7200000,endMs:now-3600000,timeZone:'America/New_York'});
+  const current = event('today-ended', {date:'2026-10-08',startMs:now-1800000,endMs:now-1,timeZone:'America/New_York'});
+  const agenda = scheduleAgenda([old], [current], now);
+  assert.deepEqual(agenda.today.map(e => e.id), ['today-ended']);
+  assert.equal(agenda.upcomingCount, 0);
+});
 
 test('all 100 schedule reference boxes fit empty, sparse and busy calendars',()=>{
   for(const [A,B,g,p,scale] of [[900,340,8,12,1],[1800,740,12,20,1.4]]) {

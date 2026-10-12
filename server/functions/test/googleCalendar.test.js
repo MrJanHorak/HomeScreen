@@ -11,6 +11,15 @@ function entry(calendar, id, start, end, summary = id) {
   return {calendar, event: {id, summary, start, end}};
 }
 
+test("calendar account addresses never become display categories", () => {
+  const feed = buildCalendarFeed([
+    entry({id:"owner@example.com", summary:"owner@example.com",primary:true}, "personal", {date:"2026-09-29"}, {date:"2026-09-30"}),
+    entry(work, "work-event", {date:"2026-09-30"}, {date:"2026-10-01"}),
+  ], now, zone);
+  assert.equal(feed.today[0].category, "");
+  assert.equal(feed.upcoming[0].category, "Work");
+});
+
 test("separates today's events from the next 14 local dates", () => {
   const feed = buildCalendarFeed([
     entry(primary, "today", {dateTime: "2026-09-29T10:00:00-04:00"},

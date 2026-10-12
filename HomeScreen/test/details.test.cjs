@@ -16,6 +16,7 @@ async function open(t, topic, width, reading = false, busy = false) {
   });
   await page.goto(`http://127.0.0.1:5177/details.html?topic=${topic}${reading ? '&reading' : ''}${busy ? '&busy' : ''}`);
   await page.getByTestId('detail-content').waitFor();
+  await page.getByRole('dialog').waitFor();
   await page.evaluate(() => document.fonts.ready); await page.waitForTimeout(100);
   return {page, errors};
 }
@@ -28,6 +29,50 @@ test('long lists retain every item and task completion remains reachable by keyb
   await page.waitForFunction(() => window.lastCompletedTask === '29');
   assert.deepEqual(errors, []);
 });
+
+for (const width of [960, 1920]) for (const reading of [false, true]) {
+  test(`schedule agenda keeps chronological flow, private labels and full scrolling at ${width}, reading ${reading}`, async t => {
+    const {page, errors} = await open(t, 'schedule', width, reading, true);
+    await page.evaluate(() => {
+      const now = Date.now();
+      const event = (id, patch = {}) => ({id,title:id,time:'10:30 AM',endTime:'11:30 AM',category:'owner@example.com',color:'#d50000', ...patch});
+      window.updateScheduleFixture({schedule: [
+        event('Later appointment', {startMs:now+3600000,endMs:now+7200000}),
+        event('Earlier appointment', {startMs:now-7200000,endMs:now-3600000}),
+        event('All-day reminder', {allDay:true,time:'All Day',endTime:'All Day'}),
+        event('Current appointment', {startMs:now-1000,endMs:now+3600000}),
+        ...Array.from({length:16},(_,i) => event(`Planning appointment ${i} with a long title that should wrap without hiding any of the important event information`, {category:'Family and household planning'})),
+      ],upcomingEvents:[event('Undated appointment'), event('Invalid date appointment', {date:'2026-02-31'}), event('Tomorrow appointment', {date:'2026-10-13'})]});
+    });
+    const rows = page.getByTestId('schedule-detail-event');
+    await page.getByRole('button', {name:'Today, 20 events', exact:true}).waitFor();
+    assert.deepEqual((await page.getByTestId('schedule-detail-title').allTextContents()).slice(0,4),
+      ['All-day reminder','Earlier appointment','Current appointment','Later appointment']);
+    assert.equal(await rows.count(),20);
+    assert.doesNotMatch(await page.getByTestId('detail-content').textContent(), /@|OWNER|10:30 AM –/);
+    for(const label of await rows.evaluateAll(nodes=>nodes.map(n=>n.getAttribute('aria-label')))) assert.doesNotMatch(label,/@/);
+    await page.getByText('Happening now',{exact:true}).waitFor();
+    await page.getByText('Ended',{exact:true}).waitFor();
+    const overflow = await rows.evaluateAll(nodes=>nodes.filter(n=>n.scrollWidth>n.clientWidth+2).length);
+    assert.equal(overflow,0);
+    const scroll = page.getByTestId('schedule-detail-scroll');
+    await scroll.focus(); await page.keyboard.press('End');
+    await page.waitForFunction(()=>document.querySelector('[data-testid="schedule-detail-scroll"]').scrollTop>0);
+    await scroll.evaluate(node=>node.scrollTop=node.scrollHeight);
+    const last = await rows.last().boundingBox(), frame = await scroll.boundingBox();
+    assert.ok(last.y+last.height<=frame.y+frame.height+1,'The last appointment can be reached');
+    const upcoming = page.getByRole('button',{name:'Upcoming, 3 events',exact:true});
+    await upcoming.focus(); await page.keyboard.press('Enter');
+    await page.getByText('Date unavailable',{exact:true}).waitFor();
+    assert.equal(await rows.count(),3);
+    assert.deepEqual(await page.getByTestId('schedule-detail-title').allTextContents(), ['Tomorrow appointment','Undated appointment','Invalid date appointment']);
+    assert.equal(await scroll.evaluate(node=>node.scrollTop),0,'Changing views starts at the first day');
+    await page.screenshot({path:`../artifacts/schedule-review/upcoming-${width}-${reading?'reading':'system'}.png`});
+    await page.evaluate(()=>window.updateScheduleFixture({schedule:[],upcomingEvents:[]}));
+    await page.getByText('No upcoming events to show',{exact:true}).waitFor();
+    assert.deepEqual(errors,[]);
+  });
+}
 for (const width of [960, 1920]) for (const reading of [false, true]) {
   test(`settings sidebar and paged language/voice choices fit ${width}, ${reading ? 'OpenDyslexic' : 'system'}`, async (t) => {
     const {page, errors} = await open(t, 'settings', width, reading);
@@ -85,7 +130,7 @@ for (const width of [960, 1920]) for (const reading of [false, true]) {
         assert.ok(calories.y + calories.height <= content.y + content.height, 'All activity metrics fit on the first screen');
       }
       await page.screenshot({path: `../artifacts/tv-detail-${topic}-${width}-${reading ? 'dyslexic' : 'system'}.png`});
-      await page.keyboard.press('Escape'); assert.equal(await page.getByTestId('detail-content').count(), 0);
+      await page.keyboard.press('Escape'); await page.getByTestId('detail-content').waitFor({state:'hidden'});
       assert.deepEqual(errors, []);
     });
   }

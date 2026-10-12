@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {Image, Linking, StyleSheet, View} from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { useAppearance, useTheme } from '../../../theme/ThemeContext';
-import { auth } from '../../../services/firebase';
 import {
   beginGooglePhotosConnection,
   createGooglePhotosSession,
@@ -33,10 +32,6 @@ export default function GooglePhotosBackgroundPicker({
   const [pollIntervalMs, setPollIntervalMs] = useState(3000);
   const [error, setError] = useState<string | null>(null);
   const [focusedAction, setFocusedAction] = useState<string | null>(null);
-  const connectedAccount =
-    auth.currentUser?.providerData.find(
-      (provider) => provider.providerId === 'google.com',
-    )?.email ?? auth.currentUser?.email;
   const focusStyle = (action: string) =>
     focusedAction === action
       ? { borderColor: theme.colors.focusRing, borderWidth: 3 }
@@ -247,7 +242,7 @@ export default function GooglePhotosBackgroundPicker({
             >
               {phase === 'consent'
                 ? 'Scan with your phone to grant Google Photos access.'
-                : `Scan with a phone signed into ${connectedAccount || 'the connected Google account'}. Select up to eight photos, then tap Done. The TV will update shortly.`}
+                : 'Scan with a phone signed into the linked Google account. Select up to eight photos, then tap Done. The TV will update shortly.'}
             </Text>
             {phase === 'picking' && (
               <Text

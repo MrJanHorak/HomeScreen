@@ -28,6 +28,24 @@ function assertScheduleBounds(report, mode) {
     assert.doesNotMatch(card.text, /NaN|undefined/);
   }
 }
+
+for (const mode of ['compact','full']) test(`Schedule account labels stay hidden across all 50 ${mode} footprints`, async t => {
+  const page = await browser.newPage({viewport:{width:mode==='compact'?960:1920,height:1080}});
+  t.after(()=>page.close());
+  await page.goto(`http://127.0.0.1:5174/?mode=${mode}`);
+  await page.locator('[data-card="schedule"] [data-testid="adaptive-schedule"]').first().waitFor();
+  await page.evaluate(()=>window.updateFixture({
+    schedule:Array.from({length:5},(_,i)=>({id:`private-${i}`,title:`Private calendar appointment ${i}`,time:'10:30 AM',endTime:'11:30 AM',category:'owner@example.com',color:'#38bdf8'})),
+    upcomingEvents:[{id:'future-private',title:'Future appointment',time:'11:00 AM',endTime:'12:00 PM',category:'calendar@group.calendar.google.com',color:'#38bdf8',date:'2026-10-13'}],
+  }));
+  await page.waitForFunction(()=>document.querySelector('[data-card="schedule"]').textContent.includes('Private calendar appointment'));
+  const report = await scheduleReport(page);
+  assertScheduleBounds(report,mode);
+  for(const card of report) {
+    assert.doesNotMatch(card.text,/@/);
+    card.labels.forEach(label=>assert.doesNotMatch(label,/@/));
+  }
+});
 let browser;
 before(async () => {browser = await chromium.launch({headless:true, ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? {executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE} : {})});});
 after(async () => {await browser?.close();});

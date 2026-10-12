@@ -3,6 +3,7 @@ import { GoogleTokens, CalendarEventSummary } from "../types";
 import { getOAuth2Client } from "./googleAuth";
 import {logSafeError} from "../utils/safeLog";
 import {zonedDateKey as dateInZone, zonedMidnight} from "../utils/zonedTime";
+import {calendarDisplayName} from "../utils/calendarDisplay";
 
 const UPCOMING_DAYS = 14;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -77,7 +78,7 @@ export function buildCalendarFeed(
           title: event.summary || "Untitled Event",
           time: isAllDay ? "All Day" : startsToday ? formatTimeString(startIso!, timeZone) : "Continues",
           endTime: isAllDay ? "All Day" : endsToday ? formatTimeString(endIso!, timeZone) : "Continues",
-          category: calendar.summary || "General",
+          category: calendarDisplayName(calendar.summary || ""),
           color,
           date,
           // Each occupied date has its own absolute window, including 23/25-hour DST days.

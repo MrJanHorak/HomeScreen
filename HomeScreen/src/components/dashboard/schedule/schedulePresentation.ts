@@ -1,5 +1,8 @@
 import type { CalendarEvent } from '../../../../../shared/src/types';
 import { zonedDateKey } from '../../../../../server/functions/src/utils/zonedTime';
+import { calendarDisplayName } from '../../../../../server/functions/src/utils/calendarDisplay';
+
+export { calendarDisplayName };
 
 export type ScheduleEventState = 'in-progress' | 'upcoming' | 'ended' | 'all-day' | 'unknown';
 
@@ -25,6 +28,7 @@ export function scheduleDate(value?: string, compact = false): string {
 }
 
 export function scheduleTime(event: CalendarEvent): string {
+  if (event.allDay) return 'All day';
   const start = event.time?.trim();
   if (!start) return 'Time unavailable';
   return /^all[ -]?day$/i.test(start) ? 'All day' : start;
@@ -32,22 +36,22 @@ export function scheduleTime(event: CalendarEvent): string {
 
 export function scheduleEnd(event: CalendarEvent): string {
   const end = event.endTime?.trim();
-  if (!end || /^all[ -]?day$/i.test(event.time) || end.toLowerCase() === event.time?.trim().toLowerCase()) return '';
+  if (!end || event.allDay || /^all[ -]?day$/i.test(event.time) || end.toLowerCase() === event.time?.trim().toLowerCase()) return '';
   return end.toLowerCase() === 'continues' ? 'Continues' : `Until ${end}`;
 }
 
 export function scheduleDetail(event: CalendarEvent): string {
-  return [scheduleEnd(event), event.category?.trim()].filter(Boolean).join(' · ');
+  return [scheduleEnd(event), calendarDisplayName(event.category)].filter(Boolean).join(' · ');
 }
 
 export function scheduleLabel(event: CalendarEvent, today: boolean, now?: number): string {
   return [today ? 'Today' : scheduleDate(event.date), scheduleTime(event), event.title || 'Untitled event',
     now !== undefined && scheduleEventState(event, now) === 'in-progress' ? 'Happening now' : '',
-    scheduleEnd(event), event.category].filter(Boolean).join(', ');
+    scheduleEnd(event), calendarDisplayName(event.category)].filter(Boolean).join(', ');
 }
 
-/** Order known occurrences by live status/time; preserve source order for legacy data. */
-export function schedulePreview(schedule: CalendarEvent[], upcoming: CalendarEvent[], now = Date.now()) {
+/** Share day rollover and occurrence deduplication between previews and the full agenda. */
+export function scheduleDayEvents(schedule: CalendarEvent[], upcoming: CalendarEvent[], now: number) {
   const seen = new Set<string>();
   const unique = (events: CalendarEvent[]) => events.filter(event => {
     const key = `${event.id}|${event.date || ''}`;
@@ -61,7 +65,6 @@ export function schedulePreview(schedule: CalendarEvent[], upcoming: CalendarEve
   const originalToday = new Set(schedule.map(event => `${event.id}|${event.date || ''}`));
   for (const event of unique([...schedule, ...upcoming])) {
     const state = scheduleEventState(event, now);
-    if (state === 'ended') continue;
     let isToday = originalToday.has(`${event.id}|${event.date || ''}`);
     if (state !== 'unknown' && event.timeZone && calendarDate(event.date)) {
       if (!calendarDays.has(event.timeZone)) {
@@ -69,10 +72,21 @@ export function schedulePreview(schedule: CalendarEvent[], upcoming: CalendarEve
         catch { calendarDays.set(event.timeZone, null); }
       }
       const day = calendarDays.get(event.timeZone);
-      if (day) isToday = event.date === day;
+      if (day) {
+        if (event.date! < day) continue;
+        isToday = event.date === day;
+      }
     }
     (isToday ? today : coming).push(event);
   }
+  return {today, upcoming: coming};
+}
+
+/** Order known occurrences by live status/time; preserve source order for legacy data. */
+export function schedulePreview(schedule: CalendarEvent[], upcoming: CalendarEvent[], now = Date.now()) {
+  const days = scheduleDayEvents(schedule, upcoming, now);
+  const today = days.today.filter(event => scheduleEventState(event, now) !== 'ended');
+  const coming = days.upcoming.filter(event => scheduleEventState(event, now) !== 'ended');
   const rank = (event: CalendarEvent) => ({'in-progress': 0, upcoming: 1, 'all-day': 2, unknown: 3, ended: 4})[scheduleEventState(event, now)];
   today.sort((a, b) => rank(a) - rank(b) || (rank(a) < 2 ? a.startMs! - b.startMs! : 0));
   const future = coming.map((event, index) => ({event, index})).sort((a, b) => {

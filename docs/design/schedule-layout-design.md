@@ -1,5 +1,48 @@
 # Schedule layout and device-time behavior
 
+## Calendar detail review — October 11, 2026
+
+The full agenda now follows one vertical reading path: day heading, all-day
+reminders, then timed appointments ordered by absolute start. It retains ended
+events with an explicit `Ended` label and marks active appointments `Happening
+now`. Today and Upcoming controls include event counts and visible remote focus.
+Each view starts at the first day when selected. Day rollover shares the preview's
+timezone logic; undated/invalid-date upcoming events remain in `Date unavailable`.
+Legacy timing preserves provider order instead of parsing display strings.
+
+Aligned start/end times appear once beside the event title. Calendar names are
+secondary sentence-case text with a small color marker, replacing uppercase
+pills. Text uses the theme's primary/secondary ink rather than provider colors;
+color is supplemental to calendar and status text. Titles wrap without a detail
+view line limit. The agenda has a bounded reading width, larger type on full-size
+screens, and a wider time column for OpenDyslexic. Narrow frames stack time above
+title. Native TV uses a focusable text scroller with a visible focus border, and
+web retains keyboard scrolling.
+
+Calendar labels containing `@` are omitted in new feeds and in every TV visual
+and spoken calendar presentation, so cached data is covered too. Friendly names
+such as `Family` and `Work` remain useful for multiple calendars. Account email
+text in TV device, companion-site and photo-picker settings is replaced with
+connection state or linked-account instructions. Event titles are unchanged.
+The companion website's account header likewise shows sign-in state instead of
+the account address.
+
+The review follows [W3C grouping and contrast guidance](https://www.w3.org/WAI/tips/designing/)
+and [Android TV layout guidance](https://developer.android.com/training/tv/playback/compose/layouts).
+This is not a claim of complete WCAG conformance or physical-TV validation.
+
+Validation covers all 50 dashboard footprints in both compact/full profiles,
+including sparse, busy, long-title and email-labeled calendars. Browser agenda
+checks cover both screen sizes and system/OpenDyslexic fonts, chronology, status,
+all-day reminders, missing dates, keyboard activation, scrolling to the final
+event, empty states and modal dismissal. TV unit tests and backend tests also
+cover label privacy, calendar midnight and unchanged source data.
+
+Completed checks: TV and companion TypeScript, 73 TV unit tests, 132 backend tests (12
+emulator-dependent tests skipped), 8 calendar detail browser tests, 7 matrix and
+live-clock browser tests, and Android production export. Representative screenshots
+are in `artifacts/schedule-review/`; the calendar-agenda images use sample data.
+
 Implemented October 6, 2026. Schedule uses measured content dimensions in automatic
 rows and the free canvas. The size contract is in [the widget design guide](widget-design-guide.md).
 
