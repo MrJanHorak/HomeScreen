@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useEffect, useId, useRef, useState } from 'react';
+import { Animated, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
 
 function PlasmaBlob({
@@ -14,6 +14,7 @@ function PlasmaBlob({
   height: number;
 }) {
   const motion = useRef(new Animated.Value(0)).current;
+  const gradientId = `plasma-${useId().replace(/:/g, '')}`;
   const size = Math.max(width, height) * (index === 1 ? 0.95 : 0.8);
   const positions = [
     { left: -size * 0.25, top: -size * 0.35 },
@@ -76,7 +77,7 @@ function PlasmaBlob({
       <Svg width='100%' height='100%' viewBox='0 0 100 100'>
         <Defs>
           <RadialGradient
-            id={`plasma-${index}`}
+            id={gradientId}
             cx='50%'
             cy='50%'
             rx='50%'
@@ -87,7 +88,7 @@ function PlasmaBlob({
             <Stop offset='100%' stopColor={color} stopOpacity={0} />
           </RadialGradient>
         </Defs>
-        <Circle cx='50' cy='50' r='50' fill={`url(#plasma-${index})`} />
+        <Circle cx='50' cy='50' r='50' fill={`url(#${gradientId})`} />
       </Svg>
     </Animated.View>
   );
@@ -98,10 +99,20 @@ export default function PlasmaBackdrop({
 }: {
   colors: [string, string, string];
 }) {
-  const { width, height } = useWindowDimensions();
+  const [{ width, height }, setSize] = useState({ width: 0, height: 0 });
   return (
-    <View pointerEvents='none' style={styles.root}>
-      {colors.map((color, index) => (
+    <View
+      pointerEvents='none'
+      style={styles.root}
+      onLayout={({ nativeEvent: { layout } }) =>
+        setSize((current) =>
+          current.width === layout.width && current.height === layout.height
+            ? current
+            : { width: layout.width, height: layout.height },
+        )
+      }
+    >
+      {width > 0 && height > 0 && colors.map((color, index) => (
         <PlasmaBlob
           key={index}
           color={color}

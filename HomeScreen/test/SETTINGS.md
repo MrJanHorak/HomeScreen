@@ -39,6 +39,13 @@ and retry after a library failure. It also checks preview visibility while
 scrolling, compact screen heights, and selection while reordering and hiding.
 Native TV focus still needs a device check.
 
+Ambient settings show a live backdrop thumbnail using the same renderer as
+ambient mode. Browser checks cover photo and dark selections, all plasma
+presets, individual color updates, thumbnail sizing, narrow panel wrapping,
+and the full preview action. Plasma gradients use separate IDs when both
+previews are mounted. The fixture supplies React Native's global alias for
+web animation cleanup.
+
 Release these changes by deploying the updated `appearanceStudio` and
 `pollFeed` functions and rebuilding/installing the TV app. No companion UI
 change is required to expose its saved designs.

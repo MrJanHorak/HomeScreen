@@ -1,9 +1,8 @@
 import Text from '../shared/ReadingText';
 import {useTheme} from '../../theme/ThemeContext';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
-  ImageSourcePropType,
   StyleSheet,
   View,
 } from 'react-native';
@@ -11,13 +10,8 @@ import { useDashboard } from '../../context/DashboardContext';
 import type { AmbientPreference } from '../../theme/appearance';
 import type { SelectedPhoto } from '../../services/api';
 import type { CalendarEvent } from '../../../../shared/src/types';
-import PlasmaBackdrop from './PlasmaBackdrop';
+import AmbientBackdrop from './AmbientBackdrop';
 
-import galleryOne from '../../../assets/media/wp8860764-nasa-4k-wallpapers.jpg';
-import galleryTwo from '../../../assets/media/wp8860783-nasa-4k-wallpapers.jpg';
-import galleryThree from '../../../assets/media/wp8860799-nasa-4k-wallpapers.jpg';
-
-const GALLERY: ImageSourcePropType[] = [galleryOne, galleryTwo, galleryThree];
 const INFO_INTERVAL_MS = 90_000;
 
 function minutesFromMidnight(time: string): number | null {
@@ -63,24 +57,10 @@ export default function AmbientScreen({ preference, selectedPhotos }: Props) {
     useDashboard();
   const [now, setNow] = useState(() => new Date());
   const [slot, setSlot] = useState(0);
-  const [photoIndex, setPhotoIndex] = useState(0);
-  const [previousPhoto, setPreviousPhoto] = useState<number | null>(null);
   const [infoIndex, setInfoIndex] = useState(0);
   const infoOpacity = useRef(new Animated.Value(1)).current;
   const detailOpacity = useRef(new Animated.Value(1)).current;
-  const photoOpacity = useRef(new Animated.Value(0)).current;
-  const motion = useRef(new Animated.Value(0)).current;
   const entrance = useRef(new Animated.Value(0)).current;
-
-  const photos = useMemo<ImageSourcePropType[]>(() => {
-    if (preference.photoSource === 'none') return [];
-    if (preference.photoSource === 'plasma') return [];
-    if (preference.photoSource === 'selected')
-      return selectedPhotos.map((photo) => ({ uri: photo.dataUrl }));
-    return GALLERY;
-  }, [preference.photoSource, selectedPhotos]);
-
-  const photoIntervalMs = preference.photoMinutes * 60_000;
 
   useEffect(() => {
     const clock = setInterval(() => setNow(new Date()), 30_000);
@@ -95,49 +75,6 @@ export default function AmbientScreen({ preference, selectedPhotos }: Props) {
     }).start();
     return () => entrance.stopAnimation();
   }, [entrance]);
-
-  useEffect(() => {
-    if (!photos.length) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(motion, {
-          toValue: 1,
-          duration: photoIntervalMs,
-          useNativeDriver: true,
-        }),
-        Animated.timing(motion, {
-          toValue: 0,
-          duration: photoIntervalMs,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [motion, photoIntervalMs, photos.length]);
-
-  useEffect(() => {
-    if (photos.length < 2) return;
-    const timer = setInterval(() => {
-      setPreviousPhoto(photoIndex);
-      setPhotoIndex((index) => (index + 1) % photos.length);
-    }, photoIntervalMs);
-    return () => clearInterval(timer);
-  }, [photoIndex, photoIntervalMs, photos.length]);
-
-  useEffect(() => {
-    if (previousPhoto === null) return;
-    photoOpacity.setValue(0);
-    const transition = Animated.timing(photoOpacity, {
-      toValue: 1,
-      duration: 2200,
-      useNativeDriver: true,
-    });
-    transition.start(({ finished }) => {
-      if (finished) setPreviousPhoto(null);
-    });
-    return () => transition.stop();
-  }, [photoIndex, photoOpacity, previousPhoto]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -183,22 +120,6 @@ export default function AmbientScreen({ preference, selectedPhotos }: Props) {
     };
   }, [detailOpacity, preference.infoCycleSeconds]);
 
-  const photoMotion = {
-    transform: [
-      {
-        scale: motion.interpolate({
-          inputRange: [0, 1],
-          outputRange: [1.06, 1.13],
-        }),
-      },
-      {
-        translateX: motion.interpolate({
-          inputRange: [0, 1],
-          outputRange: [-12, 12],
-        }),
-      },
-    ],
-  };
   const weatherText =
     weather && weather.temp !== '--'
       ? `${weather.temp}  ·  ${weather.condition}`
@@ -238,35 +159,7 @@ export default function AmbientScreen({ preference, selectedPhotos }: Props) {
       style={[styles.root, { opacity: entrance }]}
       accessibilityLabel='Ambient mode'
     >
-      {preference.photoSource === 'plasma' && (
-        <PlasmaBackdrop colors={preference.plasmaColors} />
-      )}
-      {photos.length > 0 && (
-        <>
-          {previousPhoto !== null && (
-            <Animated.Image
-              source={photos[previousPhoto]}
-              resizeMode='cover'
-              style={[styles.photo, photoMotion]}
-            />
-          )}
-          <Animated.Image
-            source={photos[photoIndex]}
-            resizeMode='cover'
-            style={[
-              styles.photo,
-              photoMotion,
-              { opacity: previousPhoto === null ? 1 : photoOpacity },
-            ]}
-          />
-        </>
-      )}
-      <View
-        style={[
-          styles.dim,
-          preference.photoSource === 'plasma' && styles.plasmaDim,
-        ]}
-      />
+      <AmbientBackdrop preference={preference} selectedPhotos={selectedPhotos} />
       <Animated.View
         style={[
           styles.info,
@@ -306,9 +199,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#05080D',
     overflow: 'hidden',
   },
-  photo: { ...StyleSheet.absoluteFill, width: '100%', height: '100%' },
-  dim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0, 0, 0, 0.57)' },
-  plasmaDim: { backgroundColor: 'rgba(0, 0, 0, 0.22)' },
   info: {
     position: 'absolute',
     width: '42%',

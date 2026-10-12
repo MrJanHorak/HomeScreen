@@ -6,6 +6,7 @@ import { useAppearance, useTheme } from '../../../theme/ThemeContext';
 import { AMBIENT_INFO_IDS, PLASMA_PRESETS } from '../../../theme/appearance';
 import type { AmbientPreference } from '../../../theme/appearance';
 import GooglePhotosBackgroundPicker from '../shared/GooglePhotosBackgroundPicker';
+import AmbientBackdrop from '../../ambient/AmbientBackdrop';
 
 const INFO_LABELS: Record<keyof AmbientPreference['info'], string> = {
   weather: 'Weather',
@@ -82,6 +83,12 @@ export default function AmbientSettings({
     useAppearance();
   const [showColors, setShowColors] = useState(false);
   const ambient = appearance.ambient;
+  const backdropLabel = {
+    gallery: 'Built-in photos',
+    selected: 'My photos',
+    plasma: 'Plasma flow',
+    none: 'Dark',
+  }[ambient.photoSource];
   const set = (changes: Partial<AmbientPreference>) =>
     setAmbientPreference(changes);
 
@@ -160,83 +167,105 @@ export default function AmbientSettings({
           onPress={() => set({ photoSource: 'none' })}
         />
       </View>
-      {(ambient.photoSource === 'gallery' ||
-        ambient.photoSource === 'selected') && (
-        <>
-          <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>
-            Change photos every
+      <View style={styles.backdropOptions}>
+        <View style={styles.previewColumn}>
+          <Text style={[styles.subheading, { color: theme.colors.textSecondary }]}>
+            Live backdrop preview
           </Text>
-          <View style={styles.row}>
-            {([1, 3, 5] as const).map((minutes) => (
-              <Choice
-                key={minutes}
-                label={`${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`}
-                selected={ambient.photoMinutes === minutes}
-                disabled={!ready || !ambient.enabled}
-                onPress={() => set({ photoMinutes: minutes })}
-              />
-            ))}
+          <View
+            testID='ambient-backdrop-preview'
+            accessibilityRole='image'
+            accessibilityLabel={`Backdrop preview: ${backdropLabel}`}
+            style={[styles.thumbnail, { borderColor: theme.colors.glassBorder }]}
+          >
+            <AmbientBackdrop preference={ambient} selectedPhotos={ambientPhotos} />
           </View>
-        </>
-      )}
-      {ambient.photoSource === 'plasma' && (
-        <>
-          <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>
-            Flow colors
-          </Text>
-          <View style={styles.row}>
-            {Object.entries(PLASMA_PRESETS).map(([label, colors]) => (
-              <Choice
-                key={label}
-                label={label}
-                swatch={colors[0]}
-                selected={colors.every(
-                  (color, index) => color === ambient.plasmaColors[index],
-                )}
-                disabled={!ready || !ambient.enabled}
-                onPress={() => set({ plasmaColors: colors })}
-              />
-            ))}
-            <Choice
-              label={
-                showColors ? 'Hide color choices' : 'Choose individual colors'
-              }
-              onPress={() => setShowColors((current) => !current)}
-            />
-          </View>
-          {showColors &&
-            [0, 1, 2].map((position) => (
-              <View key={position}>
-                <Text
-                  style={[
-                    styles.subheading,
-                    { color: theme.colors.textSecondary },
-                  ]}
-                >
-                  Color {position + 1}
-                </Text>
-                <View style={styles.row}>
-                  {COLOR_CHOICES.map((choice) => (
-                    <Choice
-                      key={choice.value}
-                      label={choice.label}
-                      swatch={choice.value}
-                      selected={ambient.plasmaColors[position] === choice.value}
-                      disabled={!ready || !ambient.enabled}
-                      onPress={() => {
-                        const colors = [
-                          ...ambient.plasmaColors,
-                        ] as AmbientPreference['plasmaColors'];
-                        colors[position] = choice.value;
-                        set({ plasmaColors: colors });
-                      }}
-                    />
-                  ))}
-                </View>
+          <Choice
+            label='Preview ambient mode'
+            disabled={!ready}
+            onPress={onPreview}
+          />
+        </View>
+        <View style={styles.backdropControls}>
+          {(ambient.photoSource === 'gallery' ||
+            ambient.photoSource === 'selected') && (
+            <>
+              <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>
+                Change photos every
+              </Text>
+              <View style={styles.row}>
+                {([1, 3, 5] as const).map((minutes) => (
+                  <Choice
+                    key={minutes}
+                    label={`${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`}
+                    selected={ambient.photoMinutes === minutes}
+                    disabled={!ready || !ambient.enabled}
+                    onPress={() => set({ photoMinutes: minutes })}
+                  />
+                ))}
               </View>
-            ))}
-        </>
-      )}
+            </>
+          )}
+          {ambient.photoSource === 'plasma' && (
+            <>
+              <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>
+                Flow colors
+              </Text>
+              <View style={styles.row}>
+                {Object.entries(PLASMA_PRESETS).map(([label, colors]) => (
+                  <Choice
+                    key={label}
+                    label={label}
+                    swatch={colors[0]}
+                    selected={colors.every(
+                      (color, index) => color === ambient.plasmaColors[index],
+                    )}
+                    disabled={!ready || !ambient.enabled}
+                    onPress={() => set({ plasmaColors: colors })}
+                  />
+                ))}
+                <Choice
+                  label={
+                    showColors ? 'Hide color choices' : 'Choose individual colors'
+                  }
+                  onPress={() => setShowColors((current) => !current)}
+                />
+              </View>
+              {showColors &&
+                [0, 1, 2].map((position) => (
+                  <View key={position}>
+                    <Text
+                      style={[
+                        styles.subheading,
+                        { color: theme.colors.textSecondary },
+                      ]}
+                    >
+                      Color {position + 1}
+                    </Text>
+                    <View style={styles.row}>
+                      {COLOR_CHOICES.map((choice) => (
+                        <Choice
+                          key={choice.value}
+                          label={choice.label}
+                          swatch={choice.value}
+                          selected={ambient.plasmaColors[position] === choice.value}
+                          disabled={!ready || !ambient.enabled}
+                          onPress={() => {
+                            const colors = [
+                              ...ambient.plasmaColors,
+                            ] as AmbientPreference['plasmaColors'];
+                            colors[position] = choice.value;
+                            set({ plasmaColors: colors });
+                          }}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                ))}
+            </>
+          )}
+        </View>
+      </View>
       <Text style={[styles.heading, { color: theme.colors.textPrimary }]}>
         Information to rotate
       </Text>
@@ -276,13 +305,6 @@ export default function AmbientSettings({
         For OLED TVs, keep the TV’s panel protection enabled and turn the TV off
         when the room is empty for long periods.
       </Text>
-      <View style={styles.preview}>
-        <Choice
-          label='Preview ambient mode'
-          disabled={!ready}
-          onPress={onPreview}
-        />
-      </View>
     </View>
   );
 }
@@ -313,5 +335,15 @@ const styles = StyleSheet.create({
   focused: { transform: [{ scale: 1.04 }] },
   swatch: { width: 18, height: 18, borderRadius: 9 },
   choiceLabel: { fontSize: 16, fontWeight: '600' },
-  preview: { marginTop: 12, alignSelf: 'flex-start' },
+  backdropOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 20 },
+  previewColumn: { width: 240, maxWidth: '100%', gap: 10 },
+  thumbnail: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    borderWidth: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#05080D',
+  },
+  backdropControls: { flexGrow: 1, flexBasis: 320, minWidth: 0, gap: 12 },
 });

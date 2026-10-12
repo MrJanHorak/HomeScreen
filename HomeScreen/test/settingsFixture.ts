@@ -21,7 +21,14 @@ export const usePolls = () => ({rounds: {[roundId]: {id: roundId, question: 'Mov
 export const getUserAppearance = async () => ({appearance: remote, seededFromWeb: true, updatedAtMs: 1});
 export const saveUserAppearance = async (appearance: DashboardAppearance) => {remote = appearance; state.writes.push(appearance);};
 export const getSavedGooglePhoto = async () => null;
-export const getSavedGooglePhotos = async () => [];
+export const getSavedGooglePhotos = async () => new URLSearchParams(location.search).has('photos') ? [
+  {id: 'preview-photo', dataUrl: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="160" height="90"><rect width="160" height="90" fill="#16A085"/></svg>')},
+  {id: 'preview-photo-2', dataUrl: 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="160" height="90"><rect width="160" height="90" fill="#0477BF"/></svg>')},
+] : [];
+export const getGooglePhotosStatus = async () => false;
+export const beginGooglePhotosConnection = async () => 'https://example.com/photos';
+export const createGooglePhotosSession = async () => ({pickerUri: 'https://example.com/photos', pollIntervalMs: 3000});
+export const pollGooglePhotosSession = async () => ({status: 'pending', pollIntervalMs: 3000});
 export const getPeopleSettings = async () => ({people: [{id: personId, name: 'Alex'}, {id: 'd'.repeat(32), name: 'Sam'}]});
 export const getAvailableDashboardPolls = async () => [{id: roundId, question: 'Movie night?'}, {id: 'e'.repeat(32), question: 'Dinner?'}];
 export const getSavedDashboardLayouts = async () => {

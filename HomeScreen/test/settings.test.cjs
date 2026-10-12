@@ -6,6 +6,73 @@ let browser;
 before(async () => {browser = await chromium.launch({headless: true, ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? {executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE} : {})});});
 after(async () => {await browser?.close();});
 const state = (page) => page.locator('[data-appearance]').textContent().then(JSON.parse);
+for (const width of [520, 720, 960, 1920]) {
+  test(`ambient thumbnail follows backdrop and color choices at ${width}`, async (t) => {
+    const page = await browser.newPage({viewport: {width, height: 850}});
+    t.after(() => page.close());
+    const errors = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto(`${url}?photos`);
+    await page.getByRole('button', {name: 'Ambient tab', exact: true}).click();
+    const preview = page.getByTestId('ambient-backdrop-preview');
+    await page.getByRole('button', {name: 'Plasma flow', exact: true}).click();
+    await page.waitForFunction(() => document.querySelectorAll('[data-testid="ambient-backdrop-preview"] svg').length === 3);
+    const colors = () => preview.locator('radialGradient stop:first-child').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('stop-color')));
+    assert.deepEqual(await colors(), ['#16A085', '#38BDF8', '#A78BFA']);
+    const blobSize = await preview.locator('svg').first().boundingBox();
+    assert.ok(blobSize.width < 250, 'plasma scales to the thumbnail, not the window');
+    for (const [name, expected] of [
+      ['Ocean', ['#0477BF', '#22D3EE', '#0D9488']],
+      ['Sunset', ['#E8795B', '#F59E0B', '#A855F7']],
+      ['Ember', ['#D94657', '#F97316', '#EAB308']],
+    ]) {
+      const button = page.getByRole('button', {name, exact: true});
+      await button.focus(); await page.keyboard.press('Enter');
+      assert.deepEqual(await colors(), expected);
+      assert.deepEqual((await state(page)).ambient.plasmaColors, expected);
+    }
+    await preview.scrollIntoViewIfNeeded();
+    const flowHeading = await page.getByText('Flow colors', {exact: true}).boundingBox();
+    const thumbnail = await preview.boundingBox();
+    if (width === 520) assert.ok(flowHeading.y > thumbnail.y + thumbnail.height, 'narrow panels stack controls below the thumbnail');
+    else assert.ok(flowHeading.x > thumbnail.x + thumbnail.width, 'wide panels keep the colors beside the thumbnail');
+    if (process.env.TV_SETTINGS_SCREENSHOTS) await page.screenshot({path: `../artifacts/ambient-settings-preview-${width}.png`});
+    await page.getByRole('button', {name: 'Choose individual colors', exact: true}).click();
+    for (const [index, name, color] of [[0, 'Purple', '#A78BFA'], [1, 'Cyan', '#22D3EE'], [2, 'Green', '#34D399']]) {
+      await page.getByRole('button', {name, exact: true}).nth(index).click();
+      assert.equal((await colors())[index], color);
+    }
+    await page.getByRole('button', {name: 'Preview ambient mode', exact: true}).click();
+    const full = page.getByTestId('ambient-full-preview');
+    await page.waitForFunction(() => document.querySelectorAll('[data-testid="ambient-full-preview"] svg').length === 3);
+    assert.deepEqual(await full.locator('radialGradient stop:first-child').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('stop-color'))), await colors());
+    const ids = await page.locator('radialGradient').evaluateAll((nodes) => nodes.map((node) => node.id));
+    assert.equal(new Set(ids).size, ids.length, 'thumbnail and full preview gradients have distinct IDs');
+    await page.getByRole('button', {name: 'Close ambient preview', exact: true}).click();
+    await page.getByRole('button', {name: 'Dark', exact: true}).click();
+    assert.equal(await preview.locator('svg, img').count(), 0);
+    assert.equal(await preview.getAttribute('aria-label'), 'Backdrop preview: Dark');
+    await page.getByRole('button', {name: 'My photos (2)', exact: true}).click();
+    assert.equal(await preview.getAttribute('aria-label'), 'Backdrop preview: My photos');
+    assert.match(await preview.locator('img').getAttribute('src'), /^data:image\/svg\+xml/);
+    await page.getByRole('button', {name: 'Built-in photos', exact: true}).click();
+    assert.match(await preview.locator('img').getAttribute('src'), /wp8860764/);
+    await page.getByRole('button', {name: 'Off', exact: true}).click();
+    assert.equal(await page.getByRole('button', {name: 'Plasma flow', exact: true}).isDisabled(), true);
+    await preview.scrollIntoViewIfNeeded();
+    const bounds = await preview.boundingBox();
+    assert.ok(bounds.x >= 0 && bounds.x + bounds.width <= width, 'thumbnail fits available width');
+    assert.ok(Math.abs(bounds.width / bounds.height - 16 / 9) < 0.05);
+    assert.deepEqual(errors, []);
+  });
+}
+test('ambient preview handles an empty personal photo library', async (t) => {
+  const page = await browser.newPage(); t.after(() => page.close());
+  await page.goto(url);
+  await page.getByRole('button', {name: 'Ambient tab', exact: true}).click();
+  assert.equal(await page.getByRole('button', {name: 'My photos (0)', exact: true}).isDisabled(), true);
+  assert.equal(await page.getByTestId('ambient-backdrop-preview').getAttribute('aria-label'), 'Backdrop preview: Built-in photos');
+});
 for (const viewport of [{width: 720, height: 540}, {width: 960, height: 850}, {width: 1920, height: 540}]) {
   test(`preview stays visible while card controls scroll: ${viewport.width} × ${viewport.height}`, async (t) => {
     const page = await browser.newPage({viewport}); t.after(() => page.close());

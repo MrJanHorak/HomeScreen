@@ -3,6 +3,7 @@ import {fileURLToPath} from 'node:url';
 const root = path.dirname(fileURLToPath(import.meta.url));
 export default {
   root,
+  define: {global: 'globalThis'},
   esbuild: {jsx: 'automatic'},
   optimizeDeps: {entries: ['settings.html'], rolldownOptions: {moduleTypes: {'.js': 'jsx'}, resolve: {extensions: ['.web.js', '.js', '.mjs', '.ts', '.tsx', '.json']}}},
   cacheDir: 'node_modules/.vite-settings',
