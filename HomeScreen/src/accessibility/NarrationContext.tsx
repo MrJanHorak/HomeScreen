@@ -4,17 +4,18 @@ import type {Voice} from 'expo-speech';
 import {availableVoices, speechDriver} from './speechDriver';
 import {narrationEnvironment} from './narrationEnvironment';
 import {DEFAULT_NARRATION, NARRATION_STORAGE_KEY, NarrationController, normalizeNarration} from './narration';
-import type {NarrationPreference} from './narration';
+import type {NarrationPreference, SpeechStatus} from './narration';
 
 const noop = () => {};
 const NarrationContext = createContext({
   preference: DEFAULT_NARRATION, ready: false, screenReader: null as boolean | null,
   canDetectScreenReader: narrationEnvironment.canDetectScreenReader,
   narrating: false,
+  speechStatus: 'idle' as SpeechStatus,
   voices: [] as Voice[], voicesLoading: false, error: null as string | null,
   setPreference: (_changes: Partial<NarrationPreference>) => {},
   announce: (_text: string, _owner?: object, _preview?: boolean) => {},
-  blur: (_owner: object) => {}, stop: noop, refreshVoices: noop,
+  blur: (_owner: object) => {}, stop: noop, refreshVoices: (_refresh?: boolean) => {},
 });
 
 export function NarrationProvider({children}: {children: React.ReactNode}) {
@@ -26,11 +27,13 @@ export function NarrationProvider({children}: {children: React.ReactNode}) {
   const [voices, setVoices] = useState<Voice[]>([]);
   const [voicesLoading, setVoicesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [speechStatus, setSpeechStatus] = useState<SpeechStatus>('idle');
+  const voicesRequest = useRef(false);
   const mounted = useRef(false);
   const writes = useRef(Promise.resolve());
   const controller = useMemo(() => new NarrationController(speechDriver, () => {
-    if (mounted.current) setError('Speech could not play. Check the TV volume and text-to-speech voice, or rebuild the TV app if it has not been updated.');
-  }), []);
+    if (mounted.current) setError('Speech could not play. Try Device default voice or a Local voice, and check the TV volume and text-to-speech settings. Network voices may need an internet connection.');
+  }, 180, (status) => {if (mounted.current) setSpeechStatus(status);}), []);
 
   useEffect(() => {
     mounted.current = true;
@@ -76,20 +79,27 @@ export function NarrationProvider({children}: {children: React.ReactNode}) {
     });
   }, [controller, ready, active, screenReader]);
 
-  const refreshVoices = useCallback(() => {
+  const refreshVoices = useCallback((refresh = true) => {
+    if (voicesRequest.current) return;
+    voicesRequest.current = true;
     setVoicesLoading(true);
     setError(null);
-    void availableVoices().then((items) => {
-      if (mounted.current) setVoices(items.sort((a, b) => a.language.localeCompare(b.language) || a.name.localeCompare(b.name)));
+    void availableVoices(refresh).then((items) => {
+      if (mounted.current) setVoices([...items].sort((a, b) => a.language.localeCompare(b.language) || a.name.localeCompare(b.name)));
     }).catch(() => {
       if (mounted.current) setError('Voices are unavailable. Check the device text-to-speech settings, or install the updated TV app.');
-    }).finally(() => {if (mounted.current) setVoicesLoading(false);});
+    }).finally(() => {voicesRequest.current = false; if (mounted.current) setVoicesLoading(false);});
   }, []);
 
-  const value = useMemo(() => ({preference, ready, screenReader, canDetectScreenReader: narrationEnvironment.canDetectScreenReader, voices, voicesLoading, error, setPreference,
+  const announce = useCallback((text: string, owner?: object, preview = false) => {
+    if (preview) setError(null);
+    controller.announce(text, owner, preview);
+  }, [controller]);
+
+  const value = useMemo(() => ({preference, ready, screenReader, canDetectScreenReader: narrationEnvironment.canDetectScreenReader, voices, voicesLoading, error, setPreference, speechStatus,
     narrating: preference.enabled && ready && active && screenReader === false,
-    announce: controller.announce, blur: controller.blur, stop: controller.stop, refreshVoices}),
-  [preference, ready, active, screenReader, voices, voicesLoading, error, setPreference, controller, refreshVoices]);
+    announce, blur: controller.blur, stop: controller.stop, refreshVoices}),
+  [preference, ready, active, screenReader, voices, voicesLoading, error, setPreference, speechStatus, announce, controller, refreshVoices]);
   return <NarrationContext.Provider value={value}>{children}</NarrationContext.Provider>;
 }
 

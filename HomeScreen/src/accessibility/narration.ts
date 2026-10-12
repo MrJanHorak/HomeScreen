@@ -36,19 +36,24 @@ export function selectionAnnouncement(label: string, state: SpokenState = {}, va
 
 export interface SpeechDriver {
   stop: () => Promise<void>;
-  speak: (text: string, preference: NarrationPreference, onError: () => void, isCurrent: () => boolean) => Promise<void>;
+  speak: (text: string, preference: NarrationPreference, onError: () => void, isCurrent: () => boolean,
+    playback?: {onStart: () => void; onDone: () => void}) => Promise<void>;
 }
+
+export type SpeechStatus = 'idle' | 'starting' | 'speaking';
 
 /** One shared queue: moving focus invalidates pending speech, including async engine work. */
 export class NarrationController {
   private version = 0;
   private timer: ReturnType<typeof setTimeout> | undefined;
+  private startTimer: ReturnType<typeof setTimeout> | undefined;
   private queue: Promise<void> = Promise.resolve();
   private allowed = false;
   private preference = DEFAULT_NARRATION;
   private owner: object | undefined;
 
-  constructor(private driver: SpeechDriver, private onError: () => void, private delay = 180) {}
+  constructor(private driver: SpeechDriver, private onError: () => void, private delay = 180,
+    private onStatus: (status: SpeechStatus) => void = () => {}, private startTimeout = 8000) {}
 
   configure(preference: NarrationPreference, allowed: boolean) {
     if (this.allowed === allowed && this.preference.enabled === preference.enabled &&
@@ -62,10 +67,16 @@ export class NarrationController {
     ++this.version;
     clearTimeout(this.timer);
     this.timer = undefined;
+    clearTimeout(this.startTimer);
+    this.startTimer = undefined;
+    this.onStatus('idle');
   }
 
   private enqueue(task: () => Promise<void>) {
-    this.queue = this.queue.then(task).catch(() => this.onError());
+    const version = this.version;
+    this.queue = this.queue.then(task).catch(() => {
+      if (version === this.version) {this.invalidate(); this.owner = undefined; this.onError();}
+    });
   }
 
   stop = () => {
@@ -85,11 +96,27 @@ export class NarrationController {
     this.enqueue(() => this.driver.stop());
     if (!this.allowed || (!preview && !this.preference.enabled) || !text.trim()) return;
     const preference = {...this.preference};
+    const isCurrent = () => version === this.version && this.allowed;
+    const fail = () => {if (isCurrent()) {this.stop(); this.onError();}};
+    // Include queued engine work in the timeout so a preview cannot wait silently forever.
+    this.onStatus('starting');
+    this.startTimer = setTimeout(fail, this.startTimeout);
     const speak = () => this.enqueue(async () => {
       if (version !== this.version || !this.allowed) return;
-      await this.driver.speak(text, preference, () => {
-        if (version === this.version) this.onError();
-      }, () => version === this.version && this.allowed);
+      await this.driver.speak(text, preference, fail, isCurrent, {
+        onStart: () => {
+          if (!isCurrent()) return;
+          clearTimeout(this.startTimer);
+          this.startTimer = undefined;
+          this.onStatus('speaking');
+        },
+        onDone: () => {
+          if (!isCurrent()) return;
+          clearTimeout(this.startTimer);
+          this.startTimer = undefined;
+          this.onStatus('idle');
+        },
+      });
       // A stop/focus event may arrive while the engine is loading.
       if (version !== this.version || !this.allowed) await this.driver.stop();
     });

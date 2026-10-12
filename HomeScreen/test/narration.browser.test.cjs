@@ -12,11 +12,17 @@ async function open(t, width = 960, options = {}) {
   page.on('pageerror', (error) => errors.push(error.message));
   await page.addInitScript((options) => {
     window.speechCalls = []; window.speechStops = 0;
+    window.speechDelayedStart = options.delayedStart;
     const voices = [{voiceURI: 'test-en', name: 'English voice', lang: 'en-US', default: true},
       {voiceURI: 'test-es', name: 'Spanish voice', lang: 'es-ES'}];
     Object.defineProperty(window, 'speechSynthesis', {value: {
       getVoices: () => voices, addEventListener: () => {}, removeEventListener: () => {},
-      speak: (message) => window.speechCalls.push({text: message.text, rate: message.rate, voice: message.voice?.voiceURI}),
+      speak: (message) => {
+        window.speechCalls.push({text: message.text, rate: message.rate, voice: message.voice?.voiceURI});
+        window.startSpeech = () => message.onstart?.();
+        window.finishSpeech = () => message.onend?.();
+        if (!window.speechDelayedStart) {window.startSpeech(); window.finishSpeech();}
+      },
       cancel: () => {window.speechStops++;},
     }});
     window.SpeechSynthesisUtterance = class {constructor(text) {this.text = text;}};
@@ -54,7 +60,7 @@ for (const width of [960, 1920]) test(`keyboard navigation, preview, speed, voic
   const stops = await page.evaluate(() => window.speechStops);
   await page.getByRole('button', {name: 'Stop speaking', exact: true}).click();
   assert.ok(await page.evaluate(() => window.speechStops) > stops);
-  await page.screenshot({path: `../artifacts/narration-settings-${width}.png`});
+  if (process.env.TV_NARRATION_SCREENSHOTS === '1') await page.screenshot({path: `../artifacts/narration-settings-${width}.png`});
   await page.getByRole('button', {name: 'Back to languages', exact: true}).click();
   await page.getByRole('button', {name: 'Back to spoken navigation', exact: true}).click();
   await page.reload(); await page.getByRole('button', {name: 'Read selections aloud, on', exact: true}).waitFor();
@@ -107,5 +113,23 @@ test('unsupported speech and corrupt saved preferences leave navigation usable',
   await page.getByText('Speech could not play.', {exact: false}).waitFor();
   await page.getByRole('button', {name: 'Read selections aloud, off', exact: true}).click();
   assert.equal(JSON.parse(await page.locator('[data-narration]').textContent()).enabled, false);
+  assert.deepEqual(errors, []);
+});
+
+test('preview shows engine startup, reports a silent stall, and can be retried while reading is off', async (t) => {
+  const {page, errors} = await open(t, 960, {delayedStart: true});
+  await page.clock.install();
+  const preview = page.getByRole('button', {name: 'Preview voice', exact: true});
+  await preview.click();
+  await page.getByText('Starting voice… Network voices may take longer.', {exact: true}).waitFor();
+  await page.clock.fastForward(8001);
+  await page.getByText('Speech could not play.', {exact: false}).waitFor();
+  await preview.click();
+  await page.getByText('Starting voice… Network voices may take longer.', {exact: true}).waitFor();
+  assert.equal(await page.getByText('Speech could not play.', {exact: false}).count(), 0);
+  await page.evaluate(() => window.startSpeech());
+  await page.getByText('Speaking…', {exact: true}).waitFor();
+  await page.evaluate(() => window.finishSpeech());
+  assert.equal(await page.getByText('Speaking…', {exact: true}).count(), 0);
   assert.deepEqual(errors, []);
 });

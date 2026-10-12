@@ -11,8 +11,8 @@ const {DEFAULT_NARRATION, normalizeNarration, selectionAnnouncement, NarrationCo
 const tick = () => new Promise((resolve) => setTimeout(resolve, 12));
 function setup() {
   const spoken = [], errors = [], stops = [];
-  const driver = {stop: async () => {stops.push(true);}, speak: async (text, preference, onError, isCurrent) => {
-    if (isCurrent()) spoken.push({text, preference, onError});
+  const driver = {stop: async () => {stops.push(true);}, speak: async (text, preference, onError, isCurrent, playback) => {
+    if (isCurrent()) {spoken.push({text, preference, onError}); playback?.onStart(); playback?.onDone();}
   }};
   const controller = new NarrationController(driver, () => errors.push(true), 1);
   return {controller, driver, spoken, errors, stops};
@@ -64,6 +64,37 @@ test('stale engine initialization cannot speak after stop, and current settings 
   controller.configure({enabled: true, rate: 0.75, voice: 'voice-a'}, true);
   controller.announce('Tasks'); await tick(); assert.equal(spoken[0].preference.voice, 'voice-a');
   assert.equal(spoken[0].preference.rate, 0.75);
+  controller.stop();
+});
+
+test('a preview that never starts times out, stops and can be retried with a new voice', async () => {
+  const statuses = [], spoken = [], errors = [];
+  let stops = 0;
+  const driver = {stop: async () => {stops++;}, speak: async (text, preference, onError, isCurrent, playback) => {
+    spoken.push({preference, playback, isCurrent});
+  }};
+  const controller = new NarrationController(driver, () => errors.push(true), 1, (status) => statuses.push(status), 20);
+  controller.configure(DEFAULT_NARRATION, true);
+  controller.announce('Preview', undefined, true);
+  await tick(); assert.equal(statuses.at(-1), 'starting');
+  await new Promise((resolve) => setTimeout(resolve, 25));
+  assert.equal(errors.length, 1); assert.equal(statuses.at(-1), 'idle'); assert.ok(stops > 1);
+  assert.equal(spoken[0].isCurrent(), false);
+  controller.configure({...DEFAULT_NARRATION, voice: 'local-voice'}, true);
+  controller.announce('Retry', undefined, true); await tick();
+  assert.equal(spoken[1].preference.voice, 'local-voice');
+  spoken[0].playback.onStart(); assert.equal(statuses.at(-1), 'starting');
+  spoken[1].playback.onStart(); assert.equal(statuses.at(-1), 'speaking');
+  await new Promise((resolve) => setTimeout(resolve, 25)); assert.equal(errors.length, 1);
+  spoken[1].playback.onDone(); assert.equal(statuses.at(-1), 'idle');
+  controller.stop();
+});
+
+test('a failed stop reports once without endlessly requeueing the failure', async () => {
+  const errors = [];
+  const controller = new NarrationController({stop: async () => {throw new Error('No engine');}, speak: async () => {}}, () => errors.push(true), 1);
+  controller.configure(DEFAULT_NARRATION, true);
+  await tick(); assert.equal(errors.length, 1);
 });
 test('engine errors are reported and do not permanently poison subsequent speech', async () => {
   const {controller, driver, spoken, errors} = setup(); let fail = true;

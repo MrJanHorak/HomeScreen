@@ -22,20 +22,22 @@ async function browserVoices(): Promise<SpeechSynthesisVoice[]> {
   });
 }
 
-export async function availableVoices(): Promise<Voice[]> {
+export async function availableVoices(_refresh = false): Promise<Voice[]> {
   return (await browserVoices()).map((voice) => ({identifier: voice.voiceURI, name: voice.name,
     language: voice.lang, quality: 'Default' as Voice['quality']}));
 }
 
 export const speechDriver: SpeechDriver = {
   async stop() {if (typeof window !== 'undefined') window.speechSynthesis?.cancel();},
-  async speak(text, preference, onError, isCurrent) {
+  async speak(text, preference, onError, isCurrent, playback) {
     const voices = await browserVoices();
     if (!isCurrent()) return;
     const message = new SpeechSynthesisUtterance(text);
     message.rate = preference.rate;
     message.voice = voices.find((voice) => voice.voiceURI === preference.voice) || null;
     if (message.voice) message.lang = message.voice.lang;
+    message.onstart = () => playback?.onStart();
+    message.onend = () => playback?.onDone();
     message.onerror = (event) => {
       if (event.error !== 'canceled' && event.error !== 'interrupted' && isCurrent()) onError();
     };

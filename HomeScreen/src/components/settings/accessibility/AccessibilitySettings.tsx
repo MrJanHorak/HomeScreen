@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useMemo, useState} from 'react';
 import {StyleSheet, View} from 'react-native';
 import Text from '../../shared/ReadingText';
 import Option from '../appearance/AppearanceOption';
@@ -7,12 +7,13 @@ import VoicePicker from './VoicePicker';
 import {groupVoices, languageName, voiceDisplay, voiceLanguage} from '../../../accessibility/voiceGroups';
 
 export default function AccessibilitySettings() {
-  const {preference, ready, screenReader, canDetectScreenReader, voices, voicesLoading, error, setPreference, announce, stop, refreshVoices} = useNarration();
+  const {preference, ready, screenReader, canDetectScreenReader, voices, voicesLoading, speechStatus, error, setPreference, announce, stop, refreshVoices} = useNarration();
   const [showVoices, setShowVoices] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
-  useEffect(() => {refreshVoices();}, [refreshVoices]);
+  useEffect(() => {refreshVoices(false);}, [refreshVoices]);
+  const groups = useMemo(() => groupVoices(voices), [voices]);
   const selectedVoice = voices.find((voice) => voice.identifier === preference.voice);
-  const selectedGroup = selectedVoice && groupVoices(voices).find((group) => group.id === voiceLanguage(selectedVoice));
+  const selectedGroup = selectedVoice && groups.find((group) => group.id === voiceLanguage(selectedVoice));
   const selectedDisplay = selectedVoice && voiceDisplay(selectedVoice, selectedGroup?.voices.findIndex((voice) => voice.identifier === selectedVoice.identifier) ?? 0);
   return <View style={styles.section}>
     {!showVoices && <><Text style={styles.title} accessibilityRole='header'>Spoken navigation</Text>
@@ -43,8 +44,11 @@ export default function AccessibilitySettings() {
       <Option compact label='Preview voice' disabled={!ready || screenReader !== false || voicesLoading}
         onPress={() => announce('This is your dashboard voice. Weather. Open details. High contrast. Selected.', undefined, true)}/>
       <Option compact label='Stop speaking' onPress={stop}/>
-      {!showVoices && <Option compact label='Refresh voices' disabled={voicesLoading} onPress={refreshVoices}/>}
+      {!showVoices && <Option compact label='Refresh voices' disabled={voicesLoading} onPress={() => refreshVoices()}/>}
     </View>
+    {speechStatus !== 'idle' && <Text style={styles.description} accessibilityLiveRegion='polite'>
+      {speechStatus === 'starting' ? 'Starting voice… Network voices may take longer.' : 'Speaking…'}
+    </Text>}
     {screenReader === true && <Text style={styles.description} accessibilityLiveRegion='polite'>Your screen reader is active. The dashboard voice is paused.</Text>}
     {screenReader === null && <Text style={styles.description}>Checking screen reader settings…</Text>}
     {error && <Text style={styles.description} accessibilityRole='alert'>{error}</Text>}
@@ -52,6 +56,7 @@ export default function AccessibilitySettings() {
     {showHelp && !showVoices && <>
       {!canDetectScreenReader && <Text style={styles.description}>Browsers cannot detect screen readers. If you use one, leave reading selections off to avoid hearing two voices.</Text>}
       <Text style={styles.description}>Preview works even when reading selections is off. Voice availability depends on this device. Text-to-speech settings may offer additional languages or voice downloads.</Text>
+      <Text style={styles.description}>Voice changes apply to the next spoken phrase. Local voices can start faster and work offline. Use Refresh voices after installing or changing voices in the TV settings.</Text>
       <Text style={styles.description}>Dashboard cards announce their names. Controls inside an opened detail view may include personal information. Background updates stay silent. Fonts, spacing and contrast are in Fonts &amp; reading.</Text>
     </>}
   </View>;
