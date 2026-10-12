@@ -6,6 +6,13 @@ bindings, and styles. Free layouts allow swapping complete footprints, moving
 into empty space, and resizing without overlaps. Automatic rows fit eight
 visible cards and the free grid fits twelve.
 
+Cards owns its scrolling area so the live preview remains visible, beside the
+controls on wide screens and above them on compact screens. Adjust opens one
+card's Move and Resize controls and highlights that card in the preview.
+Show/Hide actions stay available in each row. Movement uses a directional pad;
+unavailable positions and sizes are disabled, including overlaps. Grid dimensions
+are omitted from the controls. Reordering keeps the same card selected.
+
 The Layout tab reads saved companion designs through
 `appearanceStudio?designs=1`. TV sessions receive saved designs only. Drafts,
 history, and library mutations remain restricted to the owner. Selecting a
@@ -28,7 +35,9 @@ resolvable; `NODE_PATH` can point to bundled runtime packages. Set
 The fixture uses the real appearance provider and settings components with
 mocked authentication, APIs, and local storage. It checks compact and full
 widths, keyboard activation, widget persistence, saved and preset layouts,
-and retry after a library failure. Native TV focus still needs a device check.
+and retry after a library failure. It also checks preview visibility while
+scrolling, compact screen heights, and selection while reordering and hiding.
+Native TV focus still needs a device check.
 
 Release these changes by deploying the updated `appearanceStudio` and
 `pollFeed` functions and rebuilding/installing the TV app. No companion UI

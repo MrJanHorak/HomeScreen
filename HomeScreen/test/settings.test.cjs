@@ -6,22 +6,63 @@ let browser;
 before(async () => {browser = await chromium.launch({headless: true, ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? {executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE} : {})});});
 after(async () => {await browser?.close();});
 const state = (page) => page.locator('[data-appearance]').textContent().then(JSON.parse);
+for (const viewport of [{width: 720, height: 540}, {width: 960, height: 850}, {width: 1920, height: 540}]) {
+  test(`preview stays visible while card controls scroll: ${viewport.width} × ${viewport.height}`, async (t) => {
+    const page = await browser.newPage({viewport}); t.after(() => page.close());
+    await page.goto(url);
+    await page.getByRole('button', {name: 'Adjust Weather', exact: true}).waitFor();
+    const preview = page.getByTestId('live-dashboard-preview');
+    const scroll = page.getByTestId('card-settings-scroll');
+    const before = await preview.boundingBox();
+    const reorder = page.getByRole('button', {name: 'Move later Weather', exact: true});
+    await reorder.focus(); await page.keyboard.press('Enter');
+    await page.getByText('Adjusting: Weather', {exact: true}).waitFor();
+    assert.equal(await page.getByRole('button', {name: 'Make wider Weather', exact: true}).count(), 1);
+    await page.getByRole('button', {name: 'Refresh available cards', exact: true}).focus();
+    await page.waitForFunction(() => document.querySelector('[data-testid="card-settings-scroll"]').scrollTop > 0);
+    const after = await preview.boundingBox();
+    assert.equal(after.y, before.y);
+    assert.ok(after.y >= 0 && after.y + after.height <= viewport.height);
+    assert.ok((await scroll.boundingBox()).height > 120, 'settings retain usable scrolling space');
+    await page.getByRole('button', {name: 'Adjust Activity · Alex', exact: true}).focus();
+    await page.keyboard.press('Enter');
+    await page.getByText('Adjusting: Activity · Alex', {exact: true}).waitFor();
+    assert.equal(await page.getByRole('button', {name: 'Make wider Weather', exact: true}).count(), 0);
+    const resize = page.getByRole('button', {name: 'Make wider Activity · Alex', exact: true});
+    await resize.focus(); await page.keyboard.press('Enter');
+    assert.equal((await state(page)).widgetLayout.widgets.find((widget) => widget.personId)?.size, 'wide');
+    await page.getByRole('button', {name: 'Free layout. Choose where each card goes', exact: true}).click();
+    await page.getByRole('button', {name: 'Move up Activity · Alex', exact: true}).waitFor();
+    assert.equal(await page.getByText(/^\d+ × \d+$/).count(), 0);
+    assert.equal(await page.getByRole('button', {name: 'Move up Activity · Alex', exact: true}).isDisabled(), true);
+    const previous = await state(page);
+    await page.getByRole('button', {name: 'Swap next Activity · Alex', exact: true}).click();
+    assert.notDeepEqual((await state(page)).widgetLayout.grid.items, previous.widgetLayout.grid.items);
+    await page.getByRole('button', {name: 'Hide Activity · Alex', exact: true}).click();
+    await page.getByText('Adjusting: Weather', {exact: true}).waitFor();
+    assert.equal(await page.getByRole('button', {name: 'Move up Activity · Alex', exact: true}).count(), 0);
+    if (process.env.TV_SETTINGS_SCREENSHOTS) {
+      await page.getByRole('button', {name: 'Adjust Weather', exact: true}).focus();
+      await page.screenshot({path: `../artifacts/settings-sticky-${viewport.width}-${viewport.height}.png`});
+    }
+  });
+}
 for (const width of [960, 1920]) test(`TV card and saved layout controls work with keyboard and persist widget instances: ${width}`, async (t) => {
   const page = await browser.newPage({viewport: {width, height: 850}});
   t.after(() => page.close());
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto(url);
-  const poll = page.getByRole('button', {name: 'Poll · Movie night? shown', exact: true});
+  const poll = page.getByRole('button', {name: 'Hide Poll · Movie night?', exact: true});
   await poll.waitFor();
   if (process.env.TV_SETTINGS_SCREENSHOTS) await page.screenshot({path: `../artifacts/settings-cards-${width}.png`});
   await poll.focus(); await page.keyboard.press('Enter');
-  await page.getByRole('button', {name: 'Poll · Movie night? hidden', exact: true}).waitFor();
-  await page.getByRole('button', {name: 'Poll · Movie night? hidden', exact: true}).click();
+  await page.getByRole('button', {name: 'Show Poll · Movie night?', exact: true}).waitFor();
+  await page.getByRole('button', {name: 'Show Poll · Movie night?', exact: true}).click();
   await page.getByRole('button', {name: 'Add Activity · Sam', exact: true}).click();
-  await page.getByRole('button', {name: 'Activity · Sam shown', exact: true}).waitFor();
+  await page.getByRole('button', {name: 'Hide Activity · Sam', exact: true}).waitFor();
   await page.getByRole('button', {name: 'Add Poll · Dinner?', exact: true}).click();
-  await page.getByRole('button', {name: 'Poll · Dinner? shown', exact: true}).waitFor();
+  await page.getByRole('button', {name: 'Hide Poll · Dinner?', exact: true}).waitFor();
   assert.equal((await state(page)).widgetLayout.widgets.filter((widget) => widget.visible).length, 5);
   await page.getByRole('button', {name: 'Layout tab', exact: true}).click();
   if (process.env.TV_SETTINGS_SCREENSHOTS) {
@@ -32,11 +73,11 @@ for (const width of [960, 1920]) test(`TV card and saved layout controls work wi
   assert.equal((await state(page)).palette, 'forest');
   assert.equal((await state(page)).widgetLayout.grid.items.length, 3);
   await page.getByRole('button', {name: 'Cards tab', exact: true}).click();
-  await page.getByRole('button', {name: 'Next spot Weather', exact: true}).click();
+  await page.getByRole('button', {name: 'Swap next Weather', exact: true}).click();
   const moved = await state(page);
   assert.equal(moved.widgetLayout.grid.items.find((item) => item.id === 'weather').x, 6);
-  await page.getByRole('button', {name: 'Activity · Alex shown', exact: true}).click();
-  await page.getByRole('button', {name: 'Activity · Alex hidden', exact: true}).click();
+  await page.getByRole('button', {name: 'Hide Activity · Alex', exact: true}).click();
+  await page.getByRole('button', {name: 'Show Activity · Alex', exact: true}).click();
   assert.equal((await state(page)).widgetLayout.grid.items.length, 3);
   await page.getByRole('button', {name: 'Layout tab', exact: true}).click();
   await page.getByRole('button', {name: 'Balanced. All six cards, with the schedule prominent.', exact: true}).click();
@@ -52,7 +93,7 @@ for (const width of [960, 1920]) test(`TV card and saved layout controls work wi
 test('saved layout failures show a retry and retain the current dashboard', async (t) => {
   const page = await browser.newPage(); t.after(() => page.close());
   await page.goto(url);
-  await page.getByRole('button', {name: 'Free layout', exact: true}).waitFor();
+  await page.getByRole('button', {name: 'Free layout. Choose where each card goes', exact: true}).waitFor();
   const previous = await state(page);
   await page.evaluate(() => {window.settingsFixture.failLayouts = true;});
   await page.getByRole('button', {name: 'Layout tab', exact: true}).click();

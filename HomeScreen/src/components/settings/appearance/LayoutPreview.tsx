@@ -17,11 +17,15 @@ export default function LayoutPreview({
   large = false,
   appearance: suppliedAppearance,
   label = widgetLabel,
+  selectedId,
+  compact = false,
 }: {
   cards: CardPreference[];
   large?: boolean;
   appearance?: DashboardAppearance;
   label?: (widget: Widget) => string;
+  selectedId?: string;
+  compact?: boolean;
 }) {
   const currentTheme = useTheme();
   const {appearance: currentAppearance, photoDataUrl} = useAppearance();
@@ -62,6 +66,7 @@ export default function LayoutPreview({
       style={[
         styles.preview,
         large && styles.largePreview,
+        compact && {height: 108},
         { backgroundColor: theme.colors.background },
       ]}
       accessible={false}
@@ -85,6 +90,7 @@ export default function LayoutPreview({
                   borderColor: tileColors(item.id).borderColor,
                   borderWidth: tileColors(item.id).borderWidth,
                   borderRadius: tileColors(item.id).borderRadius,
+                  ...(selectedId === item.id ? {borderColor: theme.colors.focusRing, borderWidth: 2} : {}),
                 },
               ]}
             >
@@ -118,6 +124,7 @@ export default function LayoutPreview({
                       borderColor: tileColors(card.id).borderColor,
                       borderWidth: tileColors(card.id).borderWidth,
                       borderRadius: tileColors(card.id).borderRadius,
+                      ...(selectedId === card.id ? {borderColor: theme.colors.focusRing, borderWidth: 2} : {}),
                     },
                   ]}
                 >

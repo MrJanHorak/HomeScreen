@@ -45,6 +45,7 @@ export default function AppearanceSettings({
   );
   const validAccent = normalizeHexColor(accentInput);
   const validBackground = normalizeHexColor(backgroundInput);
+  if (section === 'cards') return <WidgetCardSettings />;
   return (
     <View style={styles.section}>
       <Text style={[styles.title, { color: theme.colors.textPrimary }]}>
@@ -248,7 +249,6 @@ export default function AppearanceSettings({
       )}
 
       {section === 'layout' && <SavedLayoutSettings />}
-      {section === 'cards' && <WidgetCardSettings />}
     </View>
   );
 }

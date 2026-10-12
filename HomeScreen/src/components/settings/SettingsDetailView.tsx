@@ -130,17 +130,17 @@ export default function SettingsDetailView({
           );
         })}
       </ScrollView>
+      {section === 'cards' && <View style={styles.content}><AppearanceSettings section='cards' /></View>}
       <ScrollView
         ref={scrollRef}
-        style={styles.content}
+        style={[styles.content, section === 'cards' && styles.hiddenSection]}
         contentContainerStyle={styles.contentInner}
         showsVerticalScrollIndicator
         accessibilityLabel={`${SECTIONS.find((item) => item.id === section)?.label} options`}
       >
         {(section === 'colors' ||
           section === 'background' ||
-          section === 'layout' ||
-          section === 'cards') && <AppearanceSettings section={section} />}
+          section === 'layout') && <AppearanceSettings section={section} />}
         {section === 'reading' && <ReadingSettings />}
         {section === 'accessibility' && <AccessibilitySettings />}
         {section === 'ambient' && (
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
   compactTab: {minHeight: 36, paddingVertical: 5, gap: 7},
   tabLabel: { fontSize: 16, fontWeight: '700', flexShrink: 1 },
   compactTabLabel: {fontSize: 14},
-  content: { flex: 1, minWidth: 0 },
+  content: { flex: 1, minWidth: 0, minHeight: 0 },
   hiddenSection: { display: 'none' },
   contentInner: { paddingBottom: 12, paddingHorizontal: 4 },
 });
