@@ -5,7 +5,7 @@ export default {
   root,
   esbuild: {jsx: 'automatic'},
   define: {'process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID': JSON.stringify('feed-fixture'), 'process.env.EXPO_PUBLIC_PAIRING_URL': JSON.stringify('https://example.com')},
-  optimizeDeps: {rolldownOptions: {moduleTypes: {'.js': 'jsx'}, resolve: {extensions: ['.web.js', '.js', '.mjs', '.ts', '.tsx', '.json']}}},
+  optimizeDeps: {entries: ['index.html'], rolldownOptions: {moduleTypes: {'.js': 'jsx'}, resolve: {extensions: ['.web.js', '.js', '.mjs', '.ts', '.tsx', '.json']}}},
   resolve: {extensions: ['.web.tsx', '.web.ts', '.web.jsx', '.web.js', '.tsx', '.ts', '.jsx', '.js', '.json'], alias: {'react-native': path.resolve(root, '../node_modules/react-native-web'), 'react-native-svg': path.resolve(root, '../node_modules/react-native-svg/lib/module/ReactNativeSVG.web.js'), '@expo/vector-icons': path.join(root, 'fixtureIcons.tsx')}},
   plugins: [{name: 'card-fixture-hooks', enforce: 'pre', resolveId(id) {
     if (id === './speechDriver') return path.resolve(root, '../src/accessibility/speechDriver.web.ts');

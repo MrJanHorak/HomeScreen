@@ -21,6 +21,36 @@ async function open(t, topic, width, reading = false, busy = false) {
   return {page, errors};
 }
 
+for (const width of [960, 1920]) test(`activity shows uncapped progress and aligns the weekly goal at ${width}`, async t => {
+  const {page, errors} = await open(t, 'activity&activitySteps=14083', width);
+  await page.getByText('4,083 steps over goal · 41% extra', {exact: true}).waitFor();
+  assert.equal(await page.getByText('141%', {exact: true}).count(), 2);
+  const ring = page.getByTestId('activity-ring-overflow');
+  const dash = Number(await ring.getAttribute('stroke-dashoffset'));
+  const circumference = Number((await ring.getAttribute('stroke-dasharray')).split(/[ ,]+/)[0]);
+  assert.ok(Math.abs(1 - dash / circumference - .4083) < 1e-6);
+  assert.equal(await page.getByTestId('activity-day-overflow').count(), 6);
+  const plot = await page.getByTestId('activity-chart-plot').boundingBox();
+  const line = await page.getByTestId('activity-goal-line').boundingBox();
+  assert.ok(Math.abs(line.y + line.height - (plot.y + plot.height * (1 - 10000 / 14305))) < 1);
+  for (const box of await page.getByTestId('activity-day-overflow').evaluateAll(nodes => nodes.map(n => {
+    const r = n.getBoundingClientRect(); return {bottom: r.bottom, top: r.top};
+  }))) {
+    assert.ok(Math.abs(box.bottom - (line.y + line.height)) < 1);
+    assert.ok(box.top >= plot.y - 1);
+  }
+  await page.screenshot({path: `../artifacts/activity-goal-${width}.png`});
+  for (const [steps, percent] of [[0, '0%'], [10000, '100%'], [20000, '200%'], [25000, '250%']]) {
+    await page.goto(`http://127.0.0.1:5177/details.html?topic=activity&activitySteps=${steps}`);
+    await page.getByText(percent, {exact: true}).first().waitFor();
+    assert.equal(await page.getByTestId('activity-ring-overflow').count(), steps > 10000 ? 1 : 0);
+  }
+  await page.goto('http://127.0.0.1:5177/details.html?topic=activity&activitySteps=14083&activityGoal=20000&reading');
+  await page.getByText('70%', {exact: true}).first().waitFor();
+  assert.equal(await page.getByTestId('activity-day-overflow').count(), 0);
+  assert.deepEqual(errors, []);
+});
+
 test('long lists retain every item and task completion remains reachable by keyboard', async (t) => {
   const {page, errors} = await open(t, 'todo', 960, true, true);
   const tasks = page.getByRole('checkbox');

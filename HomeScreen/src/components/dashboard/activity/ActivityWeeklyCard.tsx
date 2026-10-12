@@ -11,6 +11,7 @@ import CardDetailsHint from '../shared/CardDetailsHint';
 import CardSection from '../shared/CardSection';
 import {activityMiniChartWidth} from '../shared/cardContentLayout';
 import ActivityDayBars from './ActivityDayBars';
+import {goalProgress} from '../../../helpers/goalProgress';
 
 export function ActivityWeeklySummary({weekly, scale, showAverage = true, width = 0, stepGoal = 0}: {
   weekly: ActivityDay[]; scale: number; showAverage?: boolean; width?:number; stepGoal?:number;
@@ -24,13 +25,13 @@ export function ActivityWeeklySummary({weekly, scale, showAverage = true, width 
     <Text numberOfLines={1} style={{color: theme.colors.textPrimary, fontSize: 14 * scale, lineHeight: 18 * scale, fontWeight: '700'}}>{summary.steps.toLocaleString()} steps</Text>
     {showAverage && <Text numberOfLines={1} style={{color: theme.colors.textSecondary, fontSize: 11 * scale, lineHeight: 14 * scale}}>{summary.averageSteps.toLocaleString()} daily avg</Text>}
     </View>
-    {chartWidth > 0 && <ActivityDayBars weekly={weekly} peak={activityChartPeak(weekly, stepGoal)} width={chartWidth} scale={scale} compact />}
+    {chartWidth > 0 && <ActivityDayBars weekly={weekly} peak={activityChartPeak(weekly, stepGoal)} stepGoal={stepGoal} width={chartWidth} scale={scale} compact />}
     </View>
   </CardSection>;
 }
 
-function WeeklyChart({ weekly, peak, width, scale, showTotals }: {
-  weekly: ActivityDay[]; peak: number; width: number; scale: number; showTotals: boolean;
+function WeeklyChart({ weekly, peak, stepGoal, width, scale, showTotals }: {
+  weekly: ActivityDay[]; peak: number; stepGoal: number; width: number; scale: number; showTotals: boolean;
 }) {
   const theme = useTheme();
   const summary = summarizeActivityWeek(weekly);
@@ -45,7 +46,7 @@ function WeeklyChart({ weekly, peak, width, scale, showTotals }: {
     {showTotals && <Text numberOfLines={width >= 330 * scale ? 1 : 2} style={{color: theme.colors.textSecondary, fontSize: 10 * scale, lineHeight: 13 * scale}}>
       {totals.join(' · ')}
     </Text>}
-    <ActivityDayBars weekly={weekly} peak={peak} width={width} scale={scale} />
+    <ActivityDayBars weekly={weekly} peak={peak} stepGoal={stepGoal} width={width} scale={scale} />
   </View>;
 }
 
@@ -66,7 +67,7 @@ export default function ActivityWeeklyCard({ health, width, height, sideBySide, 
   const today = <>
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 * scale, minWidth: 0 }}>
       <View style={{alignItems: 'center', gap: 3 * scale}}>
-        <TVProgressRing progress={health.stepGoal > 0 ? health.steps / health.stepGoal : 0} size={ringSize} strokeWidth={6 * scale} />
+        <TVProgressRing progress={goalProgress(health.steps, health.stepGoal)} size={ringSize} strokeWidth={6 * scale} />
         <Text numberOfLines={1} style={{color: theme.colors.textSecondary, fontSize: 10 * scale, lineHeight: 13 * scale}}>Goal {health.stepGoal.toLocaleString()}</Text>
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
@@ -81,10 +82,10 @@ export default function ActivityWeeklyCard({ health, width, height, sideBySide, 
 
     {sideBySide ? <View style={{ flex: 1, minHeight: 0, flexDirection: 'row', gap: 16 * scale }}>
       <View style={{ width: overviewWidth, minWidth: 0, gap: 7 * scale }}>{today}</View>
-      <WeeklyChart weekly={weekly} peak={peak} width={width - overviewWidth - 16 * scale} scale={scale} showTotals={height >= 195 * scale} />
+      <WeeklyChart weekly={weekly} peak={peak} stepGoal={health.stepGoal} width={width - overviewWidth - 16 * scale} scale={scale} showTotals={height >= 195 * scale} />
     </View> : <>
       {today}
-      <WeeklyChart weekly={weekly} peak={peak} width={width} scale={scale} showTotals={height >= 290 * scale} />
+      <WeeklyChart weekly={weekly} peak={peak} stepGoal={health.stepGoal} width={width} scale={scale} showTotals={height >= 290 * scale} />
     </>}
 
     <CardDetailsHint scale={scale} />

@@ -49,6 +49,28 @@ for (const mode of ['compact','full']) test(`Schedule account labels stay hidden
 let browser;
 before(async () => {browser = await chromium.launch({headless:true, ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? {executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE} : {})});});
 after(async () => {await browser?.close();});
+for (const mode of ['compact', 'full']) test(`activity ring and straight bar preserve over-goal progress across ${mode} sizes`, async t => {
+  const page = await browser.newPage({viewport: {width: mode === 'compact' ? 960 : 1920, height: 1080}});
+  t.after(() => page.close());
+  await page.goto(`http://127.0.0.1:5174/?mode=${mode}`);
+  await page.locator('[data-card="activity"] [data-testid="adaptive-activity"]').first().waitFor();
+  await page.evaluate(() => window.updateFixture({health: {status: 'ok', steps: 14083, stepGoal: 10000,
+    progress: 1, distance: 10.34, distanceGoal: 8, calories: 1252, activeMinutes: 165,
+    weekly: [13562,14305,13296,10775,11278,6162,14083].map((steps, i) => ({date: `2026-10-${String(i + 6).padStart(2, '0')}`, steps, distance: 5, calories: 500}))}}));
+  const cards = page.locator('[data-card="activity"]');
+  await cards.getByText('141%', {exact: true}).first().waitFor();
+  assert.ok(await cards.getByTestId('activity-ring-overflow').count() > 0);
+  const bars = cards.getByRole('progressbar');
+  // The full-size reference footprints all have room for rings; compact ones also use bars.
+  if (mode === 'compact') assert.ok(await bars.count() > 0);
+  for (const bar of await bars.all()) {
+    assert.equal(await bar.getAttribute('aria-valuenow'), '141');
+    const box = await bar.boundingBox(), extra = await bar.getByTestId('activity-progress-overflow').boundingBox();
+    assert.ok(Math.abs(extra.width / box.width - .4083) < .01);
+  }
+  assert.ok(await cards.getByTestId('activity-goal-line').count() > 0);
+});
+
 for (const layout of ['rows', 'grid']) test(`dashboard ${layout} reuse labeled cards and open the selected details`, async (t) => {
   const page = await browser.newPage({viewport:{width:960,height:1080}});
   t.after(() => page.close());

@@ -22,6 +22,12 @@ const weather = {temp: '72°', condition: 'Partly cloudy', location: 'Home', fee
   hourly: ['2 PM', '5 PM', '8 PM', '11 PM', '2 AM'].map((time, i) => ({time, temp: 73-i, pop: '10%', icon: 'sun'}))};
 const health = {status: 'ok', steps: 8123, stepGoal: 10000, progress: .8123, distance: 5.8, distanceGoal: 8, activeMinutes: 45, calories: 1720,
   estimatedRestingCalories: 800, fetchedAt: new Date().toISOString(), weekly: Array.from({length: 7}, (_, i) => ({date: date(-6+i), steps: 6000+i*350, activeMinutes: 35}))};
+if (params.has('activitySteps')) {
+  health.steps = Number(params.get('activitySteps'));
+  health.stepGoal = Number(params.get('activityGoal') || 10000);
+  health.progress = Math.min(1, health.steps / health.stepGoal);
+  health.weekly = [13562, 14305, 13296, 10775, 11278, 6162, health.steps].map((steps, i) => ({date: date(-6+i), steps, activeMinutes: 35}));
+}
 const locations = [{id: 'home', name: 'Home', query: 'Home', isDefault: true}];
 const many = params.has('busy');
 let scheduleOverride: {schedule?: CalendarEvent[]; upcomingEvents?: CalendarEvent[]} = {};

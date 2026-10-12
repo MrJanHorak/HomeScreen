@@ -6,7 +6,9 @@ import { useTheme } from '../../../theme/ThemeContext';
 import { useDashboard } from '../../../context/DashboardContext';
 import {usePeople} from '../../../context/PeopleContext';
 import TVProgressRing from '../../shared/TVProgressRing';
-import {activityBarPercent, activityChartPeak, summarizeActivityWeek} from '../../../helpers/activitySummary';
+import {activityChartPeak, summarizeActivityWeek} from '../../../helpers/activitySummary';
+import {GOAL_OVERFLOW_COLOR, goalProgress} from '../../../helpers/goalProgress';
+import ActivityDayBars from '../../dashboard/activity/ActivityDayBars';
 import {useDetailLayout} from '../../shared/DetailLayout';
 
 function recordTime(value?: string): string | null {
@@ -45,6 +47,8 @@ export default function ActivityDetailView({personId}: {personId?: string} = {})
   const stepsTime = recordTime(act.stepsRecordedThrough);
   const caloriesTime = recordTime(act.caloriesRecordedThrough);
   const restingEstimate = act.estimatedRestingCalories || 0;
+  const progress = goalProgress(act.steps, act.stepGoal);
+  const extraSteps = Math.max(0, act.steps - act.stepGoal);
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={twoColumns && styles.columns} showsVerticalScrollIndicator>
@@ -55,10 +59,10 @@ export default function ActivityDetailView({personId}: {personId?: string} = {})
       {/* Hero Overview */}
       <View style={[styles.heroRow, twoColumns && styles.stackedHero]}>
         <View style={[styles.ringCard, !twoColumns && {flex: 1.2}, compact && {padding: 12, gap: 14}]}>
-          <TVProgressRing progress={act.progress} size={compact ? 80 : 110} strokeWidth={compact ? 8 : 10} />
+          <TVProgressRing progress={progress} size={compact ? 80 : 110} strokeWidth={compact ? 8 : 10} />
           <View style={styles.ringTextGroup}>
             <Text style={[styles.ringPercent, compact && {fontSize: 32}, { color: theme.colors.textPrimary }]}>
-              {Math.round(act.progress * 100)}%
+              {Math.round(progress * 100)}%
             </Text>
             <Text style={[styles.ringLabel, { color: theme.colors.focusRing }]}>
               Daily Step Goal
@@ -66,6 +70,9 @@ export default function ActivityDetailView({personId}: {personId?: string} = {})
             <Text style={[styles.ringSub, { color: theme.colors.textSecondary }]}>
               {act.steps.toLocaleString()} of {act.stepGoal.toLocaleString()} steps
             </Text>
+            {progress > 1 && <Text style={[styles.metricSub, {color: GOAL_OVERFLOW_COLOR, marginTop: 4}]}>
+              {extraSteps.toLocaleString()} steps over goal · {Math.round((progress - 1) * 100)}% extra
+            </Text>}
             {stepsTime && <Text style={[styles.metricSub, { color: theme.colors.textSecondary, marginTop: 6 }]}>
               Latest step record: {stepsTime}
             </Text>}
@@ -125,24 +132,13 @@ export default function ActivityDetailView({personId}: {personId?: string} = {})
           {summary.moveMinutes !== null && <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>
             {summary.moveMinutes.toLocaleString()} Move Minutes across {summary.daysWithMoveMinutes} days with data
           </Text>}
-          <View style={styles.barsContainer}>
-            {weekly.map((day) => (
-              <View key={day.date} style={styles.barColumn}>
-                <Text style={[styles.barValueText, { color: theme.colors.textPrimary }]}>
-                  {day.steps.toLocaleString()}
-                </Text>
-                <View style={styles.barTrack}>
-                  <View style={[styles.barFill, {
-                    height: `${activityBarPercent(day.steps, highestSteps)}%`,
-                    backgroundColor: theme.colors.focusRing,
-                  }]} />
-                </View>
-                <Text style={[styles.barDayText, { color: theme.colors.textSecondary }]}>
-                  {new Date(`${day.date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short' })}
-                </Text>
-              </View>
-            ))}
-          </View>
+          <ActivityDayBars weekly={weekly} peak={highestSteps} stepGoal={act.stepGoal} scale={1} detailed />
+          {act.stepGoal > 0 && <Text style={[styles.metricSub, {color: theme.colors.textSecondary, marginTop: 8}]}>
+            Dashed line: current goal of {act.stepGoal.toLocaleString()} steps.
+          </Text>}
+          {act.stepGoal > 0 && <Text style={[styles.metricSub, {color: GOAL_OVERFLOW_COLOR}]}>
+            Amber shows steps over goal.
+          </Text>}
           <Text style={[styles.metricSub, { color: theme.colors.textSecondary, marginTop: 14 }]}>
             Bars show steps; the full bar represents {highestSteps.toLocaleString()} steps.
           </Text>
@@ -240,40 +236,5 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     marginBottom: 16,
-  },
-  barsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    height: 140,
-    paddingHorizontal: 0,
-  },
-  barColumn: {
-    alignItems: 'center',
-    height: '100%',
-    justifyContent: 'flex-end',
-    flex: 1,
-    minWidth: 0,
-  },
-  barValueText: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  barTrack: {
-    width: 14,
-    height: 90,
-    borderRadius: 7,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    justifyContent: 'flex-end',
-    overflow: 'hidden',
-  },
-  barFill: {
-    width: '100%',
-    borderRadius: 7,
-  },
-  barDayText: {
-    fontSize: 13,
-    marginTop: 8,
   },
 });

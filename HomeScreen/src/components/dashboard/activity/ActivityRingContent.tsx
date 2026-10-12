@@ -7,6 +7,7 @@ import ActivityStats from './ActivityStats';
 import {ActivityWeeklySummary} from './ActivityWeeklyCard';
 import CardHeader from '../shared/CardHeader';
 import type {ActivitySummaryProps} from './types';
+import {goalProgress} from '../../../helpers/goalProgress';
 
 export default function ActivityRingContent({health, width, height, scale, title}: ActivitySummaryProps) {
   const theme = useTheme();
@@ -14,7 +15,7 @@ export default function ActivityRingContent({health, width, height, scale, title
   const weekly = health.weekly || [];
   const hasWeekly = weekly.length > 0;
   const enlarged = width / scale >= 300 && height / scale >= 260 && !hasWeekly;
-  const progress = health.stepGoal > 0 ? Math.min(1, Math.max(0, health.steps / health.stepGoal)) : 0;
+  const progress = goalProgress(health.steps, health.stepGoal);
   // Reserve the weekly total before giving the remaining space to the ring.
   const summaryReserve = activitySummaryHeight(height - type.header - type.gap * 2 - 74 * scale, scale, hasWeekly);
   const ringSize = Math.min(

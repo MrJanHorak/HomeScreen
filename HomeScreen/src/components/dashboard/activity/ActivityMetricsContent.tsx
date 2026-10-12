@@ -8,6 +8,7 @@ import CardHeader from '../shared/CardHeader';
 import CardProgress from '../shared/CardProgress';
 import type {DashboardIcon} from '../shared/types';
 import type {ActivitySummaryProps} from './types';
+import {goalProgress} from '../../../helpers/goalProgress';
 
 interface ActivityMetric {
   text: string;
@@ -19,7 +20,7 @@ export default function ActivityMetricsContent({health, width, height, scale, ti
   const theme = useTheme();
   const type = cardTypography(height, scale);
   const weekly = health.weekly || [];
-  const progress = health.stepGoal > 0 ? Math.min(1, Math.max(0, health.steps / health.stepGoal)) : 0;
+  const progress = goalProgress(health.steps, health.stepGoal);
   const stats: ActivityMetric[] = [
     {text: `${health.steps.toLocaleString()} steps`, icon: 'walk', color: '#38BDF8'},
     {text: `${health.distance.toFixed(1)} km`, icon: 'map-marker-distance', color: '#34D399'},
@@ -57,7 +58,7 @@ export default function ActivityMetricsContent({health, width, height, scale, ti
           </View>
         ))}
       </View>
-      {showProgress && <CardProgress value={progress} />}
+      {showProgress && <CardProgress value={progress} showOverflow />}
       {summaryHeight > 0 && (
         <ActivityWeeklySummary weekly={weekly} scale={scale} width={width} stepGoal={health.stepGoal} showAverage={summaryHeight >= 62 * scale} />
       )}
