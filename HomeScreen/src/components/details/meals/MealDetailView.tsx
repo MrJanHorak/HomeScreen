@@ -30,58 +30,79 @@ export default function MealDetailView() {
       ? meals.message || 'The meal Sheet is unavailable.'
       : 'No upcoming dinners are listed in your Sheet.';
 
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={[styles.content, twoColumns && styles.columns]}
-      showsVerticalScrollIndicator>
-      {next ? <View style={[styles.hero, twoColumns && styles.dinnerColumn, compact && {padding: 14}]}>
-        <View style={styles.heroLabel}>
-          <MaterialCommunityIcons name="silverware-fork-knife" size={20} color="#F59E0B" />
-          <Text style={styles.eyebrow}>{next.date === today ? "TONIGHT'S DINNER" : 'NEXT DINNER'}</Text>
-        </View>
-        <Text style={[styles.heroTitle, {color: theme.colors.textPrimary}]}>{next.title}</Text>
-        <Text style={[styles.meta, {color: theme.colors.textSecondary}]}>
-          {friendlyDate(next.date)}{next.servings ? `  ·  Serves ${next.servings}` : ''}
-        </Text>
-        {next.side ? <Text style={[styles.meta, {color: theme.colors.textSecondary}]}>
-          Side: {next.side}
-        </Text> : null}
-        {next.cook ? <Text style={[styles.meta, {color: theme.colors.textSecondary}]}>
-          Cook: {next.cook}
-        </Text> : null}
-        {next.note ? <Text style={[styles.note, {color: theme.colors.textSecondary}]}>
-          {next.note}
-        </Text> : null}
-      </View> : <View style={styles.hero}>
-        <Text style={[styles.empty, {color: theme.colors.textSecondary}]}>{message}</Text>
-      </View>}
+  const dinner = next ? <View testID="meal-detail-dinner" style={[
+    styles.hero, twoColumns && styles.dinnerHero, compact && {padding: 14},
+  ]}>
+    <View style={styles.heroLabel}>
+      <MaterialCommunityIcons name="silverware-fork-knife" size={20} color="#F59E0B" />
+      <Text style={styles.eyebrow}>{next.date === today ? "TONIGHT'S DINNER" : 'NEXT DINNER'}</Text>
+    </View>
+    <Text style={[styles.heroTitle, {color: theme.colors.textPrimary}]}>{next.title}</Text>
+    <Text style={[styles.meta, {color: theme.colors.textSecondary}]}>
+      {friendlyDate(next.date)}{next.servings ? `  ·  Serves ${next.servings}` : ''}
+    </Text>
+    {next.side ? <Text style={[styles.meta, {color: theme.colors.textSecondary}]}>
+      Side: {next.side}
+    </Text> : null}
+    {next.cook ? <Text style={[styles.meta, {color: theme.colors.textSecondary}]}>
+      Cook: {next.cook}
+    </Text> : null}
+    {next.note ? <Text style={[styles.note, {color: theme.colors.textSecondary}]}>
+      {next.note}
+    </Text> : null}
+  </View> : <View style={styles.hero}>
+    <Text style={[styles.empty, {color: theme.colors.textSecondary}]}>{message}</Text>
+  </View>;
 
-      {upcoming.length > 1 && <View style={twoColumns && styles.menuColumn}>
-        <Text style={[styles.sectionTitle, {color: theme.colors.textPrimary}]}>Following dinners</Text>
-        {upcoming.slice(1).map((item) => <View key={`${item.date}-${item.title}`} style={[
-          styles.row, compact && {padding: 10, gap: 10}, item.date === today && {borderColor: theme.colors.focusRing},
-        ]}>
-          <Text style={[styles.day, {color: item.date === today ? theme.colors.focusRing :
-            theme.colors.textSecondary}]}>{friendlyDate(item.date)}</Text>
-          <View style={styles.rowContent}>
-            <Text style={[styles.meal, {color: theme.colors.textPrimary}]}>{item.title}</Text>
-            {item.note ? <Text numberOfLines={2} style={[styles.rowNote,
-              {color: theme.colors.textSecondary}]}>{item.note}</Text> : null}
-          </View>
-          {item.servings ? <Text style={[styles.servings, {color: theme.colors.textSecondary}]}>
-            Serves {item.servings}
-          </Text> : null}
-        </View>)}
-      </View>}
+  const menu = upcoming.length > 1 && <View>
+    <Text style={[styles.sectionTitle, {color: theme.colors.textPrimary}]}>Following dinners</Text>
+    {upcoming.slice(1).map((item) => <View testID="meal-detail-following-dinner" key={`${item.date}-${item.title}`} style={[
+      styles.row, compact && {padding: 10, gap: 10}, item.date === today && {borderColor: theme.colors.focusRing},
+    ]}>
+      <Text style={[styles.day, {color: item.date === today ? theme.colors.focusRing :
+        theme.colors.textSecondary}]}>{friendlyDate(item.date)}</Text>
+      <View style={styles.rowContent}>
+        <Text style={[styles.meal, {color: theme.colors.textPrimary}]}>{item.title}</Text>
+        {item.note ? <Text numberOfLines={2} style={[styles.rowNote,
+          {color: theme.colors.textSecondary}]}>{item.note}</Text> : null}
+      </View>
+      {item.servings ? <Text style={[styles.servings, {color: theme.colors.textSecondary}]}>
+        Serves {item.servings}
+      </Text> : null}
+    </View>)}
+  </View>;
+
+  // Separate scrolling columns keep tonight visible while browsing the menu.
+  // Tonight can still scroll independently when its details exceed the frame.
+  if (twoColumns && next) return (
+    <View style={[styles.container, styles.columns]}>
+      <ScrollView testID="meal-detail-dinner-scroll" style={styles.dinnerColumn}
+        contentContainerStyle={styles.content} showsVerticalScrollIndicator>
+        {dinner}
+      </ScrollView>
+      {menu && <ScrollView testID="meal-detail-menu-scroll" style={styles.menuColumn}
+        contentContainerStyle={styles.content} showsVerticalScrollIndicator>
+        {menu}
+      </ScrollView>}
+    </View>
+  );
+
+  return (
+    <ScrollView testID="meal-detail-scroll" style={styles.container}
+      contentContainerStyle={styles.content} showsVerticalScrollIndicator>
+      {dinner}
+      {menu}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {flex: 1},
+  container: {flex: 1, minHeight: 0},
   content: {paddingBottom: 24},
-  columns: {flexDirection: 'row', gap: 16, alignItems: 'flex-start'},
-  dinnerColumn: {width: '37%', minWidth: 0, marginBottom: 0},
-  menuColumn: {flex: 1, minWidth: 0},
+  columns: {flexDirection: 'row', gap: 16},
+  dinnerColumn: {width: '37%', minWidth: 0, minHeight: 0, flexGrow: 0, flexShrink: 0},
+  dinnerHero: {marginBottom: 0},
+  menuColumn: {flex: 1, minWidth: 0, minHeight: 0},
   hero: {padding: 24, borderRadius: 20, borderWidth: 1, borderColor: '#ffffff20',
     backgroundColor: '#ffffff0b', marginBottom: 24},
   heroLabel: {flexDirection: 'row', alignItems: 'center', gap: 9},

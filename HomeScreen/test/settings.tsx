@@ -11,6 +11,7 @@ function Settings() {
   const [section, setSection] = useState('cards');
   const [previewAmbient, setPreviewAmbient] = useState(false);
   const {appearance, ambientPhotos} = useAppearance();
+  const tvSidebar = new URLSearchParams(window.location.search).has('tv');
   return <View style={{padding: 25, backgroundColor: '#0F172A', height: '100%', minHeight: 0}}>
     <Text style={{color: 'white', fontSize: 28, marginBottom: 12}}>Settings</Text>
     <View style={{flexDirection: 'row', gap: 12, marginBottom: 20}}>
@@ -18,7 +19,12 @@ function Settings() {
       <button onClick={() => setSection('reading')}>Fonts & reading tab</button>
       <button onClick={() => setSection('ambient')}>Ambient tab</button>
     </View>
-    {section === 'cards' ? <View style={{flex: 1, minHeight: 0}}><WidgetCardSettings/></View> : (
+    {section === 'cards' ? <View style={{flex: 1, minHeight: 0, flexDirection: 'row', gap: 18}}>
+      {tvSidebar && <View style={{width: 190, padding: 12, borderRightWidth: 1, borderRightColor: '#ffffff18'}}>
+        <Text style={{color: 'white'}}>Settings sections</Text>
+      </View>}
+      <WidgetCardSettings/>
+    </View> : (
       <ScrollView style={{maxHeight: 560}}>
         {section === 'ambient' ? <AmbientSettings onPreview={() => setPreviewAmbient(true)}/> : section === 'reading' ? <ReadingSettings/> : <SavedLayoutSettings/>}
       </ScrollView>

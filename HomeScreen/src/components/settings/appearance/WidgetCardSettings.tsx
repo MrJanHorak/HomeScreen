@@ -21,10 +21,9 @@ export default function WidgetCardSettings() {
   const {user} = useAuth();
   const {rounds} = usePolls();
   const {appearance, ready, setWidgetLayout} = useAppearance();
-  const {width, height} = useWindowDimensions();
+  const {width} = useWindowDimensions();
   const [editorWidth, setEditorWidth] = useState(width - 280);
-  const sideBySide = editorWidth >= 760;
-  const compactPreview = !sideBySide || height < 700;
+  const previewWidth = Math.min(320, editorWidth * 0.46);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [people, setPeople] = useState<PeopleSettings['people']>([]);
   const [polls, setPolls] = useState<AvailablePoll[]>([]);
@@ -64,11 +63,11 @@ export default function WidgetCardSettings() {
   }
   function edit(id: string, action: WidgetAction) {run(() => setWidgetLayout(changeWidget(layout, id, action)));}
   const copy = {color: theme.colors.textSecondary};
-  const preview = <View testID='live-dashboard-preview' style={[styles.livePreviewPanel, {alignSelf: 'flex-start', flexShrink: 0, width: sideBySide ? 300 : '100%', borderColor: theme.colors.focusRing, backgroundColor: theme.colors.glassSurface}]}>
+  const preview = <View testID='live-dashboard-preview' style={[styles.livePreviewPanel, {alignSelf: 'flex-start', flexShrink: 0, width: previewWidth, borderColor: theme.colors.focusRing, backgroundColor: theme.colors.glassSurface}]}>
     <Text style={[styles.livePreviewTitle, {color: theme.colors.textPrimary}]}>Live dashboard preview</Text>
     <Text style={[styles.livePreviewMeta, copy]}>{visibleCount} of {layout.widgets.length} cards shown</Text>
-    <LayoutPreview cards={appearance.cards} appearance={{...appearance, widgetLayout: layout}} label={label} selectedId={selected?.id} compact={compactPreview} large/>
-    <Text style={[styles.livePreviewHint, copy]}>{selected ? `Adjusting: ${label(selected)}` : 'Choose a card to adjust.'}</Text>
+    <LayoutPreview cards={appearance.cards} appearance={{...appearance, widgetLayout: layout}} label={label} selectedId={selected?.id} large/>
+    <Text numberOfLines={2} style={[styles.livePreviewHint, copy]}>{selected ? `Adjusting: ${label(selected)}` : 'Choose a card to adjust.'}</Text>
   </View>;
   const controls = <View style={styles.cardList}>
     {layout.widgets.map((widget, index) => {
@@ -134,9 +133,8 @@ export default function WidgetCardSettings() {
       </View>;
     })}
   </View>;
-  return <View style={[cardStyles.editor, {flexDirection: sideBySide ? 'row' : 'column'}]}
+  return <View style={cardStyles.editor}
     onLayout={({nativeEvent}) => setEditorWidth(nativeEvent.layout.width)}>
-    {!sideBySide && preview}
     <ScrollView testID='card-settings-scroll' style={cardStyles.scroll} contentContainerStyle={cardStyles.scrollContent} showsVerticalScrollIndicator accessibilityLabel='Card settings'>
     <Text style={[styles.title, {color: theme.colors.textPrimary}]}>Arrange cards</Text>
     <Text style={[styles.description, copy]}>Choose Adjust on a card, then use your remote’s arrows to reach a control and press OK. Changes appear in the preview. Hide a card to keep it for later.</Text>
@@ -159,12 +157,12 @@ export default function WidgetCardSettings() {
     {!loading && !loadError && !available.length && <Text style={[styles.description, copy]}>All available cards are listed above. Add people or create polls on the companion site to make more available.</Text>}
     <Option label='Refresh available cards' disabled={!ready || loading} onPress={() => setRefresh((value) => value + 1)}/>
     </ScrollView>
-    {sideBySide && preview}
+    {preview}
   </View>;
 }
 
 const cardStyles = StyleSheet.create({
-  editor: {flex: 1, minHeight: 0, minWidth: 0, gap: 16, padding: 4},
+  editor: {flex: 1, flexDirection: 'row', minHeight: 0, minWidth: 0, gap: 16, padding: 4},
   scroll: {flex: 1, minHeight: 0, minWidth: 0},
   scrollContent: {padding: 4, paddingBottom: 24},
   card: {borderWidth: 2, borderRadius: 14, padding: 12, gap: 12},

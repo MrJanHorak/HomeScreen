@@ -21,6 +21,58 @@ async function open(t, topic, width, reading = false, busy = false) {
   return {page, errors};
 }
 
+for (const width of [960, 1920]) for (const reading of [false, true]) {
+  test(`meal menu scrolls independently of tonight at ${width}, reading ${reading}`, async t => {
+    const {page, errors} = await open(t, 'meal', width, reading, true);
+    await page.setViewportSize({width, height: 540});
+    const dinner = page.getByTestId('meal-detail-dinner');
+    const menu = page.getByTestId('meal-detail-menu-scroll');
+    const rows = page.getByTestId('meal-detail-following-dinner');
+    await menu.waitFor();
+    assert.equal(await rows.count(), 13);
+    const before = await dinner.boundingBox();
+    await menu.focus(); await page.keyboard.press('End');
+    await page.waitForFunction(() => document.querySelector('[data-testid="meal-detail-menu-scroll"]').scrollTop > 0);
+    await menu.evaluate(node => node.scrollTop = node.scrollHeight);
+    const after = await dinner.boundingBox();
+    assert.ok(Math.abs(after.y - before.y) < 1, 'Tonight stays at the same position');
+    assert.equal(await page.getByTestId('meal-detail-dinner-scroll').evaluate(node => node.scrollTop), 0);
+    const last = await rows.last().boundingBox(), frame = await menu.boundingBox();
+    assert.ok(last.y >= frame.y && last.y + last.height <= frame.y + frame.height + 1, 'The final dinner remains reachable');
+    if (process.env.TV_MEAL_SCREENSHOTS) await page.screenshot({path: `../artifacts/meal-pinned-${width}-${reading ? 'reading' : 'system'}.png`});
+    assert.deepEqual(errors, []);
+  });
+}
+
+test('long tonight details remain reachable without moving the following dinners', async t => {
+  const {page, errors} = await open(t, 'meal&longMealNote', 960, true, true);
+  const dinner = page.getByTestId('meal-detail-dinner-scroll');
+  const menu = page.getByTestId('meal-detail-menu-scroll');
+  const before = await menu.boundingBox();
+  assert.ok(await dinner.evaluate(node => node.scrollHeight > node.clientHeight));
+  await dinner.focus(); await page.keyboard.press('End');
+  await page.waitForFunction(() => document.querySelector('[data-testid="meal-detail-dinner-scroll"]').scrollTop > 0);
+  await dinner.evaluate(node => node.scrollTop = node.scrollHeight);
+  const note = await page.getByText(/Ready to serve/).boundingBox(), frame = await dinner.boundingBox();
+  assert.ok(note.y + note.height <= frame.y + frame.height + 1, 'The end of tonight’s note remains reachable');
+  assert.equal(await menu.evaluate(node => node.scrollTop), 0);
+  assert.deepEqual(await menu.boundingBox(), before);
+  assert.deepEqual(errors, []);
+});
+
+test('narrow meal layout keeps a single scroll area with every dinner reachable', async t => {
+  const {page, errors} = await open(t, 'meal', 600, false, true);
+  await page.setViewportSize({width: 600, height: 540});
+  const scroll = page.getByTestId('meal-detail-scroll');
+  await scroll.waitFor();
+  assert.equal(await page.getByTestId('meal-detail-menu-scroll').count(), 0);
+  assert.equal(await page.getByTestId('meal-detail-following-dinner').count(), 13);
+  await scroll.evaluate(node => node.scrollTop = node.scrollHeight);
+  const last = await page.getByTestId('meal-detail-following-dinner').last().boundingBox(), frame = await scroll.boundingBox();
+  assert.ok(last.y + last.height <= frame.y + frame.height + 1);
+  assert.deepEqual(errors, []);
+});
+
 for (const width of [960, 1920]) test(`activity shows uncapped progress and aligns the weekly goal at ${width}`, async t => {
   const {page, errors} = await open(t, 'activity&activitySteps=14083', width);
   await page.getByText('4,083 steps over goal · 41% extra', {exact: true}).waitFor();

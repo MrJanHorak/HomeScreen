@@ -6,8 +6,9 @@ bindings, and styles. Free layouts allow swapping complete footprints, moving
 into empty space, and resizing without overlaps. Automatic rows fit eight
 visible cards and the free grid fits twelve.
 
-Cards owns its scrolling area so the live preview remains visible, beside the
-controls on wide screens and above them on compact screens. Adjust opens one
+Cards owns its scrolling area so the live preview remains visible on the right
+while the card controls scroll on the left, including on compact TVs. The preview
+retains its full height and uses up to 320 dp of width. Adjust opens one
 card's Move and Resize controls and highlights that card in the preview.
 Show/Hide actions stay available in each row. Movement uses a directional pad;
 unavailable positions and sizes are disabled, including overlaps. Grid dimensions

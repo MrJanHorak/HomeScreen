@@ -73,14 +73,17 @@ test('ambient preview handles an empty personal photo library', async (t) => {
   assert.equal(await page.getByRole('button', {name: 'My photos (0)', exact: true}).isDisabled(), true);
   assert.equal(await page.getByTestId('ambient-backdrop-preview').getAttribute('aria-label'), 'Backdrop preview: Built-in photos');
 });
-for (const viewport of [{width: 720, height: 540}, {width: 960, height: 850}, {width: 1920, height: 540}]) {
-  test(`preview stays visible while card controls scroll: ${viewport.width} × ${viewport.height}`, async (t) => {
-    const page = await browser.newPage({viewport}); t.after(() => page.close());
-    await page.goto(url);
+for (const viewport of [{width: 720, height: 540}, {width: 960, height: 540, sidebar: true}, {width: 960, height: 850}, {width: 1920, height: 540}]) {
+  test(`preview stays visible while card controls scroll: ${viewport.width} × ${viewport.height}${viewport.sidebar ? ' with TV sidebar' : ''}`, async (t) => {
+    const page = await browser.newPage({viewport: {width: viewport.width, height: viewport.height}}); t.after(() => page.close());
+    await page.goto(viewport.sidebar ? `${url}?tv` : url);
     await page.getByRole('button', {name: 'Adjust Weather', exact: true}).waitFor();
     const preview = page.getByTestId('live-dashboard-preview');
     const scroll = page.getByTestId('card-settings-scroll');
     const before = await preview.boundingBox();
+    const controlBounds = await scroll.boundingBox();
+    assert.ok(before.x >= controlBounds.x + controlBounds.width, 'preview stays to the right of the card controls');
+    assert.ok(before.height >= 260, 'TV preview retains its original full height');
     const reorder = page.getByRole('button', {name: 'Move later Weather', exact: true});
     await reorder.focus(); await page.keyboard.press('Enter');
     await page.getByText('Adjusting: Weather', {exact: true}).waitFor();
@@ -89,6 +92,7 @@ for (const viewport of [{width: 720, height: 540}, {width: 960, height: 850}, {w
     await page.waitForFunction(() => document.querySelector('[data-testid="card-settings-scroll"]').scrollTop > 0);
     const after = await preview.boundingBox();
     assert.equal(after.y, before.y);
+    assert.equal(after.x, before.x);
     assert.ok(after.y >= 0 && after.y + after.height <= viewport.height);
     assert.ok((await scroll.boundingBox()).height > 120, 'settings retain usable scrolling space');
     await page.getByRole('button', {name: 'Adjust Activity · Alex', exact: true}).focus();
@@ -108,7 +112,7 @@ for (const viewport of [{width: 720, height: 540}, {width: 960, height: 850}, {w
     await page.getByRole('button', {name: 'Hide Activity · Alex', exact: true}).click();
     await page.getByText('Adjusting: Weather', {exact: true}).waitFor();
     assert.equal(await page.getByRole('button', {name: 'Move up Activity · Alex', exact: true}).count(), 0);
-    if (process.env.TV_SETTINGS_SCREENSHOTS) {
+    if (process.env.TV_SETTINGS_SCREENSHOTS || process.env.TV_CARD_SCREENSHOTS) {
       await page.getByRole('button', {name: 'Adjust Weather', exact: true}).focus();
       await page.screenshot({path: `../artifacts/settings-sticky-${viewport.width}-${viewport.height}.png`});
     }

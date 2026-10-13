@@ -4,40 +4,64 @@ import { View, StyleSheet, ScrollView } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme/ThemeContext';
 import { useDashboard } from '../../../context/DashboardContext';
-import {usePeople} from '../../../context/PeopleContext';
+import { usePeople } from '../../../context/PeopleContext';
 import TVProgressRing from '../../shared/TVProgressRing';
-import {activityChartPeak, summarizeActivityWeek} from '../../../helpers/activitySummary';
-import {GOAL_OVERFLOW_COLOR, goalProgress} from '../../../helpers/goalProgress';
+import {
+  activityChartPeak,
+  summarizeActivityWeek,
+} from '../../../helpers/activitySummary';
+import {
+  GOAL_OVERFLOW_COLOR,
+  goalProgress,
+} from '../../../helpers/goalProgress';
 import ActivityDayBars from '../../dashboard/activity/ActivityDayBars';
-import {useDetailLayout} from '../../shared/DetailLayout';
+import { useDetailLayout } from '../../shared/DetailLayout';
 
 function recordTime(value?: string): string | null {
   if (!value) return null;
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null :
-    date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return Number.isNaN(date.getTime())
+    ? null
+    : date.toLocaleTimeString(undefined, {
+        hour: 'numeric',
+        minute: '2-digit',
+      });
 }
 
-export default function ActivityDetailView({personId}: {personId?: string} = {}) {
+export default function ActivityDetailView({
+  personId,
+}: { personId?: string } = {}) {
   const theme = useTheme();
-  const {twoColumns, compact} = useDetailLayout();
+  const { twoColumns, compact } = useDetailLayout();
   const { health, isLoading } = useDashboard();
-  const {people} = usePeople();
-  const act = personId ? people.find((person) => person.id === personId)?.health : health;
+  const { people } = usePeople();
+  const act = personId
+    ? people.find((person) => person.id === personId)?.health
+    : health;
 
   if (!act) {
-    return <Text style={{ color: theme.colors.textSecondary }}>
-      {personId ? 'Shared activity is unavailable. Check People settings or ask this person to reconnect.' : isLoading ? 'Loading activity…' : 'Activity data is unavailable.'}
-    </Text>;
+    return (
+      <Text style={{ color: theme.colors.textSecondary }}>
+        {personId
+          ? 'Shared activity is unavailable. Check People settings or ask this person to reconnect.'
+          : isLoading
+            ? 'Loading activity…'
+            : 'Activity data is unavailable.'}
+      </Text>
+    );
   }
 
   if (act.status && act.status !== 'ok') {
-    return <View style={styles.weeklyCard}>
-      <Text style={[styles.weeklyTitle, { color: theme.colors.textPrimary }]}>Activity unavailable</Text>
-      <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>
-        {act.message || 'Could not load Google Fit activity.'}
-      </Text>
-    </View>;
+    return (
+      <View style={styles.weeklyCard}>
+        <Text style={[styles.weeklyTitle, { color: theme.colors.textPrimary }]}>
+          Activity unavailable
+        </Text>
+        <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>
+          {act.message || 'Could not load Google Fit activity.'}
+        </Text>
+      </View>
+    );
   }
 
   const weekly = act.weekly || [];
@@ -51,100 +75,296 @@ export default function ActivityDetailView({personId}: {personId?: string} = {})
   const extraSteps = Math.max(0, act.steps - act.stepGoal);
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={twoColumns && styles.columns} showsVerticalScrollIndicator>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={twoColumns && styles.columns}
+      showsVerticalScrollIndicator
+    >
       <View style={twoColumns && styles.overviewColumn}>
-      {fetchedTime && <Text style={[styles.metricSub, { color: theme.colors.textSecondary, marginBottom: 12 }]}>
-        Google Fit · fetched {fetchedTime}
-      </Text>}
-      {/* Hero Overview */}
-      <View style={[styles.heroRow, twoColumns && styles.stackedHero]}>
-        <View style={[styles.ringCard, !twoColumns && {flex: 1.2}, compact && {padding: 12, gap: 14}]}>
-          <TVProgressRing progress={progress} size={compact ? 80 : 110} strokeWidth={compact ? 8 : 10} />
-          <View style={styles.ringTextGroup}>
-            <Text style={[styles.ringPercent, compact && {fontSize: 32}, { color: theme.colors.textPrimary }]}>
-              {Math.round(progress * 100)}%
-            </Text>
-            <Text style={[styles.ringLabel, { color: theme.colors.focusRing }]}>
-              Daily Step Goal
-            </Text>
-            <Text style={[styles.ringSub, { color: theme.colors.textSecondary }]}>
-              {act.steps.toLocaleString()} of {act.stepGoal.toLocaleString()} steps
-            </Text>
-            {progress > 1 && <Text style={[styles.metricSub, {color: GOAL_OVERFLOW_COLOR, marginTop: 4}]}>
-              {extraSteps.toLocaleString()} steps over goal · {Math.round((progress - 1) * 100)}% extra
-            </Text>}
-            {stepsTime && <Text style={[styles.metricSub, { color: theme.colors.textSecondary, marginTop: 6 }]}>
-              Latest step record: {stepsTime}
-            </Text>}
-          </View>
-        </View>
-
-        {/* 3 Metric Summary Pillars */}
-        <View style={[styles.metricsColumn, !twoColumns && {flex: 1.3}, twoColumns && compact && styles.metricGrid]}>
-          <View style={[styles.metricCard, compact && styles.tightMetric, twoColumns && compact && styles.halfMetric]}>
-            <MaterialCommunityIcons name="map-marker-distance" size={26} color="#34D399" />
-            <View style={styles.metricMeta}>
-              <Text style={[styles.metricTitle, { color: theme.colors.textSecondary }]}>Distance</Text>
-              <Text style={[styles.metricBig, { color: theme.colors.textPrimary }]}>{act.distance} km</Text>
-              <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>Target: {act.distanceGoal} km</Text>
+        {/* Hero Overview */}
+        <View style={[styles.heroRow, twoColumns && styles.stackedHero]}>
+          <View
+            style={[
+              styles.ringCard,
+              !twoColumns && { flex: 1.2 },
+              compact && { padding: 12, gap: 14 },
+            ]}
+          >
+            <TVProgressRing
+              progress={progress}
+              size={compact ? 80 : 110}
+              strokeWidth={compact ? 8 : 10}
+            />
+            <View style={styles.ringTextGroup}>
+              <Text
+                style={[
+                  styles.ringPercent,
+                  compact && { fontSize: 32 },
+                  { color: theme.colors.textPrimary },
+                ]}
+              >
+                {Math.round(progress * 100)}%
+              </Text>
+              <Text
+                style={[styles.ringLabel, { color: theme.colors.focusRing }]}
+              >
+                Daily Step Goal
+              </Text>
+              <Text
+                style={[styles.ringSub, { color: theme.colors.textSecondary }]}
+              >
+                {act.steps.toLocaleString()} of {act.stepGoal.toLocaleString()}{' '}
+                steps
+              </Text>
+              {progress > 1 && (
+                <Text
+                  style={[
+                    styles.metricSub,
+                    { color: GOAL_OVERFLOW_COLOR, marginTop: 4 },
+                  ]}
+                >
+                  {extraSteps.toLocaleString()} steps over goal ·{' '}
+                  {Math.round((progress - 1) * 100)}% extra
+                </Text>
+              )}
+              {stepsTime && (
+                <Text
+                  style={[
+                    styles.metricSub,
+                    { color: theme.colors.textSecondary, marginTop: 6 },
+                  ]}
+                >
+                  Latest step record: {stepsTime}
+                </Text>
+              )}
             </View>
           </View>
 
-          <View style={[styles.metricCard, compact && styles.tightMetric, twoColumns && compact && styles.halfMetric]}>
-            <MaterialCommunityIcons name="timer-outline" size={26} color="#FBBF24" />
-            <View style={styles.metricMeta}>
-              <Text style={[styles.metricTitle, { color: theme.colors.textSecondary }]}>Move Minutes</Text>
-              <Text style={[styles.metricBig, { color: theme.colors.textPrimary }]}>
-                {act.activeMinutes == null ? '—' : `${act.activeMinutes} min`}
-              </Text>
-              <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>
-                {act.activeMinutes == null ? 'No Move Minutes data from Google Fit today' : 'Today'}
-              </Text>
+          {/* 3 Metric Summary Pillars */}
+          <View
+            style={[
+              styles.metricsColumn,
+              !twoColumns && { flex: 1.3 },
+              twoColumns && compact && styles.metricGrid,
+            ]}
+          >
+            <View
+              style={[
+                styles.metricCard,
+                compact && styles.tightMetric,
+                twoColumns && compact && styles.halfMetric,
+              ]}
+            >
+              <MaterialCommunityIcons
+                name='map-marker-distance'
+                size={26}
+                color='#34D399'
+              />
+              <View style={styles.metricMeta}>
+                <Text
+                  style={[
+                    styles.metricTitle,
+                    { color: theme.colors.textSecondary },
+                  ]}
+                >
+                  Distance
+                </Text>
+                <Text
+                  style={[
+                    styles.metricBig,
+                    { color: theme.colors.textPrimary },
+                  ]}
+                >
+                  {act.distance} km
+                </Text>
+                <Text
+                  style={[
+                    styles.metricSub,
+                    { color: theme.colors.textSecondary },
+                  ]}
+                >
+                  Target: {act.distanceGoal} km
+                </Text>
+              </View>
             </View>
-          </View>
 
-          <View style={[styles.metricCard, compact && styles.tightMetric, twoColumns && compact && {width: '100%'}]}>
-            <MaterialCommunityIcons name="lightning-bolt" size={26} color="#F87171" />
-            <View style={styles.metricMeta}>
-              <Text style={[styles.metricTitle, { color: theme.colors.textSecondary }]}>Calories Burned</Text>
-              <Text style={[styles.metricBig, { color: theme.colors.textPrimary }]}>{act.calories} kcal</Text>
-              <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>
-                {restingEstimate > 0 ? 'Resting + Active · estimated' : 'Resting + Active'}
-              </Text>
-              {(restingEstimate > 0 || caloriesTime) && <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>
-                {restingEstimate > 0
-                  ? `Includes ${restingEstimate.toLocaleString()} estimated resting kcal${caloriesTime ? ` since ${caloriesTime}` : ' today'}`
-                  : `Recorded through ${caloriesTime}`}
-              </Text>}
+            <View
+              style={[
+                styles.metricCard,
+                compact && styles.tightMetric,
+                twoColumns && compact && styles.halfMetric,
+              ]}
+            >
+              <MaterialCommunityIcons
+                name='timer-outline'
+                size={26}
+                color='#FBBF24'
+              />
+              <View style={styles.metricMeta}>
+                <Text
+                  style={[
+                    styles.metricTitle,
+                    { color: theme.colors.textSecondary },
+                  ]}
+                >
+                  Move Minutes
+                </Text>
+                <Text
+                  style={[
+                    styles.metricBig,
+                    { color: theme.colors.textPrimary },
+                  ]}
+                >
+                  {act.activeMinutes == null ? '—' : `${act.activeMinutes} min`}
+                </Text>
+                <Text
+                  style={[
+                    styles.metricSub,
+                    { color: theme.colors.textSecondary },
+                  ]}
+                >
+                  {act.activeMinutes == null
+                    ? 'No Move Minutes data from Google Fit today'
+                    : 'Today'}
+                </Text>
+              </View>
+            </View>
+
+            <View
+              style={[
+                styles.metricCard,
+                compact && styles.tightMetric,
+                twoColumns && compact && { width: '100%' },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name='lightning-bolt'
+                size={26}
+                color='#F87171'
+              />
+              <View style={styles.metricMeta}>
+                <Text
+                  style={[
+                    styles.metricTitle,
+                    { color: theme.colors.textSecondary },
+                  ]}
+                >
+                  Calories Burned
+                </Text>
+                <Text
+                  style={[
+                    styles.metricBig,
+                    { color: theme.colors.textPrimary },
+                  ]}
+                >
+                  {act.calories} kcal
+                </Text>
+                <Text
+                  style={[
+                    styles.metricSub,
+                    { color: theme.colors.textSecondary },
+                  ]}
+                >
+                  {restingEstimate > 0
+                    ? 'Resting + Active · estimated'
+                    : 'Resting + Active'}
+                </Text>
+                {(restingEstimate > 0 || caloriesTime) && (
+                  <Text
+                    style={[
+                      styles.metricSub,
+                      { color: theme.colors.textSecondary },
+                    ]}
+                  >
+                    {restingEstimate > 0
+                      ? `Includes ${restingEstimate.toLocaleString()} estimated resting kcal${caloriesTime ? ` since ${caloriesTime}` : ' today'}`
+                      : `Recorded through ${caloriesTime}`}
+                  </Text>
+                )}
+              </View>
             </View>
           </View>
         </View>
       </View>
-      </View>
-      <View style={[styles.weeklyCard, twoColumns && styles.weekColumn, compact && {padding: 14}]}>
+      <View
+        style={[
+          styles.weeklyCard,
+          twoColumns && styles.weekColumn,
+          compact && { padding: 14 },
+        ]}
+      >
         <Text style={[styles.weeklyTitle, { color: theme.colors.textPrimary }]}>
           Last 7 Days
         </Text>
-        {weekly.length ? <>
-          <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>
-            {summary.steps.toLocaleString()} steps total · {summary.averageSteps.toLocaleString()} daily average
+        {weekly.length ? (
+          <>
+            <Text
+              style={[styles.metricSub, { color: theme.colors.textSecondary }]}
+            >
+              {summary.steps.toLocaleString()} steps total ·{' '}
+              {summary.averageSteps.toLocaleString()} daily average
+            </Text>
+            {summary.moveMinutes !== null && (
+              <Text
+                style={[
+                  styles.metricSub,
+                  { color: theme.colors.textSecondary },
+                ]}
+              >
+                {summary.moveMinutes.toLocaleString()} Move Minutes across{' '}
+                {summary.daysWithMoveMinutes} days with data
+              </Text>
+            )}
+            <ActivityDayBars
+              weekly={weekly}
+              peak={highestSteps}
+              stepGoal={act.stepGoal}
+              scale={1}
+              detailed
+            />
+            {act.stepGoal > 0 && (
+              <Text
+                style={[
+                  styles.metricSub,
+                  { color: theme.colors.textSecondary, marginTop: 8 },
+                ]}
+              >
+                Dashed line: current goal of {act.stepGoal.toLocaleString()}{' '}
+                steps.
+              </Text>
+            )}
+            {/* {act.stepGoal > 0 && (
+              <Text style={[styles.metricSub, { color: GOAL_OVERFLOW_COLOR }]}>
+                Amber shows steps over goal.
+              </Text>
+            )} */}
+            <Text
+              style={[
+                styles.metricSub,
+                { color: theme.colors.textSecondary, marginTop: 14 },
+              ]}
+            >
+              Bars show steps; the full bar represents{' '}
+              {highestSteps.toLocaleString()} steps.
+            </Text>
+          </>
+        ) : (
+          <Text
+            style={[styles.metricSub, { color: theme.colors.textSecondary }]}
+          >
+            Weekly activity has not loaded yet.
           </Text>
-          {summary.moveMinutes !== null && <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>
-            {summary.moveMinutes.toLocaleString()} Move Minutes across {summary.daysWithMoveMinutes} days with data
-          </Text>}
-          <ActivityDayBars weekly={weekly} peak={highestSteps} stepGoal={act.stepGoal} scale={1} detailed />
-          {act.stepGoal > 0 && <Text style={[styles.metricSub, {color: theme.colors.textSecondary, marginTop: 8}]}>
-            Dashed line: current goal of {act.stepGoal.toLocaleString()} steps.
-          </Text>}
-          {act.stepGoal > 0 && <Text style={[styles.metricSub, {color: GOAL_OVERFLOW_COLOR}]}>
-            Amber shows steps over goal.
-          </Text>}
-          <Text style={[styles.metricSub, { color: theme.colors.textSecondary, marginTop: 14 }]}>
-            Bars show steps; the full bar represents {highestSteps.toLocaleString()} steps.
+        )}
+        {fetchedTime && (
+          <Text
+            style={[
+              styles.metricSub,
+              { color: theme.colors.textSecondary, marginBottom: 12 },
+            ]}
+          >
+            Google Fit · fetched {fetchedTime}
           </Text>
-        </> : <Text style={[styles.metricSub, { color: theme.colors.textSecondary }]}>
-          Weekly activity has not loaded yet.
-        </Text>}
+        )}
       </View>
     </ScrollView>
   );
@@ -154,10 +374,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  columns: {flexDirection: 'row', gap: 16, alignItems: 'flex-start'},
-  overviewColumn: {width: '45%', minWidth: 0},
-  weekColumn: {flex: 1, minWidth: 0},
-  stackedHero: {flexDirection: 'column', gap: 10, marginBottom: 0},
+  columns: { flexDirection: 'row', gap: 16, alignItems: 'flex-start' },
+  overviewColumn: { width: '45%', minWidth: 0 },
+  weekColumn: { flex: 1, minWidth: 0 },
+  stackedHero: { flexDirection: 'column', gap: 10, marginBottom: 0 },
   heroRow: {
     flexDirection: 'row',
     gap: 20,
@@ -194,9 +414,9 @@ const styles = StyleSheet.create({
   metricsColumn: {
     gap: 12,
   },
-  metricGrid: {flexDirection: 'row', flexWrap: 'wrap', gap: 8},
-  halfMetric: {width: '48.5%'},
-  tightMetric: {paddingVertical: 8, paddingHorizontal: 10, gap: 10},
+  metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  halfMetric: { width: '48.5%' },
+  tightMetric: { paddingVertical: 8, paddingHorizontal: 10, gap: 10 },
   metricCard: {
     flexDirection: 'row',
     alignItems: 'center',
