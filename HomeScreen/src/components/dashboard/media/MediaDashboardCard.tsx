@@ -6,7 +6,8 @@ import CardContent from '../shared/CardContent';
 import CardProgress from '../shared/CardProgress';
 import type { CardDimensions } from '../shared/types';
 import {View} from 'react-native';
-import {mediaArtworkLayout} from './mediaArtworkLayout';
+import {mediaArtworkLayout, mediaQueueLayout} from './mediaArtworkLayout';
+import MediaQueuePreview from './MediaQueuePreview';
 
 function queueMessage(
   status: ReturnType<typeof useWatchNext>['status'],
@@ -41,6 +42,11 @@ export default function MediaDashboardCard({ width, height }: CardDimensions) {
       ? first.positionMs / first.durationMs
       : null;
   const showProgress = progress !== null && height >= 70 * scale;
+  const queue = mediaQueueLayout(width, height, scale, items.length,
+    items.slice(1, 4).some(item => !item.posterUri));
+
+  if (first && queue.count > 0) return <MediaQueuePreview width={width} height={height} scale={scale}
+    items={items} detail={programDetail(first)} progress={showProgress ? progress : null} layout={queue}/>;
 
   return (
     <CardContent

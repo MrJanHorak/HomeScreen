@@ -2,10 +2,32 @@ const {test} = require('node:test');
 const assert = require('node:assert/strict');
 const load = require('./loadPureModule.cjs');
 const {planCardContent, activityLayout, activitySummaryHeight, activityMiniChartWidth, lineKey} = load('src/components/dashboard/shared/cardContentLayout.ts');
-const {mediaArtworkLayout} = load('src/components/dashboard/media/mediaArtworkLayout.ts');
+const {mediaArtworkLayout, mediaQueueLayout} = load('src/components/dashboard/media/mediaArtworkLayout.ts');
 const {gridRect} = load('../server/functions/src/utils/dashboardLayout.ts');
 const sizes = [[900, 340, 8, 12, 1], [1800, 740, 12, 20, 1.4]];
 const lines = Array.from({length: 30}, (_, i) => ({title: `Upcoming dinner ${i + 1}`, detail: '10-05 · Serves 6'}));
+
+test('wide short Media preserves the featured column and caps the queue at three previews', () => {
+  for (const scale of [1, 1.4]) {
+    for (const width of [190, 265, 340]) assert.equal(mediaQueueLayout(width * scale, 80 * scale, scale, 18).count, 0);
+    for (const width of [360, 420, 520, 900]) {
+      const plan = mediaQueueLayout(width * scale, 80 * scale, scale, 18);
+      assert.ok(plan.count > 0 && plan.count <= 3);
+      assert.ok(plan.featuredWidth - plan.artWidth - 4 * scale >= 120 * scale);
+      assert.ok(plan.count * plan.artWidth + (plan.count - 1) * 12 * scale <= plan.queueWidth);
+      assert.ok(plan.artHeight + 22 * scale <= 80 * scale);
+      assert.equal(mediaQueueLayout(width * scale, 80 * scale, scale, 2).count, 1);
+    }
+    assert.equal(mediaQueueLayout(900 * scale, 80 * scale, scale, 1).count, 0);
+    assert.equal(mediaQueueLayout(900 * scale, 60 * scale, scale, 18).count, 0);
+    assert.equal(mediaQueueLayout(900 * scale, 200 * scale, scale, 18).count, 0);
+    assert.equal(mediaQueueLayout(900 * scale, 80 * scale, scale, 18).showTitles, true);
+    assert.equal(mediaQueueLayout(420 * scale, 80 * scale, scale, 18).showTitles, false);
+    const missingArt = mediaQueueLayout(420 * scale, 80 * scale, scale, 18, true);
+    assert.equal(missingArt.count, 1);
+    assert.equal(missingArt.showTitles, true);
+  }
+});
 test('short Media cards fit a supplied poster and text-column progress in every reference footprint', () => {
   for (const [A,B,g,p,scale] of sizes) for (let w=3;w<=12;w++) for (let h=2;h<=6;h++) {
     const r=gridRect({x:0,y:0,width:w,height:h},A,B,g);
