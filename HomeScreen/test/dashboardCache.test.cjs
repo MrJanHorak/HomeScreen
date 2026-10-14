@@ -313,3 +313,96 @@ test('DashboardProvider clears card loading from disk, maps default-city weather
   network.reject(new Error('Offline')); await new Promise((resolve) => setImmediate(resolve));
   assert.equal(render().error, 'Offline'); assert.equal(render().tasks[0].title, 'Saved task');
 });
+
+test('preference hydration and city-list edits do not fetch the summary again; default changes update only weather', async (t) => {
+  const states = [], refs = [], memo = [], effects = [];
+  let stateIndex, refIndex, memoIndex, effectIndex, queued;
+  const react = {
+    createContext: () => ({Provider: 'provider'}),
+    useState: (value) => {
+      const index = stateIndex++;
+      if (!(index in states)) states[index] = value;
+      return [states[index], (next) => {states[index] = typeof next === 'function' ? next(states[index]) : next;}];
+    },
+    useRef: (value) => {const index = refIndex++; return refs[index] ||= {current: value};},
+    useCallback: (fn, deps) => {
+      const index = memoIndex++;
+      if (!memo[index] || deps.some((dep, i) => dep !== memo[index].deps[i])) memo[index] = {fn, deps};
+      return memo[index].fn;
+    },
+    useEffect: (fn, deps) => {
+      const index = effectIndex++;
+      if (!effects[index] || deps.some((dep, i) => dep !== effects[index].deps[i])) queued.push(() => {
+        effects[index]?.cleanup?.(); effects[index] = {deps, cleanup: fn()};
+      });
+    },
+  };
+  const data = summary(), locations = data.savedLocations;
+  const preferences = deferred();
+  let requests = 0, weatherRequests = [];
+  const {DashboardProvider} = load('src/context/DashboardContext.tsx', {
+    react, 'react/jsx-runtime': {jsx: (_type, props) => props},
+    './AuthContext': {useAuth: () => ({user: {uid: 'owner'}})},
+    '../services/api': {
+      fetchDashboardSummary: async () => {requests++; return data;},
+      getUserPreferences: () => preferences.promise, saveUserPreferences: async () => 1,
+      fetchLocationWeather: async (query) => {weatherRequests.push(query); return data.weather;},
+    },
+    '../services/dashboardCache': {loadDashboardCache: async () => data, saveDashboardCache: async () => {}},
+    '../services/dashboardSession': {createDashboardSession},
+    '../services/weatherLocationService': {
+      DEFAULT_LOCATIONS: locations, loadStoredLocations: async () => ({locations: [...locations], activeId: 'denver'}),
+      persistLocations: async () => {}, getWeatherForLocation: (loc, weather) => ({...weather, location: loc.query}),
+    },
+  });
+  const render = () => {
+    stateIndex = refIndex = memoIndex = effectIndex = 0; queued = [];
+    const value = DashboardProvider({children: null}).value;
+    queued.forEach((fn) => fn()); return value;
+  };
+  t.after(() => effects.forEach((effect) => effect?.cleanup?.()));
+  render(); await flush(); render(); await flush();
+  assert.equal(requests, 1, 'local city hydration must not start a second summary request');
+  preferences.resolve({preferences: {savedLocations: [...locations], activeLocationId: 'denver'}, updatedAtMs: 1, hasSavedLocations: true});
+  await flush(); render(); await flush();
+  assert.equal(requests, 1, 'remote preference hydration must not start a second summary request');
+  await render().addLocation('Paris', 'Paris, FR'); render(); await flush();
+  assert.equal(requests, 1, 'adding a non-default city must leave other dashboard data alone');
+  assert.deepEqual(weatherRequests, ['Paris, FR']);
+  await render().setDefaultLocation(render().savedLocations[1].id); render(); await flush();
+  assert.equal(requests, 1, 'changing the default must update only weather');
+  assert.equal(weatherRequests.at(-1), 'Paris, FR');
+  const previousSchedule = render().schedule;
+  const previousTasks = render().tasks;
+  await render().refresh();
+  assert.equal(requests, 2, 'manual refresh remains available');
+  assert.equal(render().isLoading, false);
+  assert.equal(render().schedule, previousSchedule);
+  assert.equal(render().tasks, previousTasks);
+});
+
+test('cached dashboard synchronization stays quiet, but failures still show saved-data context', () => {
+  let data = {isCached: true, error: null, lastUpdated: '2026-10-13T10:00:00Z'};
+  const {default: HomeScreen} = load('src/screens/HomeScreen.tsx', {
+    react: {useCallback: (fn) => fn, useEffect: () => {}, useState: (value) => [value, () => {}]},
+    'react/jsx-runtime': {jsx: (type, props) => ({type, props}), jsxs: (type, props) => ({type, props})},
+    'react-native': {View: 'view', StyleSheet: {create: (value) => value}},
+    '../components/shared/TVText': 'text', '../components/dashboard/header/HeaderBar': 'header',
+    '../components/dashboard/DashboardLayout': 'dashboard', '../components/dashboard/favorites/FavoriteAppsCarousel': 'favorites',
+    '../components/details/DashboardDetailModal': 'modal', '../components/ambient/AmbientScreen': 'ambient',
+    '../context/DashboardContext': {useDashboard: () => data},
+    '../context/PollsContext': {usePollVisibility: () => () => {}},
+    '../context/FeedsContext': {useFeedVisibility: () => () => {}},
+    '../theme/ThemeContext': {useAppearance: () => ({appearance: {ambient: {}}}), useTheme: () => ({})},
+    '../hooks/useCompactTVLayout': () => true,
+    '../components/ambient/useAmbientMode': () => ({active: false}),
+    '../accessibility/NarrationContext': {useNarration: () => ({stop: () => {}})},
+  });
+  assert.equal(HomeScreen().props.children[1], null, 'restored data needs no routine sync banner');
+  data = {...data, error: 'Offline'};
+  const message = HomeScreen().props.children[1].props.children.props.text;
+  assert.match(message, /Saved dashboard from/);
+  assert.match(message, /Refresh unavailable; will retry/);
+  data = {...data, isCached: false};
+  assert.match(HomeScreen().props.children[1].props.children.props.text, /Live data unavailable: Offline/);
+});

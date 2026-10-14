@@ -355,6 +355,7 @@ export default function ActivityDetailView({
             Weekly activity has not loaded yet.
           </Text>
         )}
+      </View>
         {fetchedTime && (
           <Text
             style={[
@@ -365,7 +366,6 @@ export default function ActivityDetailView({
             Google Fit · fetched {fetchedTime}
           </Text>
         )}
-      </View>
     </ScrollView>
   );
 }

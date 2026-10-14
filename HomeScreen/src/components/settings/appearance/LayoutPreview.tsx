@@ -1,5 +1,6 @@
 import Text from '../../shared/ReadingText';
 import {Image, View} from 'react-native';
+import {useState} from 'react';
 import {useAppearance, useTheme} from '../../../theme/ThemeContext';
 import {CARD_LABELS, getCardRows} from '../../../theme/appearance';
 import type {CardId, CardPreference} from '../../../theme/appearance';
@@ -11,6 +12,7 @@ import {themeForPalette} from '../../../theme/tvTheme';
 import {widgetRows} from '../../../../../server/functions/src/utils/widgets';
 import type {Widget} from '../../../../../server/functions/src/utils/widgets';
 import {widgetLabel} from './widgetControls';
+import {gridRect} from '../../../../../server/functions/src/utils/dashboardLayout';
 
 export default function LayoutPreview({
   cards,
@@ -28,6 +30,7 @@ export default function LayoutPreview({
   compact?: boolean;
 }) {
   const currentTheme = useTheme();
+  const [area, setArea] = useState({width: 0, height: 0});
   const {appearance: currentAppearance, photoDataUrl} = useAppearance();
   const appearance = suppliedAppearance || currentAppearance;
   const theme = suppliedAppearance ? themeForPalette(appearance.palette, appearance.customAccent, appearance.backgroundColor, appearance.background) : currentTheme;
@@ -63,6 +66,7 @@ export default function LayoutPreview({
         : null;
   return (
     <View
+      testID='layout-preview'
       style={[
         styles.preview,
         large && styles.largePreview,
@@ -75,17 +79,17 @@ export default function LayoutPreview({
         <Image source={image} resizeMode='cover' style={styles.previewImage} />
       )}
       {grid
-        ? grid.items.map((item) => (
+        ? <View testID='layout-preview-grid' style={{flex: 1, minWidth: 0, minHeight: 0}}
+            onLayout={({nativeEvent: {layout}}) => setArea({width: layout.width, height: layout.height})}>
+          {area.width > 0 && grid.items.map((item) => (
             <View
               key={item.id}
+              testID={`preview-tile-${item.id}`}
               style={[
                 styles.previewTile,
                 {
                   position: 'absolute',
-                  left: `${(item.x / 12) * 100}%`,
-                  top: `${(item.y / 6) * 100}%`,
-                  width: `${(item.width / 12) * 100}%`,
-                  height: `${(item.height / 6) * 100}%`,
+                  ...gridRect(item, area.width, area.height, large ? 4 : 2),
                   backgroundColor: tileColors(item.id).backgroundColor,
                   borderColor: tileColors(item.id).borderColor,
                   borderWidth: tileColors(item.id).borderWidth,
@@ -104,7 +108,8 @@ export default function LayoutPreview({
                 {labelFor(item.id)}
               </Text>
             </View>
-          ))
+          ))}
+          </View>
         : rows.map((row, rowIndex) => (
             <View
               key={rowIndex}
@@ -116,6 +121,7 @@ export default function LayoutPreview({
               {row.map((card) => (
                 <View
                   key={card.id}
+                  testID={`preview-tile-${card.id}`}
                   style={[
                     styles.previewTile,
                     {

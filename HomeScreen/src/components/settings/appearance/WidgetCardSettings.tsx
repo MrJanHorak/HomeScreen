@@ -30,6 +30,7 @@ export default function WidgetCardSettings() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [message, setMessage] = useState('');
+  const [addMessage, setAddMessage] = useState({text: '', error: false, target: ''});
   const [refresh, setRefresh] = useState(0);
   useEffect(() => {
     let active = true;
@@ -48,9 +49,8 @@ export default function WidgetCardSettings() {
   const labels = [...polls, ...Object.values(rounds).filter((round) => !polls.some((poll) => poll.id === round.id))];
   const label = (widget: Widget) => widgetLabel(widget, people, labels);
   const visibleCount = layout.widgets.filter((widget) => widget.visible).length;
-  const selected = layout.widgets.find((widget) => widget.id === selectedId && widget.visible)
-    || layout.widgets.find((widget) => widget.visible);
-  useEffect(() => {setSelectedId(selected?.id || null);}, [selected?.id]);
+  const selected = layout.widgets.find((widget) => widget.id === selectedId && widget.visible);
+  useEffect(() => {if (!selected) setSelectedId(null);}, [selected?.id]);
   const positions = [...layout.grid?.items || []].sort((a, b) => a.y - b.y || a.x - b.x);
   const available: Widget[] = [
     ...people.filter((person) => !layout.widgets.some((widget) => widget.personId === person.id))
@@ -62,6 +62,15 @@ export default function WidgetCardSettings() {
     try {action(); setMessage('');} catch (failure) {setMessage(failure instanceof Error ? failure.message : 'Could not update this card.');}
   }
   function edit(id: string, action: WidgetAction) {run(() => setWidgetLayout(changeWidget(layout, id, action)));}
+  function add(widget: Widget) {
+    const target = widget.feed?.url || widget.id;
+    try {
+      setWidgetLayout(addDashboardWidget(layout, widget));
+      setAddMessage({text: `Added ${label(widget)}. Find it in Arrange cards above.`, error: false, target});
+    } catch (failure) {
+      setAddMessage({text: failure instanceof Error ? failure.message : 'Could not add this card.', error: true, target});
+    }
+  }
   const copy = {color: theme.colors.textSecondary};
   const preview = <View testID='live-dashboard-preview' style={[styles.livePreviewPanel, {alignSelf: 'flex-start', flexShrink: 0, width: previewWidth, borderColor: theme.colors.focusRing, backgroundColor: theme.colors.glassSurface}]}>
     <Text style={[styles.livePreviewTitle, {color: theme.colors.textPrimary}]}>Live dashboard preview</Text>
@@ -91,8 +100,8 @@ export default function WidgetCardSettings() {
           </View>
           <Option label={widget.visible ? 'Hide card' : 'Show card'} accessibilityLabel={`${widget.visible ? 'Hide' : 'Show'} ${name}`} compact
             disabled={!ready || widget.visible && visibleCount === 1} onPress={() => edit(widget.id, {type: 'visibility'})}/>
-          {widget.visible && <Option label='Adjust' selected={active} accessibilityLabel={`Adjust ${name}`} compact
-            disabled={!ready} onPress={() => {setSelectedId(widget.id); setMessage('');}}/>}
+          {widget.visible && <Option label='Adjust' selected={active} expanded={active} accessibilityLabel={`Adjust ${name}`} compact
+            disabled={!ready} onPress={() => {setSelectedId(active ? null : widget.id); setMessage('');}}/>}
           {widget.kind === 'feed' && !active && action('Remove feed', {type: 'remove'}, widget.visible && visibleCount === 1)}
         </View>
         {active && <View style={cardStyles.adjustments}>
@@ -137,7 +146,7 @@ export default function WidgetCardSettings() {
     onLayout={({nativeEvent}) => setEditorWidth(nativeEvent.layout.width)}>
     <ScrollView testID='card-settings-scroll' style={cardStyles.scroll} contentContainerStyle={cardStyles.scrollContent} showsVerticalScrollIndicator accessibilityLabel='Card settings'>
     <Text style={[styles.title, {color: theme.colors.textPrimary}]}>Arrange cards</Text>
-    <Text style={[styles.description, copy]}>Choose Adjust on a card, then use your remote’s arrows to reach a control and press OK. Changes appear in the preview. Hide a card to keep it for later.</Text>
+    <Text style={[styles.description, copy]}>Choose Adjust to open a card’s move and resize controls; choose it again to close them. Use your remote’s arrows to reach a control and press OK. Changes appear in the preview.</Text>
     <View style={[styles.options, {marginBottom: 14}]}>
       <Option label='Automatic rows' subtitle='Cards line up for you' selected={!layout.grid} disabled={!ready || visibleCount > 8}
         onPress={() => run(() => setWidgetLayout({...layout, grid: null}))}/>
@@ -145,17 +154,38 @@ export default function WidgetCardSettings() {
         onPress={() => run(() => setWidgetLayout({...layout, grid: layout.grid || widgetGridFromRows(layout.widgets)}))}/>
     </View>
     {visibleCount > 8 && <Text style={[styles.description, copy]}>Hide cards until eight remain to use automatic rows.</Text>}
-    {message && <Text accessibilityRole='alert' style={[styles.description, {color: theme.colors.textPrimary}]}>{message}</Text>}
+    {message !== '' && <Text accessibilityRole='alert' style={[styles.description, {color: theme.colors.textPrimary}]}>{message}</Text>}
     {controls}
-    <Text style={[styles.heading, {color: theme.colors.textPrimary}]}>Add cards</Text>
-    <Text style={[styles.description, copy]}>Add several feed widgets. Open a feed card to choose its source; use the companion site for custom URLs and titles.</Text>
-    <FeedSourcePicker adding disabled={!ready} onSelect={(feed) => run(() => setWidgetLayout(addDashboardWidget(layout, {id: `feed_${Array.from({length: 32}, () => Math.floor(Math.random() * 16).toString(16)).join('')}`, kind: 'feed', feed: {...feed, itemCount: 5}, visible: true, size: 'standard'})))}/>
-    <View style={styles.options}>{available.map((widget) => <Option key={widget.id} label={`Add ${label(widget)}`} disabled={!ready || loading}
-      onPress={() => run(() => setWidgetLayout(addDashboardWidget(layout, widget)))}/>)}</View>
-    {loading && <Text style={[styles.description, copy]}>Loading available cards…</Text>}
-    {loadError && <Text accessibilityRole='alert' style={[styles.description, copy]}>{loadError}</Text>}
-    {!loading && !loadError && !available.length && <Text style={[styles.description, copy]}>All available cards are listed above. Add people or create polls on the companion site to make more available.</Text>}
-    <Option label='Refresh available cards' disabled={!ready || loading} onPress={() => setRefresh((value) => value + 1)}/>
+    <View style={cardStyles.addCards}>
+      <View style={cardStyles.sectionIntro}>
+        <Text style={[styles.title, {color: theme.colors.textPrimary, marginBottom: 0}]}>Add cards</Text>
+        <Text style={[styles.description, copy, {marginBottom: 0}]}>Bring headlines, shared activity, and polls to your dashboard.</Text>
+      </View>
+      <View testID='add-feed-section' style={[cardStyles.addSection, {borderColor: theme.colors.glassBorder, backgroundColor: theme.colors.glassSurface}]}>
+        <Text style={[cardStyles.sectionTitle, {color: theme.colors.textPrimary}]}>News & RSS feeds</Text>
+        <Text style={[styles.description, copy, {marginBottom: 0}]}>Choose a topic, then add a publisher’s feed. Each source becomes its own card.</Text>
+        <FeedSourcePicker adding disabled={!ready} feedback={{url: addMessage.target, text: addMessage.text, error: addMessage.error}}
+          onSelect={(feed) => add({id: `feed_${Array.from({length: 32}, () => Math.floor(Math.random() * 16).toString(16)).join('')}`, kind: 'feed', feed: {...feed, itemCount: 5}, visible: true, size: 'standard'})}/>
+        <Text style={[styles.description, copy, {marginBottom: 0}]}>Open a feed card to change its source. Use the companion site for custom URLs and titles.</Text>
+      </View>
+      {(['activity', 'poll'] as const).map((kind) => {
+        const choices = available.filter((widget) => widget.kind === kind);
+        return <View key={kind} testID={`add-${kind}-section`} style={[cardStyles.addSection, {borderColor: theme.colors.glassBorder, backgroundColor: theme.colors.glassSurface}]}>
+          <Text style={[cardStyles.sectionTitle, {color: theme.colors.textPrimary}]}>{kind === 'activity' ? 'Shared activity' : 'Polls'}</Text>
+          <Text style={[styles.description, copy, {marginBottom: 0}]}>{kind === 'activity' ? 'Add a card for someone sharing activity with you.' : 'Add a poll so people can join from your TV.'}</Text>
+          {addMessage.target.startsWith(`${kind}_`) && <Text accessibilityRole={addMessage.error ? 'alert' : undefined} accessibilityLiveRegion='polite'
+            style={[styles.description, {color: theme.colors.textPrimary, marginBottom: 0}]}>{addMessage.text}</Text>}
+          {choices.map((widget) => <Option key={widget.id} label={label(widget).replace(/^(Activity|Poll) · /, '')} subtitle={kind === 'activity' ? 'Add activity card' : 'Add poll card'} accessibilityLabel={`Add ${label(widget)}`} compact
+            style={cardStyles.addOption} disabled={!ready || loading} onPress={() => add(widget)}/>)}
+          {!loading && !loadError && !choices.length && <Text style={[styles.description, copy, {marginBottom: 0}]}>{kind === 'activity' ? 'No more activity cards to add. Manage people on the companion site.' : 'No more polls to add. Create a poll on the companion site.'}</Text>}
+        </View>;
+      })}
+      <View style={cardStyles.availability}>
+        {loading && <Text style={[styles.description, copy]}>Loading available cards…</Text>}
+        {loadError !== '' && <Text accessibilityRole='alert' style={[styles.description, copy]}>{loadError}</Text>}
+        <Option label='Refresh available cards' disabled={!ready || loading} compact style={cardStyles.addOption} onPress={() => setRefresh((value) => value + 1)}/>
+      </View>
+    </View>
     </ScrollView>
     {preview}
   </View>;
@@ -171,4 +201,10 @@ const cardStyles = StyleSheet.create({
   adjustments: {gap: 8, width: '100%', maxWidth: 520},
   groupTitle: {fontSize: 16, fontWeight: '700', marginTop: 4},
   directionRow: {flexDirection: 'row', justifyContent: 'center', gap: 12},
+  addCards: {marginTop: 24, gap: 16},
+  sectionIntro: {gap: 6},
+  addSection: {borderWidth: 1, borderRadius: 14, padding: 14, gap: 12},
+  sectionTitle: {fontSize: 17, fontWeight: '700'},
+  addOption: {width: '100%', minHeight: 64},
+  availability: {borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.12)', paddingTop: 16},
 });

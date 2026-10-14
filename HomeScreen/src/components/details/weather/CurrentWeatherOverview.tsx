@@ -2,6 +2,7 @@ import Text from '../../shared/ReadingText';
 import {StyleSheet, View} from 'react-native';
 import type {Weather} from '../../../../../shared/src/types';
 import {useTheme} from '../../../theme/ThemeContext';
+import {formatWeatherLocation} from '../../../helpers/weatherHelpers';
 import WeatherMetric from './WeatherMetric';
 
 export default function CurrentWeatherOverview({weather, stacked = false}: {weather: Weather; stacked?: boolean}) {
@@ -21,7 +22,7 @@ export default function CurrentWeatherOverview({weather, stacked = false}: {weat
                 Feels like {weather.feelsLike}° • H: {weather.high}° L: {weather.low}°
               </Text>
             )}
-            <Text style={[styles.location, {color: theme.colors.focusRing}]}>📍 {weather.location}</Text>
+            <Text style={[styles.location, {color: theme.colors.focusRing}]}>📍 {formatWeatherLocation(weather.location)}</Text>
           </View>
         </View>
       </View>

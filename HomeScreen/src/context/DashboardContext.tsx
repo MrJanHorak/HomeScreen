@@ -98,6 +98,9 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   );
   const locationsRef = useRef(savedLocations);
   locationsRef.current = savedLocations;
+  const defaultLocation = savedLocations.find((location) => location.isDefault) || savedLocations[0];
+  const defaultWeatherKey = JSON.stringify([defaultLocation.id, defaultLocation.query]);
+  const previousDefaultWeatherKey = useRef(defaultWeatherKey);
   const sessionRef = useRef<ReturnType<typeof createDashboardSession> | null>(null);
   const mountedRef = useRef(false);
   const preferenceState = useRef<{
@@ -246,10 +249,11 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     const locations = data.savedLocations?.length ? data.savedLocations : locationsRef.current;
     const defaultLocation = locations.find((location) => location.isDefault) || locations[0];
     if (defaultLocation && data.weather) {
-      setWeatherByLocation((previous) => ({
-        ...previous,
-        [defaultLocation.id]: keepIfUnchanged(previous[defaultLocation.id], data.weather),
-      }));
+      setWeatherByLocation((previous) => {
+        const weather = keepIfUnchanged(previous[defaultLocation.id], data.weather);
+        return weather === previous[defaultLocation.id]
+          ? previous : { ...previous, [defaultLocation.id]: weather };
+      });
     }
     setIsCached(cached);
     setLastUpdated(data.updatedAt);
@@ -426,8 +430,13 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     ]);
   }, [activeLocation, loadData, loadLocationWeather]);
 
-  // Preferences may select a new default city; refresh without restarting cache hydration.
-  useEffect(() => { void loadData(); }, [savedLocations, loadData]);
+  // A new default city needs weather, not another fetch of the entire dashboard.
+  // Ignore list/name changes and the initial render, which already fetches a summary.
+  useEffect(() => {
+    if (previousDefaultWeatherKey.current === defaultWeatherKey) return;
+    previousDefaultWeatherKey.current = defaultWeatherKey;
+    void loadLocationWeather(defaultLocation);
+  }, [defaultWeatherKey, defaultLocation, loadLocationWeather]);
 
   return (
     <DashboardContext.Provider

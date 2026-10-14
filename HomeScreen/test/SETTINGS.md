@@ -9,7 +9,10 @@ visible cards and the free grid fits twelve.
 Cards owns its scrolling area so the live preview remains visible on the right
 while the card controls scroll on the left, including on compact TVs. The preview
 retains its full height and uses up to 320 dp of width. Adjust opens one
-card's Move and Resize controls and highlights that card in the preview.
+card's Move and Resize controls and highlights that card in the preview. It starts
+closed; pressing Adjust again closes it. Hiding or removing the selected card
+also closes the controls without selecting another card. Free-layout previews
+use an inset canvas and shared grid geometry for equal outer padding and gaps.
 Show/Hide actions stay available in each row. Movement uses a directional pad;
 unavailable positions and sizes are disabled, including overlaps. Grid dimensions
 are omitted from the controls. Reordering keeps the same card selected.
@@ -38,6 +41,9 @@ mocked authentication, APIs, and local storage. It checks compact and full
 widths, keyboard activation, widget persistence, saved and preset layouts,
 and retry after a library failure. It also checks preview visibility while
 scrolling, compact screen heights, and selection while reordering and hiding.
+Feed additions are grouped into topic and source steps with consistent control
+widths; activity and polls have separate sections. Browser checks cover topic
+switching, keyboard additions, duplicate feed instances, and preview margins.
 Native TV focus still needs a device check.
 
 Ambient settings show a live backdrop thumbnail using the same renderer as

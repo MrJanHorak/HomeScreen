@@ -58,11 +58,11 @@ function HomeScreen() {
       {/* Top Header */}
       <HeaderBar onOpenSettings={() => setActiveModal('settings')} />
 
-      {(error || isCached) && (
+      {error && (
         <View style={styles.errorBanner}>
           <TVText
             text={isCached
-              ? `${savedData}. ${error ? 'Refresh unavailable; will retry.' : 'Refreshing…'}`
+              ? `${savedData}. Refresh unavailable; will retry.`
               : `Live data unavailable: ${error}${savedData ? `. ${savedData}` : ''}`}
             typography="caption"
             color="accent"

@@ -21,6 +21,11 @@ export const formatHighLow = (high: number, low: number) => {
   return `H: ${formattedHigh} L:${formattedLow}`;
 };
 
+/** Display the trailing city/country details beneath the saved location name. */
+export const formatWeatherLocation = (location?: string) => {
+  return (location || '').replace(/^(.*\S)\s+(\([^()]*\))\s*$/, '$1\n$2');
+};
+
 /** Supplied icon tokens preserve night/partly-cloudy conditions; unknown is not sunny. */
 export function weatherConditionIcon(icon?: string, condition?: string): MaterialIconName | undefined {
   const tokens: Record<string, MaterialIconName> = {

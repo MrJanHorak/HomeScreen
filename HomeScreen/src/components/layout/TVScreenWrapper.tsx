@@ -30,38 +30,34 @@ export default function TVScreenWrapper({
   const [size, setSize] = useState({width: 0, height: 0});
   const content = <View style={[styles.container, compact && styles.compactContainer, style]}>{children}</View>;
 
-  // This is the functional core of the UI layout
-  const renderInnerContent = () => {
-    if (backgroundImage) {
-      return (
-        <View
-          onLayout={({nativeEvent: {layout}}) => setSize((current) =>
-            current.width === layout.width && current.height === layout.height ? current : {width: layout.width, height: layout.height})}
-          style={[styles.background, { backgroundColor: theme.colors.background }]}
-        >
-          {size.width > 0 && size.height > 0 && <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-            <Image source={backgroundImage} resizeMode="cover" accessible={false}
-              style={{width: size.width, height: size.height, transform: [{scale: normalizePhotoZoom(backgroundZoom)}]}} />
-          </View>}
-          <View style={[styles.overlay, { backgroundColor: theme.colors.backgroundOverlay }]}>{content}</View>
-        </View>
-      );
-    }
-    return <View style={[styles.background, { backgroundColor: theme.colors.background }]}>{content}</View>;
-  };
+  // Keep the content at the same position when a remote photo arrives.
+  // Changing its parent structure remounts Root and restarts dashboard syncing.
+  const innerContent = (
+    <View
+      onLayout={({nativeEvent: {layout}}) => setSize((current) =>
+        current.width === layout.width && current.height === layout.height ? current : {width: layout.width, height: layout.height})}
+      style={[styles.background, { backgroundColor: theme.colors.background }]}
+    >
+      {backgroundImage && size.width > 0 && size.height > 0 && <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+        <Image source={backgroundImage} resizeMode="cover" accessible={false}
+          style={{width: size.width, height: size.height, transform: [{scale: normalizePhotoZoom(backgroundZoom)}]}} />
+      </View>}
+      <View style={[styles.overlay, { backgroundColor: backgroundImage ? theme.colors.backgroundOverlay : 'transparent' }]}>{content}</View>
+    </View>
+  );
 
   // On TV/Mobile, render normally. On Web, wrap it in a strict 16:9 aspect box.
   if (Platform.OS === 'web') {
     return (
       <View style={styles.webViewportCenterer}>
         <View style={styles.webTvFrame}>
-          {renderInnerContent()}
+          {innerContent}
         </View>
       </View>
     );
   }
 
-  return renderInnerContent();
+  return innerContent;
 }
 
 const styles = StyleSheet.create({

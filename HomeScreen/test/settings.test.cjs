@@ -84,6 +84,7 @@ for (const viewport of [{width: 720, height: 540}, {width: 960, height: 540, sid
     const controlBounds = await scroll.boundingBox();
     assert.ok(before.x >= controlBounds.x + controlBounds.width, 'preview stays to the right of the card controls');
     assert.ok(before.height >= 260, 'TV preview retains its original full height');
+    await page.getByRole('button', {name: 'Adjust Weather', exact: true}).click();
     const reorder = page.getByRole('button', {name: 'Move later Weather', exact: true});
     await reorder.focus(); await page.keyboard.press('Enter');
     await page.getByText('Adjusting: Weather', {exact: true}).waitFor();
@@ -110,7 +111,7 @@ for (const viewport of [{width: 720, height: 540}, {width: 960, height: 540, sid
     await page.getByRole('button', {name: 'Swap next Activity · Alex', exact: true}).click();
     assert.notDeepEqual((await state(page)).widgetLayout.grid.items, previous.widgetLayout.grid.items);
     await page.getByRole('button', {name: 'Hide Activity · Alex', exact: true}).click();
-    await page.getByText('Adjusting: Weather', {exact: true}).waitFor();
+    await page.getByText('Choose a card to adjust.', {exact: true}).waitFor();
     assert.equal(await page.getByRole('button', {name: 'Move up Activity · Alex', exact: true}).count(), 0);
     if (process.env.TV_SETTINGS_SCREENSHOTS || process.env.TV_CARD_SCREENSHOTS) {
       await page.getByRole('button', {name: 'Adjust Weather', exact: true}).focus();
@@ -144,6 +145,7 @@ for (const width of [960, 1920]) test(`TV card and saved layout controls work wi
   assert.equal((await state(page)).palette, 'forest');
   assert.equal((await state(page)).widgetLayout.grid.items.length, 3);
   await page.getByRole('button', {name: 'Cards tab', exact: true}).click();
+  await page.getByRole('button', {name: 'Adjust Weather', exact: true}).click();
   await page.getByRole('button', {name: 'Swap next Weather', exact: true}).click();
   const moved = await state(page);
   assert.equal(moved.widgetLayout.grid.items.find((item) => item.id === 'weather').x, 6);
@@ -174,3 +176,117 @@ test('saved layout failures show a retry and retain the current dashboard', asyn
   await page.getByRole('button', {name: 'Refresh saved layouts', exact: true}).click();
   await page.getByRole('button', {name: 'Apply saved layout Garden', exact: true}).waitFor();
 });
+
+test('Adjust starts closed, toggles with keyboard, and closes when its card is hidden or removed', async (t) => {
+  const page = await browser.newPage({viewport: {width: 960, height: 540}}); t.after(() => page.close());
+  const textErrors = [];
+  page.on('console', (message) => {if (message.text().includes('Unexpected text node')) textErrors.push(message.text());});
+  await page.goto(url);
+  const adjust = page.getByRole('button', {name: 'Adjust Weather', exact: true});
+  await adjust.waitFor();
+  const initial = await state(page);
+  assert.equal(await adjust.getAttribute('aria-expanded'), 'false');
+  assert.equal(await page.getByRole('button', {name: 'Move later Weather', exact: true}).count(), 0);
+  await adjust.focus(); await page.keyboard.press('Enter');
+  assert.equal(await adjust.getAttribute('aria-expanded'), 'true');
+  await page.getByText('Adjusting: Weather', {exact: true}).waitFor();
+  await page.keyboard.press('Enter');
+  assert.equal(await adjust.getAttribute('aria-expanded'), 'false');
+  assert.equal(await page.getByRole('button', {name: 'Make wider Weather', exact: true}).count(), 0);
+  assert.deepEqual(await state(page), initial, 'opening and closing controls never edits the saved layout');
+  await adjust.click();
+  await page.getByRole('button', {name: 'Adjust Activity · Alex', exact: true}).click();
+  assert.equal(await adjust.getAttribute('aria-expanded'), 'false');
+  await page.getByRole('button', {name: 'Hide Activity · Alex', exact: true}).click();
+  await page.getByText('Choose a card to adjust.', {exact: true}).waitFor();
+  await page.getByRole('button', {name: 'Show Activity · Alex', exact: true}).click();
+  assert.equal(await page.getByRole('button', {name: 'Adjust Activity · Alex', exact: true}).getAttribute('aria-expanded'), 'false');
+  await page.getByRole('button', {name: 'Add Science News feed', exact: true}).click();
+  await page.getByRole('button', {name: 'Adjust Feed · Science News', exact: true}).click();
+  await page.getByRole('button', {name: 'Remove feed Feed · Science News', exact: true}).click();
+  await page.getByText('Choose a card to adjust.', {exact: true}).waitFor();
+  assert.deepEqual(textErrors, [], 'settings render no bare text nodes inside native Views');
+});
+
+test('failed feed additions keep the layout and show an error beside the chosen source', async (t) => {
+  const page = await browser.newPage({viewport: {width: 960, height: 540}}); t.after(() => page.close());
+  await page.goto(url);
+  const add = page.getByRole('button', {name: 'Add Science News feed', exact: true});
+  await add.waitFor();
+  for (let i = 0; i < 5; i++) await add.click();
+  const full = await state(page);
+  assert.equal(full.widgetLayout.widgets.filter((widget) => widget.visible).length, 8);
+  await add.click();
+  const error = page.getByTestId('feed-sources').getByRole('alert');
+  await error.waitFor();
+  assert.match(await error.textContent(), /Automatic rows fit eight cards/);
+  assert.deepEqual(await state(page), full, 'a failed add does not create a hidden or overlapping card');
+  const buttonBounds = await add.boundingBox();
+  const errorBounds = await error.boundingBox();
+  assert.ok(errorBounds.y >= buttonBounds.y + buttonBounds.height && errorBounds.y - buttonBounds.y - buttonBounds.height < 12);
+});
+
+for (const viewport of [{width: 720, height: 540}, {width: 960, height: 540, sidebar: true}, {width: 1920, height: 1080}]) {
+  test(`feed topics and sources have a clear hierarchy and consistent widths: ${viewport.width}`, async (t) => {
+    const page = await browser.newPage({viewport}); t.after(() => page.close());
+    await page.goto(viewport.sidebar ? `${url}?tv` : url);
+    await page.getByRole('button', {name: 'Adjust Weather', exact: true}).waitFor();
+    const sources = page.getByTestId('feed-sources');
+    const topics = page.getByTestId('feed-topics');
+    await topics.scrollIntoViewIfNeeded();
+    const topicWidths = await topics.getByRole('button').evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect().width));
+    assert.ok(Math.max(...topicWidths) - Math.min(...topicWidths) < 1, 'topics have equal widths');
+    await page.getByRole('button', {name: 'Space', exact: true}).focus(); await page.keyboard.press('Enter');
+    await page.getByText('Space · 3 sources', {exact: true}).waitFor();
+    assert.equal(await page.getByRole('button', {name: 'Add Science News feed', exact: true}).count(), 0);
+    assert.equal(await sources.getByRole('button').count(), 3);
+    const widths = await sources.getByRole('button').evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect().width));
+    assert.ok(Math.max(...widths) - Math.min(...widths) < 1, 'all source rows have equal widths');
+    if (process.env.TV_SETTINGS_SCREENSHOTS) {
+      await page.getByTestId('add-feed-section').evaluate((node) => node.scrollIntoView({block: 'start'}));
+      await page.screenshot({path: `../artifacts/cards-cleanup-feeds-${viewport.width}.png`});
+    }
+    const add = page.getByRole('button', {name: 'Add NASA News feed', exact: true});
+    await add.focus(); await page.keyboard.press('Enter'); await page.keyboard.press('Enter');
+    const feeds = (await state(page)).widgetLayout.widgets.filter((widget) => widget.kind === 'feed');
+    assert.equal(feeds.length, 2, 'each add creates an independent feed card');
+    assert.notEqual(feeds[0].id, feeds[1].id);
+    assert.ok(feeds.every((widget) => widget.feed.title === 'NASA News' && widget.visible));
+    await page.getByText('Added Feed · NASA News. Find it in Arrange cards above.', {exact: true}).waitFor();
+    assert.equal(await page.getByTestId('add-poll-section').getByRole('button', {name: 'Add Poll · Dinner?', exact: true}).count(), 1);
+    assert.equal(await page.getByTestId('add-activity-section').getByRole('button', {name: 'Add Activity · Sam', exact: true}).count(), 1);
+    if (process.env.TV_SETTINGS_SCREENSHOTS) {
+      await page.getByTestId('card-settings-scroll').evaluate((node) => {node.scrollTop = node.scrollHeight;});
+      await page.screenshot({path: `../artifacts/cards-cleanup-add-${viewport.width}.png`});
+      if (viewport.width === 960) {
+        await page.setViewportSize({width: 960, height: 850});
+        await page.getByTestId('add-feed-section').evaluate((node) => node.scrollIntoView({block: 'start'}));
+        await page.screenshot({path: '../artifacts/cards-cleanup-feeds-overview-960.png'});
+      }
+    }
+  });
+
+  test(`free-layout preview keeps symmetric outer margins and separates tiles: ${viewport.width}`, async (t) => {
+    const page = await browser.newPage({viewport}); t.after(() => page.close());
+    await page.goto(viewport.sidebar ? `${url}?tv` : url);
+    await page.getByRole('button', {name: 'Layout tab', exact: true}).click();
+    await page.getByRole('button', {name: 'Apply saved layout Garden', exact: true}).click();
+    await page.getByRole('button', {name: 'Cards tab', exact: true}).click();
+    const preview = page.getByTestId('live-dashboard-preview').getByTestId('layout-preview');
+    await preview.getByTestId('preview-tile-weather').waitFor();
+    const report = await preview.evaluate((node) => {
+      const outer = node.getBoundingClientRect();
+      const tiles = [...node.querySelectorAll('[data-testid^="preview-tile-"]')].map((tile) => tile.getBoundingClientRect());
+      return {left: Math.min(...tiles.map((r) => r.left)) - outer.left,
+        right: outer.right - Math.max(...tiles.map((r) => r.right)),
+        top: Math.min(...tiles.map((r) => r.top)) - outer.top,
+        bottom: outer.bottom - Math.max(...tiles.map((r) => r.bottom)),
+        overlapping: tiles.some((a, i) => tiles.slice(i + 1).some((b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top))};
+    });
+    assert.ok(report.left >= 8 && report.top >= 8, 'tiles respect the preview inset');
+    assert.ok(Math.abs(report.left - report.right) < 1, JSON.stringify(report));
+    assert.ok(Math.abs(report.top - report.bottom) < 1, JSON.stringify(report));
+    assert.equal(report.overlapping, false);
+    if (process.env.TV_SETTINGS_SCREENSHOTS) await page.screenshot({path: `../artifacts/cards-cleanup-preview-${viewport.width}.png`});
+  });
+}

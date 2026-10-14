@@ -3,6 +3,7 @@ import Text from '../../shared/ReadingText';
 import {useState} from 'react';
 import type React from 'react';
 import {View} from 'react-native';
+import type {StyleProp, ViewStyle} from 'react-native';
 import {useTheme} from '../../../theme/ThemeContext';
 import {styles} from './appearanceStyles';
 
@@ -17,6 +18,8 @@ interface OptionProps {
   onPress: () => void;
   large?: boolean;
   compact?: boolean;
+  expanded?: boolean;
+  style?: StyleProp<ViewStyle>;
 }
 
 export default function Option({
@@ -30,18 +33,22 @@ export default function Option({
   onPress,
   large = false,
   compact = false,
+  expanded,
+  style,
 }: OptionProps) {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
   return (
     <Pressable
       accessibilityRole='button'
+      aria-expanded={expanded}
       accessibilityLabel={
         accessibilityLabel || (subtitle ? `${label}. ${subtitle}` : label)
       }
       accessibilityState={{
         selected: Boolean(selected),
         disabled: Boolean(disabled),
+        ...(expanded !== undefined ? {expanded} : {}),
       }}
       disabled={disabled}
       onFocus={() => setFocused(true)}
@@ -64,6 +71,7 @@ export default function Option({
           opacity: disabled ? 0.45 : 1,
         },
         focused && (large || compact ? {borderWidth: 3} : styles.focused),
+        style,
       ]}
     >
       {swatch && <View style={[styles.swatch, { backgroundColor: swatch }]} />}
