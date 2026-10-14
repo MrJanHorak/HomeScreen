@@ -286,86 +286,86 @@ export default function ActivityDetailView({
           </View>
         </View>
       </View>
-      <View
-        style={[
-          styles.weeklyCard,
-          twoColumns && styles.weekColumn,
-          compact && { padding: 14 },
-        ]}
-      >
-        <Text style={[styles.weeklyTitle, { color: theme.colors.textPrimary }]}>
-          Last 7 Days
-        </Text>
-        {weekly.length ? (
-          <>
+      <View style={twoColumns && styles.weekColumn}>
+        <View style={[styles.weeklyCard, compact && { padding: 14 }]}>
+          <Text style={[styles.weeklyTitle, { color: theme.colors.textPrimary }]}>
+            Last 7 Days
+          </Text>
+          {weekly.length ? (
+            <>
+              <Text
+                style={[styles.metricSub, { color: theme.colors.textSecondary }]}
+              >
+                {summary.steps.toLocaleString()} steps total ·{' '}
+                {summary.averageSteps.toLocaleString()} daily average
+              </Text>
+              {summary.moveMinutes !== null && (
+                <Text
+                  style={[
+                    styles.metricSub,
+                    { color: theme.colors.textSecondary },
+                  ]}
+                >
+                  {summary.moveMinutes.toLocaleString()} Move Minutes across{' '}
+                  {summary.daysWithMoveMinutes} days with data
+                </Text>
+              )}
+              <ActivityDayBars
+                weekly={weekly}
+                peak={highestSteps}
+                stepGoal={act.stepGoal}
+                scale={1}
+                detailed
+              />
+              {act.stepGoal > 0 && (
+                <Text
+                  style={[
+                    styles.metricSub,
+                    { color: theme.colors.textSecondary, marginTop: 8 },
+                  ]}
+                >
+                  Dashed line: current goal of {act.stepGoal.toLocaleString()}{' '}
+                  steps.
+                </Text>
+              )}
+              {/* {act.stepGoal > 0 && (
+                <Text style={[styles.metricSub, { color: GOAL_OVERFLOW_COLOR }]}>
+                  Amber shows steps over goal.
+                </Text>
+              )} */}
+              <Text
+                style={[
+                  styles.metricSub,
+                  { color: theme.colors.textSecondary, marginTop: 14 },
+                ]}
+              >
+                Bars show steps; the full bar represents{' '}
+                {highestSteps.toLocaleString()} steps.
+              </Text>
+            </>
+          ) : (
             <Text
               style={[styles.metricSub, { color: theme.colors.textSecondary }]}
             >
-              {summary.steps.toLocaleString()} steps total ·{' '}
-              {summary.averageSteps.toLocaleString()} daily average
+              Weekly activity has not loaded yet.
             </Text>
-            {summary.moveMinutes !== null && (
-              <Text
-                style={[
-                  styles.metricSub,
-                  { color: theme.colors.textSecondary },
-                ]}
-              >
-                {summary.moveMinutes.toLocaleString()} Move Minutes across{' '}
-                {summary.daysWithMoveMinutes} days with data
-              </Text>
-            )}
-            <ActivityDayBars
-              weekly={weekly}
-              peak={highestSteps}
-              stepGoal={act.stepGoal}
-              scale={1}
-              detailed
-            />
-            {act.stepGoal > 0 && (
-              <Text
-                style={[
-                  styles.metricSub,
-                  { color: theme.colors.textSecondary, marginTop: 8 },
-                ]}
-              >
-                Dashed line: current goal of {act.stepGoal.toLocaleString()}{' '}
-                steps.
-              </Text>
-            )}
-            {/* {act.stepGoal > 0 && (
-              <Text style={[styles.metricSub, { color: GOAL_OVERFLOW_COLOR }]}>
-                Amber shows steps over goal.
-              </Text>
-            )} */}
-            <Text
-              style={[
-                styles.metricSub,
-                { color: theme.colors.textSecondary, marginTop: 14 },
-              ]}
-            >
-              Bars show steps; the full bar represents{' '}
-              {highestSteps.toLocaleString()} steps.
-            </Text>
-          </>
-        ) : (
-          <Text
-            style={[styles.metricSub, { color: theme.colors.textSecondary }]}
-          >
-            Weekly activity has not loaded yet.
-          </Text>
-        )}
-      </View>
+          )}
+        </View>
         {fetchedTime && (
           <Text
             style={[
               styles.metricSub,
-              { color: theme.colors.textSecondary, marginBottom: 12 },
+              {
+                color: theme.colors.textSecondary,
+                marginTop: 12,
+                marginBottom: 12,
+              },
             ]}
           >
             Google Fit · fetched {fetchedTime}
           </Text>
         )}
+      </View>
     </ScrollView>
   );
 }
