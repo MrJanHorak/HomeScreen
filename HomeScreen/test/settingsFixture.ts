@@ -14,7 +14,7 @@ const initial: DashboardAppearance = {...DEFAULT_APPEARANCE, layout: 'custom', w
 const savedGrid: WidgetLayout = {...widgetLayout, grid: widgetGridFromRows(widgetLayout.widgets)};
 const saved = {...initial, palette: 'forest', widgetLayout: savedGrid, ...legacyWidgetProjection(savedGrid)};
 let remote = initial;
-const state = {writes: [] as DashboardAppearance[], failLayouts: false};
+const state = {writes: [] as DashboardAppearance[], failLayouts: false, failPollCreate: false, losePollResponse: false, pollCreates: [] as {requestId: string; definition: {question: string}}[]};
 Object.assign(window, {settingsFixture: state});
 export const useAuth = () => ({user: {uid: 'settings-owner'}});
 export const usePolls = () => ({rounds: {[roundId]: {id: roundId, question: 'Movie night?'}}});
@@ -30,7 +30,16 @@ export const beginGooglePhotosConnection = async () => 'https://example.com/phot
 export const createGooglePhotosSession = async () => ({pickerUri: 'https://example.com/photos', pollIntervalMs: 3000});
 export const pollGooglePhotosSession = async () => ({status: 'pending', pollIntervalMs: 3000});
 export const getPeopleSettings = async () => ({people: [{id: personId, name: 'Alex'}, {id: 'd'.repeat(32), name: 'Sam'}]});
-export const getAvailableDashboardPolls = async () => [{id: roundId, question: 'Movie night?'}, {id: 'e'.repeat(32), question: 'Dinner?'}];
+const polls = [{id: roundId, question: 'Movie night?'}, {id: 'e'.repeat(32), question: 'Dinner?'}];
+export const getAvailableDashboardPolls = async () => [...polls];
+export const createDashboardPoll = async (definition: {question: string}, requestId: string) => {
+  state.pollCreates.push({requestId, definition});
+  if (state.failPollCreate) throw new Error('Could not create the poll. Try again.');
+  const poll = polls.find((item) => item.id === requestId) || {id: requestId, question: definition.question};
+  if (!polls.some((item) => item.id === poll.id)) polls.unshift(poll);
+  if (state.losePollResponse) {state.losePollResponse = false; throw new Error('Connection lost. Retry to check your poll.');}
+  return poll;
+};
 export const getSavedDashboardLayouts = async () => {
   if (state.failLayouts) throw new Error('Could not load saved layouts');
   return [{id: 'garden', name: 'Garden', appearance: saved, updatedAtMs: 2},

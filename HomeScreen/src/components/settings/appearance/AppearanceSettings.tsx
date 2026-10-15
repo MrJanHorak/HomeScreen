@@ -14,8 +14,10 @@ export type AppearanceSection = 'colors' | 'background' | 'layout' | 'cards';
 
 export default function AppearanceSettings({
   section = 'colors',
+  onOpenPolls,
 }: {
   section?: AppearanceSection;
+  onOpenPolls?: () => void;
 }) {
   const theme = useTheme();
   const {
@@ -45,7 +47,7 @@ export default function AppearanceSettings({
   );
   const validAccent = normalizeHexColor(accentInput);
   const validBackground = normalizeHexColor(backgroundInput);
-  if (section === 'cards') return <WidgetCardSettings />;
+  if (section === 'cards') return <WidgetCardSettings onOpenPolls={onOpenPolls} />;
   return (
     <View style={styles.section}>
       <Text style={[styles.title, { color: theme.colors.textPrimary }]}>

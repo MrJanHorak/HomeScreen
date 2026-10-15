@@ -54,6 +54,19 @@ test('authenticated TV requests retain token, timezone and encoded city', async 
   assert.ok(calls[1].url.endsWith('city=Denver%2C%20CO%20%26%20US'));
 });
 
+test('dashboard poll creation sends the TV token, clock and stable retry ID', async (t) => {
+  const {api} = setup(t); const requestId = 'a'.repeat(32);
+  const definition = {question: 'Dinner?', options: [{id: 'a', label: 'Soup'}, {id: 'b', label: 'Pizza'}]};
+  t.mock.method(global, 'fetch', async (url, options) => {
+    assert.ok(url.endsWith('/polls'));
+    assert.equal(options.headers.Authorization, 'Bearer fixture-token');
+    assert.ok(options.headers['X-Time-Zone']);
+    assert.deepEqual(JSON.parse(options.body), {action: 'createDashboardPoll', requestId, definition});
+    return Response.json({round: {id: requestId, question: 'Dinner?'}});
+  });
+  assert.equal((await api.createDashboardPoll(definition, requestId)).id, requestId);
+});
+
 test('a revoked TV session clears local user data before reporting the server error', async (t) => {
   const {api, events, auth} = setup(t);
   t.mock.method(global, 'fetch', async () => Response.json({error: 'TV removed'}, {status: 401}));

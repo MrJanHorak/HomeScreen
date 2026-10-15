@@ -1,5 +1,5 @@
 import Text from '../../shared/ReadingText';
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
 import {ScrollView, StyleSheet, useWindowDimensions, View} from 'react-native';
 import {useAuth} from '../../../context/AuthContext';
 import {usePolls} from '../../../context/PollsContext';
@@ -16,7 +16,7 @@ import LayoutPreview from './LayoutPreview';
 import {styles} from './appearanceStyles';
 import FeedSourcePicker from '../../shared/FeedSourcePicker';
 
-export default function WidgetCardSettings() {
+export default function WidgetCardSettings({onOpenPolls}: {onOpenPolls?: () => void}) {
   const theme = useTheme();
   const {user} = useAuth();
   const {rounds} = usePolls();
@@ -25,6 +25,12 @@ export default function WidgetCardSettings() {
   const [editorWidth, setEditorWidth] = useState(width - 280);
   const previewWidth = Math.min(320, editorWidth * 0.46);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [mode, setMode] = useState<'arrange' | 'add'>('arrange');
+  const [openSection, setOpenSection] = useState<string | null>(null);
+  const arrangeRef = useRef<View>(null);
+  const addRef = useRef<View>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const sectionRefs = useRef<Record<string, View | null>>({});
   const [people, setPeople] = useState<PeopleSettings['people']>([]);
   const [polls, setPolls] = useState<AvailablePoll[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +54,9 @@ export default function WidgetCardSettings() {
   const layout = editableWidgetLayout(appearance);
   const labels = [...polls, ...Object.values(rounds).filter((round) => !polls.some((poll) => poll.id === round.id))];
   const label = (widget: Widget) => widgetLabel(widget, people, labels);
-  const visibleCount = layout.widgets.filter((widget) => widget.visible).length;
+  const visible = layout.widgets.filter((widget) => widget.visible);
+  const hidden = layout.widgets.filter((widget) => !widget.visible);
+  const visibleCount = visible.length;
   const selected = layout.widgets.find((widget) => widget.id === selectedId && widget.visible);
   useEffect(() => {if (!selected) setSelectedId(null);}, [selected?.id]);
   const positions = [...layout.grid?.items || []].sort((a, b) => a.y - b.y || a.x - b.x);
@@ -61,12 +69,20 @@ export default function WidgetCardSettings() {
   function run(action: () => void) {
     try {action(); setMessage('');} catch (failure) {setMessage(failure instanceof Error ? failure.message : 'Could not update this card.');}
   }
-  function edit(id: string, action: WidgetAction) {run(() => setWidgetLayout(changeWidget(layout, id, action)));}
+  function edit(id: string, action: WidgetAction) {
+    run(() => {
+      setWidgetLayout(changeWidget(layout, id, action));
+      if (action.type === 'visibility' || action.type === 'remove') {
+        requestAnimationFrame(() => (mode === 'arrange' ? arrangeRef : addRef).current?.focus());
+      }
+    });
+  }
   function add(widget: Widget) {
     const target = widget.feed?.url || widget.id;
     try {
       setWidgetLayout(addDashboardWidget(layout, widget));
       setAddMessage({text: `Added ${label(widget)}. Find it in Arrange cards above.`, error: false, target});
+      if (widget.kind !== 'feed') requestAnimationFrame(() => sectionRefs.current[widget.kind]?.focus());
     } catch (failure) {
       setAddMessage({text: failure instanceof Error ? failure.message : 'Could not add this card.', error: true, target});
     }
@@ -79,7 +95,7 @@ export default function WidgetCardSettings() {
     <Text numberOfLines={2} style={[styles.livePreviewHint, copy]}>{selected ? `Adjusting: ${label(selected)}` : 'Choose a card to adjust.'}</Text>
   </View>;
   const controls = <View style={styles.cardList}>
-    {layout.widgets.map((widget, index) => {
+    {visible.map((widget, index) => {
       const name = label(widget);
       const item = layout.grid?.items.find((entry) => entry.id === widget.id);
       const active = widget.id === selected?.id;
@@ -102,7 +118,7 @@ export default function WidgetCardSettings() {
             disabled={!ready || widget.visible && visibleCount === 1} onPress={() => edit(widget.id, {type: 'visibility'})}/>
           {widget.visible && <Option label='Adjust' selected={active} expanded={active} accessibilityLabel={`Adjust ${name}`} compact
             disabled={!ready} onPress={() => {setSelectedId(active ? null : widget.id); setMessage('');}}/>}
-          {widget.kind === 'feed' && !active && action('Remove feed', {type: 'remove'}, widget.visible && visibleCount === 1)}
+          {(widget.kind === 'feed' || widget.kind === 'poll') && !active && action(widget.kind === 'feed' ? 'Remove feed' : 'Remove poll card', {type: 'remove'}, visibleCount === 1)}
         </View>
         {active && <View style={cardStyles.adjustments}>
           <Text style={[cardStyles.groupTitle, {color: theme.colors.textPrimary}]}>Move</Text>
@@ -124,7 +140,7 @@ export default function WidgetCardSettings() {
             </View>
           </> : <View style={styles.cardActions}>
             {action('Move earlier', {type: 'order', direction: -1}, index === 0)}
-            {action('Move later', {type: 'order', direction: 1}, index === layout.widgets.length - 1)}
+            {action('Move later', {type: 'order', direction: 1}, index === visible.length - 1)}
           </View>}
           <Text style={[cardStyles.groupTitle, {color: theme.colors.textPrimary}]}>Resize</Text>
           {item ? <>
@@ -137,16 +153,28 @@ export default function WidgetCardSettings() {
               {action('Taller', {type: 'geometry', field: 'height', amount: 1})}
             </View>
           </> : action(widget.size === 'wide' ? 'Make standard width' : 'Make wider', {type: 'size'})}
-          {widget.kind === 'feed' && action('Remove feed', {type: 'remove'}, widget.visible && visibleCount === 1)}
+          {(widget.kind === 'feed' || widget.kind === 'poll') && action(widget.kind === 'feed' ? 'Remove feed' : 'Remove poll card', {type: 'remove'}, visibleCount === 1)}
+          {widget.kind === 'poll' && <Text style={[styles.description, copy]}>Removing the card keeps the poll and its votes. Add it again from Add cards.</Text>}
         </View>}
       </View>;
     })}
   </View>;
+  const section = (id: string, title: string, subtitle: string, children: React.ReactNode) => <View key={id} testID={`add-${id}-section`} style={cardStyles.addSection}>
+    <Option ref={(node) => {sectionRefs.current[id] = node;}} label={`${openSection === id ? '−' : '+'} ${title}`} accessibilityLabel={title} subtitle={subtitle}
+      expanded={openSection === id} compact style={cardStyles.addOption} onPress={() => setOpenSection(openSection === id ? null : id)}/>
+    {openSection === id && <View style={[cardStyles.sectionBody, {borderColor: theme.colors.glassBorder, backgroundColor: theme.colors.glassSurface}]}>{children}</View>}
+  </View>;
   return <View style={cardStyles.editor}
     onLayout={({nativeEvent}) => setEditorWidth(nativeEvent.layout.width)}>
-    <ScrollView testID='card-settings-scroll' style={cardStyles.scroll} contentContainerStyle={cardStyles.scrollContent} showsVerticalScrollIndicator accessibilityLabel='Card settings'>
-    <Text style={[styles.title, {color: theme.colors.textPrimary}]}>Arrange cards</Text>
-    <Text style={[styles.description, copy]}>Choose Adjust to open a card’s move and resize controls; choose it again to close them. Use your remote’s arrows to reach a control and press OK. Changes appear in the preview.</Text>
+    <View style={cardStyles.controls}>
+    <View style={[styles.cardActions, {marginBottom: 14}]}>
+      <Option ref={arrangeRef} label={`Arrange cards (${visibleCount})`} accessibilityLabel='Arrange cards' selected={mode === 'arrange'} compact onPress={() => {setMode('arrange'); setMessage(''); scrollRef.current?.scrollTo({y: 0, animated: false});}}/>
+      <Option ref={addRef} label='Add cards' accessibilityLabel='Add cards' selected={mode === 'add'} compact onPress={() => {setMode('add'); setSelectedId(null); setMessage(''); scrollRef.current?.scrollTo({y: 0, animated: false});}}/>
+    </View>
+    <ScrollView ref={scrollRef} testID='card-settings-scroll' style={cardStyles.scroll} contentContainerStyle={cardStyles.scrollContent} showsVerticalScrollIndicator accessibilityLabel='Card settings'>
+    {mode === 'arrange' ? <>
+    <Text style={[styles.title, {color: theme.colors.textPrimary}]}>On your dashboard</Text>
+    <Text style={[styles.description, copy]}>Choose Adjust to move or resize a card. Hide moves a card to Add cards. Use your remote’s arrows and OK; changes appear in the preview.</Text>
     <View style={[styles.options, {marginBottom: 14}]}>
       <Option label='Automatic rows' subtitle='Cards line up for you' selected={!layout.grid} disabled={!ready || visibleCount > 8}
         onPress={() => run(() => setWidgetLayout({...layout, grid: null}))}/>
@@ -156,43 +184,55 @@ export default function WidgetCardSettings() {
     {visibleCount > 8 && <Text style={[styles.description, copy]}>Hide cards until eight remain to use automatic rows.</Text>}
     {message !== '' && <Text accessibilityRole='alert' style={[styles.description, {color: theme.colors.textPrimary}]}>{message}</Text>}
     {controls}
-    <View style={cardStyles.addCards}>
+    </> : <View style={cardStyles.addCards}>
       <View style={cardStyles.sectionIntro}>
-        <Text style={[styles.title, {color: theme.colors.textPrimary, marginBottom: 0}]}>Add cards</Text>
-        <Text style={[styles.description, copy, {marginBottom: 0}]}>Bring headlines, shared activity, and polls to your dashboard.</Text>
+        <Text style={[styles.description, copy, {marginBottom: 0}]}>Open a category to browse or set up cards.</Text>
       </View>
-      <View testID='add-feed-section' style={[cardStyles.addSection, {borderColor: theme.colors.glassBorder, backgroundColor: theme.colors.glassSurface}]}>
-        <Text style={[cardStyles.sectionTitle, {color: theme.colors.textPrimary}]}>News & RSS feeds</Text>
+      {section('hidden', 'Hidden cards', `${hidden.length} ready to show again`, <>
+        {message !== '' && <Text accessibilityRole='alert' style={[styles.description, copy]}>{message}</Text>}
+        {hidden.map((widget) => <View key={widget.id} style={cardStyles.hiddenCard}>
+          <Text style={[styles.cardName, {color: theme.colors.textPrimary}]}>{label(widget)}</Text>
+          <View style={styles.cardActions}>
+            <Option label='Show card' accessibilityLabel={`Show ${label(widget)}`} compact disabled={!ready} onPress={() => edit(widget.id, {type: 'visibility'})}/>
+            {(widget.kind === 'feed' || widget.kind === 'poll') && <Option label={widget.kind === 'feed' ? 'Remove feed' : 'Remove poll card'}
+              accessibilityLabel={`${widget.kind === 'feed' ? 'Remove feed' : 'Remove poll card'} ${label(widget)}`} compact disabled={!ready} onPress={() => edit(widget.id, {type: 'remove'})}/>}
+          </View>
+        </View>)}
+        {!hidden.length && <Text style={[styles.description, copy]}>All your cards are on the dashboard.</Text>}
+      </>)}
+      {section('feed', 'News & RSS feeds', 'Choose a topic and add a source', <>
         <Text style={[styles.description, copy, {marginBottom: 0}]}>Choose a topic, then add a publisher’s feed. Each source becomes its own card.</Text>
         <FeedSourcePicker adding disabled={!ready} feedback={{url: addMessage.target, text: addMessage.text, error: addMessage.error}}
           onSelect={(feed) => add({id: `feed_${Array.from({length: 32}, () => Math.floor(Math.random() * 16).toString(16)).join('')}`, kind: 'feed', feed: {...feed, itemCount: 5}, visible: true, size: 'standard'})}/>
         <Text style={[styles.description, copy, {marginBottom: 0}]}>Open a feed card to change its source. Use the companion site for custom URLs and titles.</Text>
-      </View>
+      </>)}
       {(['activity', 'poll'] as const).map((kind) => {
         const choices = available.filter((widget) => widget.kind === kind);
-        return <View key={kind} testID={`add-${kind}-section`} style={[cardStyles.addSection, {borderColor: theme.colors.glassBorder, backgroundColor: theme.colors.glassSurface}]}>
-          <Text style={[cardStyles.sectionTitle, {color: theme.colors.textPrimary}]}>{kind === 'activity' ? 'Shared activity' : 'Polls'}</Text>
+        return section(kind, kind === 'activity' ? 'Shared activity' : 'Polls', `${choices.length} available to add`, <>
           <Text style={[styles.description, copy, {marginBottom: 0}]}>{kind === 'activity' ? 'Add a card for someone sharing activity with you.' : 'Add a poll so people can join from your TV.'}</Text>
           {addMessage.target.startsWith(`${kind}_`) && <Text accessibilityRole={addMessage.error ? 'alert' : undefined} accessibilityLiveRegion='polite'
             style={[styles.description, {color: theme.colors.textPrimary, marginBottom: 0}]}>{addMessage.text}</Text>}
           {choices.map((widget) => <Option key={widget.id} label={label(widget).replace(/^(Activity|Poll) · /, '')} subtitle={kind === 'activity' ? 'Add activity card' : 'Add poll card'} accessibilityLabel={`Add ${label(widget)}`} compact
             style={cardStyles.addOption} disabled={!ready || loading} onPress={() => add(widget)}/>)}
-          {!loading && !loadError && !choices.length && <Text style={[styles.description, copy, {marginBottom: 0}]}>{kind === 'activity' ? 'No more activity cards to add. Manage people on the companion site.' : 'No more polls to add. Create a poll on the companion site.'}</Text>}
-        </View>;
+          {!loading && !loadError && !choices.length && <Text style={[styles.description, copy, {marginBottom: 0}]}>{kind === 'activity' ? 'No more activity cards to add. Find hidden cards above, or invite someone from People settings.' : 'No more polls to add. Find hidden cards above, or create a new poll.'}</Text>}
+          {kind === 'poll' && onOpenPolls && <Option label='Create a poll' compact style={cardStyles.addOption} onPress={onOpenPolls}/>}
+        </>);
       })}
       <View style={cardStyles.availability}>
         {loading && <Text style={[styles.description, copy]}>Loading available cards…</Text>}
         {loadError !== '' && <Text accessibilityRole='alert' style={[styles.description, copy]}>{loadError}</Text>}
         <Option label='Refresh available cards' disabled={!ready || loading} compact style={cardStyles.addOption} onPress={() => setRefresh((value) => value + 1)}/>
       </View>
-    </View>
+    </View>}
     </ScrollView>
+    </View>
     {preview}
   </View>;
 }
 
 const cardStyles = StyleSheet.create({
   editor: {flex: 1, flexDirection: 'row', minHeight: 0, minWidth: 0, gap: 16, padding: 4},
+  controls: {flex: 1, minHeight: 0, minWidth: 0},
   scroll: {flex: 1, minHeight: 0, minWidth: 0},
   scrollContent: {padding: 4, paddingBottom: 24},
   card: {borderWidth: 2, borderRadius: 14, padding: 12, gap: 12},
@@ -201,10 +241,11 @@ const cardStyles = StyleSheet.create({
   adjustments: {gap: 8, width: '100%', maxWidth: 520},
   groupTitle: {fontSize: 16, fontWeight: '700', marginTop: 4},
   directionRow: {flexDirection: 'row', justifyContent: 'center', gap: 12},
-  addCards: {marginTop: 24, gap: 16},
+  addCards: {gap: 10},
+  hiddenCard: {gap: 8, paddingVertical: 8},
   sectionIntro: {gap: 6},
-  addSection: {borderWidth: 1, borderRadius: 14, padding: 14, gap: 12},
-  sectionTitle: {fontSize: 17, fontWeight: '700'},
+  addSection: {gap: 8},
+  sectionBody: {borderWidth: 1, borderRadius: 14, padding: 14, gap: 12},
   addOption: {width: '100%', minHeight: 64},
   availability: {borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.12)', paddingTop: 16},
 });

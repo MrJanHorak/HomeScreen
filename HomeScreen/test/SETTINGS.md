@@ -6,6 +6,23 @@ bindings, and styles. Free layouts allow swapping complete footprints, moving
 into empty space, and resizing without overlaps. Automatic rows fit eight
 visible cards and the free grid fits twelve.
 
+Cards has two persistent controls: Arrange cards lists visible instances only;
+Add cards holds hidden instances and new-card categories. Hidden cards, RSS,
+shared activity, and polls start collapsed, and opening one closes the previous
+category. All four category headers fit at 960 × 540 with the sidebar. Hiding a
+card retains its bindings/style; showing it finds valid space. Feed and poll
+cards can be removed, while keeping at least one visible card. Poll removal
+never calls a poll deletion endpoint and makes that round available to add again.
+
+Polls has a separate sidebar page, also reached through Cards → Add cards →
+Polls → Create a poll. The TV form supports two to six choices, a duration or no
+deadline, and live or closed results. Creation saves a template and starts one
+round; adding the card is a separate action. A full dashboard cannot discard the
+created poll. Retry after an ambiguous response uses the same request ID. The
+backend permits only this create action for a valid linked TV and checks the
+reference device in the commit transaction. Owner management remains on the
+companion. Deploy the updated `polls` function before releasing the new TV app.
+
 Cards owns its scrolling area so the live preview remains visible on the right
 while the card controls scroll on the left, including on compact TVs. The preview
 retains its full height and uses up to 320 dp of width. Adjust opens one

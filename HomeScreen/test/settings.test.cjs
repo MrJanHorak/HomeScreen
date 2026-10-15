@@ -6,6 +6,135 @@ let browser;
 before(async () => {browser = await chromium.launch({headless: true, ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? {executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE} : {})});});
 after(async () => {await browser?.close();});
 const state = (page) => page.locator('[data-appearance]').textContent().then(JSON.parse);
+async function openAdd(page, category) {
+  await page.getByRole('button', {name: 'Add cards', exact: true}).click();
+  const header = page.getByRole('button', {name: category, exact: true});
+  if (await header.getAttribute('aria-expanded') !== 'true') await header.click();
+}
+async function showCard(page, name) {
+  await openAdd(page, 'Hidden cards');
+  await page.getByRole('button', {name: `Show ${name}`, exact: true}).click();
+  await page.getByRole('button', {name: 'Arrange cards', exact: true}).click();
+}
+async function addCard(page, category, name) {
+  await openAdd(page, category);
+  await page.getByRole('button', {name, exact: true}).click();
+  await page.getByRole('button', {name: 'Arrange cards', exact: true}).click();
+}
+
+for (const viewport of [{width: 960, height: 540}, {width: 1920, height: 1080}]) {
+  test(`card catalog collapses with keyboard, hides inactive cards, and restores them: ${viewport.width}`, async (t) => {
+    const page = await browser.newPage({viewport}); t.after(() => page.close());
+    await page.goto(`${url}?tv`);
+    await page.getByRole('button', {name: 'Hide Poll · Movie night?', exact: true}).waitFor();
+    assert.equal(await page.getByRole('button', {name: 'Show Schedule', exact: true}).count(), 0);
+    if (process.env.TV_SETTINGS_SCREENSHOTS || process.env.TV_CATALOG_SCREENSHOTS) await page.screenshot({path: `../artifacts/cards-organized-arrange-${viewport.width}.png`});
+    const before = await state(page);
+    await page.getByRole('button', {name: 'Hide Poll · Movie night?', exact: true}).click();
+    assert.equal(await page.getByRole('button', {name: 'Adjust Poll · Movie night?', exact: true}).count(), 0);
+    await page.getByRole('button', {name: 'Add cards', exact: true}).click();
+    for (const category of ['Hidden cards', 'News & RSS feeds', 'Shared activity', 'Polls']) {
+      assert.equal(await page.getByRole('button', {name: category, exact: true}).getAttribute('aria-expanded'), 'false');
+    }
+    assert.equal(await page.getByTestId('feed-topics').count(), 0);
+    const lastCategory = await page.getByRole('button', {name: 'Polls', exact: true}).boundingBox();
+    const scroller = await page.getByTestId('card-settings-scroll').boundingBox();
+    assert.ok(lastCategory.y + lastCategory.height <= scroller.y + scroller.height, 'all four collapsed categories fit without scrolling');
+    if (process.env.TV_SETTINGS_SCREENSHOTS || process.env.TV_CATALOG_SCREENSHOTS) await page.screenshot({path: `../artifacts/cards-organized-add-${viewport.width}.png`});
+    const hidden = page.getByRole('button', {name: 'Hidden cards', exact: true});
+    await hidden.focus(); await page.keyboard.press('Enter');
+    await page.getByRole('button', {name: 'Show Poll · Movie night?', exact: true}).waitFor();
+    await page.getByRole('button', {name: 'News & RSS feeds', exact: true}).focus(); await page.keyboard.press('Enter');
+    assert.equal(await hidden.getAttribute('aria-expanded'), 'false');
+    assert.equal(await page.getByRole('button', {name: 'Show Poll · Movie night?', exact: true}).count(), 0);
+    await page.keyboard.press('Enter');
+    assert.equal(await page.getByRole('button', {name: 'News & RSS feeds', exact: true}).getAttribute('aria-expanded'), 'false');
+    await showCard(page, 'Poll · Movie night?');
+    const restored = (await state(page)).widgetLayout;
+    assert.deepEqual(restored.widgets.filter((widget) => before.widgetLayout.widgets.some((item) => item.id === widget.id)), before.widgetLayout.widgets, 'hide/show preserves card configuration');
+    assert.deepEqual(restored.grid, before.widgetLayout.grid);
+  });
+}
+
+test('removing a poll card clears only its layout entry and makes the poll available again', async (t) => {
+  const page = await browser.newPage(); t.after(() => page.close());
+  await page.goto(url);
+  await page.getByRole('button', {name: 'Remove poll card Poll · Movie night?', exact: true}).click();
+  assert.equal((await state(page)).widgetLayout.widgets.some((widget) => widget.kind === 'poll'), false);
+  await addCard(page, 'Polls', 'Add Poll · Movie night?');
+  const poll = (await state(page)).widgetLayout.widgets.find((widget) => widget.kind === 'poll');
+  assert.equal(poll.roundId, 'b'.repeat(32));
+  assert.equal(poll.visible, true);
+  await page.getByRole('button', {name: 'Hide Weather', exact: true}).click();
+  await page.getByRole('button', {name: 'Hide Activity · Alex', exact: true}).click();
+  assert.equal(await page.getByRole('button', {name: 'Remove poll card Poll · Movie night?', exact: true}).isDisabled(), true);
+});
+
+for (const viewport of [{width: 960, height: 540}, {width: 1920, height: 1080}]) {
+  test(`TV poll form validates, retries a lost response, and adds the created card: ${viewport.width}`, async (t) => {
+    const page = await browser.newPage({viewport}); t.after(() => page.close());
+    const errors = []; page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto(url);
+    await openAdd(page, 'Polls');
+    await page.getByRole('button', {name: 'Create a poll', exact: true}).click();
+    await page.getByRole('button', {name: 'Create poll', exact: true}).click();
+    await page.getByText('Enter a question and fill in every choice. Use at least two different choices.', {exact: true}).waitFor();
+    assert.equal(await page.evaluate(() => window.settingsFixture.pollCreates.length), 0);
+    await page.getByRole('textbox', {name: 'Question', exact: true}).fill('What should we watch?');
+    await page.getByRole('textbox', {name: 'Choice 1', exact: true}).fill('Comedy');
+    await page.getByRole('textbox', {name: 'Choice 2', exact: true}).fill('comedy');
+    await page.getByRole('button', {name: 'Create poll', exact: true}).click();
+    assert.equal(await page.evaluate(() => window.settingsFixture.pollCreates.length), 0);
+    await page.getByRole('textbox', {name: 'Choice 2', exact: true}).fill('Adventure');
+    await page.getByRole('button', {name: 'Add choice', exact: true}).click();
+    await page.getByRole('textbox', {name: 'Choice 3', exact: true}).fill('Mystery');
+    await page.getByRole('button', {name: 'Remove last choice', exact: true}).click();
+    assert.equal(await page.getByRole('textbox', {name: 'Choice 3', exact: true}).count(), 0);
+    await page.getByRole('button', {name: '15 minutes', exact: true}).focus(); await page.keyboard.press('Enter');
+    if (process.env.TV_SETTINGS_SCREENSHOTS || process.env.TV_CATALOG_SCREENSHOTS) {
+      await page.getByText('Polls', {exact: true}).scrollIntoViewIfNeeded();
+      await page.screenshot({path: `../artifacts/polls-create-${viewport.width}.png`});
+    }
+    await page.evaluate(() => {window.settingsFixture.losePollResponse = true;});
+    await page.getByRole('button', {name: 'Create poll', exact: true}).click();
+    await page.getByText('Connection lost. Retry to check your poll.', {exact: true}).waitFor();
+    assert.equal(await page.getByRole('textbox', {name: 'Question', exact: true}).inputValue(), 'What should we watch?');
+    await page.getByRole('button', {name: 'Create poll', exact: true}).click();
+    await page.getByRole('button', {name: 'Add created poll card', exact: true}).waitFor();
+    const calls = await page.evaluate(() => window.settingsFixture.pollCreates);
+    assert.equal(calls.length, 2);
+    assert.equal(calls[0].requestId, calls[1].requestId);
+    assert.equal(calls[0].definition.defaultDurationMinutes, 15);
+    assert.equal(await page.getByText('What should we watch?', {exact: true}).count(), 1);
+    await page.getByRole('button', {name: 'Add created poll card', exact: true}).click();
+    assert.equal((await state(page)).widgetLayout.widgets.filter((widget) => widget.roundId === calls[0].requestId).length, 1);
+    await page.getByRole('button', {name: 'Remove poll card What should we watch?', exact: true}).click();
+    assert.equal((await state(page)).widgetLayout.widgets.some((widget) => widget.roundId === calls[0].requestId), false);
+    assert.equal(await page.getByRole('button', {name: 'Add poll What should we watch?', exact: true}).count(), 1);
+    assert.deepEqual(errors, []);
+  });
+}
+
+test('created polls remain available when a full dashboard rejects their card', async (t) => {
+  const page = await browser.newPage(); t.after(() => page.close());
+  await page.goto(url);
+  await openAdd(page, 'News & RSS feeds');
+  for (let i = 0; i < 5; i++) await page.getByRole('button', {name: 'Add Science News feed', exact: true}).click();
+  const full = await state(page);
+  await page.getByRole('button', {name: 'Polls tab', exact: true}).click();
+  await page.getByRole('textbox', {name: 'Question', exact: true}).fill('Later?');
+  await page.getByRole('textbox', {name: 'Choice 1', exact: true}).fill('Yes');
+  await page.getByRole('textbox', {name: 'Choice 2', exact: true}).fill('No');
+  await page.getByRole('button', {name: 'Create poll', exact: true}).click();
+  await page.getByRole('button', {name: 'Add created poll card', exact: true}).click();
+  await page.getByText(/Automatic rows fit eight cards/).waitFor();
+  assert.deepEqual(await state(page), full);
+  assert.equal(await page.evaluate(() => window.settingsFixture.pollCreates.length), 1);
+  await page.getByRole('button', {name: 'Cards tab', exact: true}).click();
+  await page.getByRole('button', {name: 'Hide Weather', exact: true}).click();
+  await addCard(page, 'Polls', 'Add Poll · Later?');
+  assert.equal((await state(page)).widgetLayout.widgets.filter((widget) => widget.kind === 'poll').length, 2);
+});
 for (const width of [520, 720, 960, 1920]) {
   test(`ambient thumbnail follows backdrop and color choices at ${width}`, async (t) => {
     const page = await browser.newPage({viewport: {width, height: 850}});
@@ -89,6 +218,7 @@ for (const viewport of [{width: 720, height: 540}, {width: 960, height: 540, sid
     await reorder.focus(); await page.keyboard.press('Enter');
     await page.getByText('Adjusting: Weather', {exact: true}).waitFor();
     assert.equal(await page.getByRole('button', {name: 'Make wider Weather', exact: true}).count(), 1);
+    await openAdd(page, 'News & RSS feeds');
     await page.getByRole('button', {name: 'Refresh available cards', exact: true}).focus();
     await page.waitForFunction(() => document.querySelector('[data-testid="card-settings-scroll"]').scrollTop > 0);
     const after = await preview.boundingBox();
@@ -96,6 +226,7 @@ for (const viewport of [{width: 720, height: 540}, {width: 960, height: 540, sid
     assert.equal(after.x, before.x);
     assert.ok(after.y >= 0 && after.y + after.height <= viewport.height);
     assert.ok((await scroll.boundingBox()).height > 120, 'settings retain usable scrolling space');
+    await page.getByRole('button', {name: 'Arrange cards', exact: true}).click();
     await page.getByRole('button', {name: 'Adjust Activity · Alex', exact: true}).focus();
     await page.keyboard.press('Enter');
     await page.getByText('Adjusting: Activity · Alex', {exact: true}).waitFor();
@@ -129,11 +260,10 @@ for (const width of [960, 1920]) test(`TV card and saved layout controls work wi
   await poll.waitFor();
   if (process.env.TV_SETTINGS_SCREENSHOTS) await page.screenshot({path: `../artifacts/settings-cards-${width}.png`});
   await poll.focus(); await page.keyboard.press('Enter');
-  await page.getByRole('button', {name: 'Show Poll · Movie night?', exact: true}).waitFor();
-  await page.getByRole('button', {name: 'Show Poll · Movie night?', exact: true}).click();
-  await page.getByRole('button', {name: 'Add Activity · Sam', exact: true}).click();
+  await showCard(page, 'Poll · Movie night?');
+  await addCard(page, 'Shared activity', 'Add Activity · Sam');
   await page.getByRole('button', {name: 'Hide Activity · Sam', exact: true}).waitFor();
-  await page.getByRole('button', {name: 'Add Poll · Dinner?', exact: true}).click();
+  await addCard(page, 'Polls', 'Add Poll · Dinner?');
   await page.getByRole('button', {name: 'Hide Poll · Dinner?', exact: true}).waitFor();
   assert.equal((await state(page)).widgetLayout.widgets.filter((widget) => widget.visible).length, 5);
   await page.getByRole('button', {name: 'Layout tab', exact: true}).click();
@@ -150,7 +280,7 @@ for (const width of [960, 1920]) test(`TV card and saved layout controls work wi
   const moved = await state(page);
   assert.equal(moved.widgetLayout.grid.items.find((item) => item.id === 'weather').x, 6);
   await page.getByRole('button', {name: 'Hide Activity · Alex', exact: true}).click();
-  await page.getByRole('button', {name: 'Show Activity · Alex', exact: true}).click();
+  await showCard(page, 'Activity · Alex');
   assert.equal((await state(page)).widgetLayout.grid.items.length, 3);
   await page.getByRole('button', {name: 'Layout tab', exact: true}).click();
   await page.getByRole('button', {name: 'Balanced. All six cards, with the schedule prominent.', exact: true}).click();
@@ -199,9 +329,9 @@ test('Adjust starts closed, toggles with keyboard, and closes when its card is h
   assert.equal(await adjust.getAttribute('aria-expanded'), 'false');
   await page.getByRole('button', {name: 'Hide Activity · Alex', exact: true}).click();
   await page.getByText('Choose a card to adjust.', {exact: true}).waitFor();
-  await page.getByRole('button', {name: 'Show Activity · Alex', exact: true}).click();
+  await showCard(page, 'Activity · Alex');
   assert.equal(await page.getByRole('button', {name: 'Adjust Activity · Alex', exact: true}).getAttribute('aria-expanded'), 'false');
-  await page.getByRole('button', {name: 'Add Science News feed', exact: true}).click();
+  await addCard(page, 'News & RSS feeds', 'Add Science News feed');
   await page.getByRole('button', {name: 'Adjust Feed · Science News', exact: true}).click();
   await page.getByRole('button', {name: 'Remove feed Feed · Science News', exact: true}).click();
   await page.getByText('Choose a card to adjust.', {exact: true}).waitFor();
@@ -211,6 +341,7 @@ test('Adjust starts closed, toggles with keyboard, and closes when its card is h
 test('failed feed additions keep the layout and show an error beside the chosen source', async (t) => {
   const page = await browser.newPage({viewport: {width: 960, height: 540}}); t.after(() => page.close());
   await page.goto(url);
+  await openAdd(page, 'News & RSS feeds');
   const add = page.getByRole('button', {name: 'Add Science News feed', exact: true});
   await add.waitFor();
   for (let i = 0; i < 5; i++) await add.click();
@@ -231,6 +362,7 @@ for (const viewport of [{width: 720, height: 540}, {width: 960, height: 540, sid
     const page = await browser.newPage({viewport}); t.after(() => page.close());
     await page.goto(viewport.sidebar ? `${url}?tv` : url);
     await page.getByRole('button', {name: 'Adjust Weather', exact: true}).waitFor();
+    await openAdd(page, 'News & RSS feeds');
     const sources = page.getByTestId('feed-sources');
     const topics = page.getByTestId('feed-topics');
     await topics.scrollIntoViewIfNeeded();
@@ -253,7 +385,9 @@ for (const viewport of [{width: 720, height: 540}, {width: 960, height: 540, sid
     assert.notEqual(feeds[0].id, feeds[1].id);
     assert.ok(feeds.every((widget) => widget.feed.title === 'NASA News' && widget.visible));
     await page.getByText('Added Feed · NASA News. Find it in Arrange cards above.', {exact: true}).waitFor();
+    await openAdd(page, 'Polls');
     assert.equal(await page.getByTestId('add-poll-section').getByRole('button', {name: 'Add Poll · Dinner?', exact: true}).count(), 1);
+    await openAdd(page, 'Shared activity');
     assert.equal(await page.getByTestId('add-activity-section').getByRole('button', {name: 'Add Activity · Sam', exact: true}).count(), 1);
     if (process.env.TV_SETTINGS_SCREENSHOTS) {
       await page.getByTestId('card-settings-scroll').evaluate((node) => {node.scrollTop = node.scrollHeight;});

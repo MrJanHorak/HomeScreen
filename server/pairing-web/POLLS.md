@@ -43,6 +43,30 @@ Secondary round actions live under Manage this voting round. Invitation polls
 show code creation beside their results. Live owner views refresh every 15 seconds
 while visible and idle; manual Refresh polls remains available.
 
+## Creating polls on the TV
+
+Settings → Polls can create a multiple-choice poll directly with the remote.
+The form accepts two to six distinct choices, a duration (15 minutes, one hour,
+one day, or no deadline), and live results or results after closing. The TV saves
+a reusable template and starts a round, then offers Add created poll card.
+The poll remains in the library if the current dashboard has no space.
+
+The `polls` endpoint accepts `createDashboardPoll` with a validated definition
+and a 32-character hexadecimal request ID from an authenticated linked TV. The
+server binds it to the caller's device, checks revocation in the transaction,
+and atomically creates the template, round, and voting link. The same request ID
+and definition return the original round after a lost response. TV credentials
+still cannot list private ballots or use owner template/round management actions.
+The scoped action supports choices with browser protection; invitation polls,
+written answers, closing, and deletion remain companion controls.
+
+Settings → Cards separates Arrange (visible instances) from Add (hidden cards
+and collapsed setup categories). Remove poll card removes only its layout entry;
+votes and the round are retained and it can be added again. Hiding retains the
+card's settings in Hidden cards. These changes require deploying the updated
+`polls` function and rebuilding/installing the TV app; no Hosting update is needed
+for TV creation itself.
+
 ## Participant access and uniqueness
 
 Each QR opens `/vote/<192-bit random token>` and a standalone phone page with no

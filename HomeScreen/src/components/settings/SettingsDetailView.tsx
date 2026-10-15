@@ -16,6 +16,7 @@ import CompanionSiteSettings from './companion/CompanionSiteSettings';
 import WeatherSettings from './weather/WeatherSettings';
 import DeviceSettings from './device/DeviceSettings';
 import PeopleSettings from './people/PeopleSettings';
+import PollSettings from './polls/PollSettings';
 import { useControlFocus } from '../../hooks/useControlFocus';
 
 type SettingsSection =
@@ -28,7 +29,8 @@ type SettingsSection =
   | 'device'
   | 'ambient'
   | 'companion'
-  | 'people';
+  | 'people'
+  | 'polls';
 const SECTIONS: {
   id: SettingsSection;
   label: string;
@@ -36,6 +38,7 @@ const SECTIONS: {
 }[] = [
   { id: 'companion', label: 'Companion site', icon: 'qrcode-scan' },
   { id: 'people', label: 'People', icon: 'account-group-outline' },
+  { id: 'polls', label: 'Polls', icon: 'poll' },
   { id: 'reading', label: 'Fonts & reading', icon: 'format-font' },
   { id: 'accessibility', label: 'Accessibility', icon: 'human' },
   { id: 'colors', label: 'Colors', icon: 'palette-outline' },
@@ -130,7 +133,7 @@ export default function SettingsDetailView({
           );
         })}
       </ScrollView>
-      {section === 'cards' && <View style={styles.content}><AppearanceSettings section='cards' /></View>}
+      {section === 'cards' && <View style={styles.content}><AppearanceSettings section='cards' onOpenPolls={() => changeSection('polls')} /></View>}
       <ScrollView
         ref={scrollRef}
         style={[styles.content, section === 'cards' && styles.hiddenSection]}
@@ -148,6 +151,7 @@ export default function SettingsDetailView({
         )}
         {section === 'companion' && <CompanionSiteSettings />}
         {section === 'people' && <PeopleSettings />}
+        {section === 'polls' && <PollSettings />}
         {section === 'meals' && <MealConnectionSettings />}
         {section === 'apps' && <FavoriteAppsSettings />}
         <View style={section === 'weather' ? undefined : styles.hiddenSection}>

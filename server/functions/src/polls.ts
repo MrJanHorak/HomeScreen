@@ -74,7 +74,48 @@ async function checkReference(transaction: Transaction, uid: string, deviceId: s
   if (!snapshot.exists || snapshot.data()?.revokedAtMs !== 0) fail(410, "The TV is no longer linked. This poll is unavailable.");
 }
 
-/** Owner library and round actions; TV sessions cannot manage polls. */
+/** A linked TV can create a choices poll for itself, without owner library access. */
+async function createDashboardPoll(req: Request, res: Response, uid: string, deviceId: string): Promise<void> {
+  const body = req.body || {};
+  if (Buffer.byteLength(JSON.stringify(body), "utf8") > 16384) fail(400, "Request is too large");
+  const definition = parsePollDefinition(body.definition);
+  if (!validPollId(body.requestId) || !definition || definition.answerMode !== "choices" || definition.protection !== "browser") {
+    fail(400, "Enter a question and at least two different choices");
+  }
+  const user = db.collection("users").doc(uid);
+  const rounds = user.collection("pollRounds"); const templates = user.collection("pollTemplates");
+  const roundId: string = body.requestId;
+  const access = randomBytes(24).toString("hex"); const accessHash = hash(access);
+  const encryptedAccess = encryptToken(access); linkUrl(access);
+  const round = await runUserTransaction(uid, async (tx) => {
+    const [device, previous, saved, allRounds, allTemplates] = await Promise.all([
+      tx.get(user.collection("devices").doc(deviceId)), tx.get(rounds.doc(roundId)), tx.get(templates.doc(roundId)),
+      tx.get(rounds.limit(100)), tx.get(templates.limit(100)),
+    ]);
+    if (!device.exists || device.data()?.revokedAtMs !== 0) fail(410, "This TV is no longer linked");
+    if (previous.exists) {
+      const existing = previous.data() as PollRound;
+      if (existing.referenceDeviceId !== deviceId || existing.templateId !== roundId ||
+        JSON.stringify(parsePollDefinition(existing)) !== JSON.stringify(definition)) fail(409, "This create request changed. Start a new poll.");
+      return existing;
+    }
+    if (saved.exists) fail(409, "This create request already exists. Start a new poll.");
+    if (allRounds.size >= 100 || allTemplates.size >= 100) fail(400, "Poll library is full. Remove an old poll on the companion site first.");
+    const now = Date.now();
+    const timeZone = validTimeZone(device.data()?.timeZone) ? device.data()!.timeZone : "UTC";
+    const next: PollRound = {...definition!, id: roundId, templateId: roundId, referenceDeviceId: deviceId, timeZone,
+      endsAtMs: definition!.defaultDurationMinutes === null ? null : now + definition!.defaultDurationMinutes * 60000,
+      state: "open", createdAtMs: now, revision: 1, total: 0, counts: {}, writtenCount: 0, pendingCount: 0,
+      accessHash, encryptedAccess, invitationCount: 0};
+    tx.create(templates.doc(roundId), {...definition!, id: roundId, revision: 1, updatedAtMs: now});
+    tx.create(rounds.doc(roundId), next);
+    tx.create(db.collection("poll_links").doc(accessHash), {userId: uid, roundId, referenceDeviceId: deviceId});
+    return next;
+  });
+  res.status(200).json({round: await viewRound(rounds.doc(roundId), round, true)});
+}
+
+/** Owner library and round actions, plus a narrowly scoped TV create action. */
 export async function handlePolls(req: Request, res: Response): Promise<void> {
   responseHeaders(res);
   if (req.method === "OPTIONS") {
@@ -83,6 +124,13 @@ export async function handlePolls(req: Request, res: Response): Promise<void> {
   const identity = await authenticatedIdentity(req);
   if (!identity) {
     res.status(401).json({error: "Sign in with Google to manage polls"}); return;
+  }
+  if (req.method === "POST" && req.body?.action === "createDashboardPoll") {
+    try {
+      if (!identity.deviceId) fail(403, "Create this poll from a linked TV");
+      await createDashboardPoll(req, res, identity.userId, identity.deviceId!);
+    } catch (error) {handleError(res, error);}
+    return;
   }
   if (!identity.owner) {
     res.status(403).json({error: "Only the linked TV owner can manage polls"}); return;

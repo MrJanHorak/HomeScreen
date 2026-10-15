@@ -8,6 +8,23 @@ const poll = {id: `poll_${'a'.repeat(32)}`, kind: 'poll', roundId: 'b'.repeat(32
 const person = {id: `activity_${'c'.repeat(32)}`, kind: 'activity', personId: 'c'.repeat(32), visible: true, size: 'wide'};
 const feed = {id: `feed_${'f'.repeat(32)}`, kind: 'feed', feed: {url: 'https://feeds.bbci.co.uk/news/world/rss.xml', title: 'World', itemCount: 5}, visible: true, size: 'standard'};
 
+test('poll removal clears its grid footprint and allows adding the same round again', () => {
+  const layout = {version: 1, widgets: [poll, person], grid: widgetGridFromRows([poll, person])};
+  const removed = changeWidget(layout, poll.id, {type: 'remove'});
+  assert.deepEqual(removed.widgets, [person]);
+  assert.equal(removed.grid.items.some((item) => item.id === poll.id), false);
+  assert.ok(validWidgetLayout(addDashboardWidget(removed, poll)));
+  assert.deepEqual(layout.widgets[0], poll);
+  assert.throws(() => changeWidget({version: 1, widgets: [poll], grid: null}, poll.id, {type: 'remove'}), /one card shown/);
+});
+
+test('row movement skips hidden cards and changes the visible order', () => {
+  const hidden = {...feed, visible: false};
+  const layout = {version: 1, widgets: [poll, hidden, person], grid: null};
+  assert.deepEqual(changeWidget(layout, poll.id, {type: 'order', direction: 1}).widgets.filter((item) => item.visible), [person, poll]);
+  assert.deepEqual(changeWidget(layout, person.id, {type: 'order', direction: -1}).widgets.filter((item) => item.visible), [person, poll]);
+});
+
 test('feed instances can be added, hidden, resized, moved and removed independently', () => {
   let layout = {version: 1, grid: null, widgets: [feed]};
   const second = {...feed, id: `feed_${'e'.repeat(32)}`};

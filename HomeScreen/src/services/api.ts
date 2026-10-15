@@ -7,7 +7,7 @@ import type {UserPreferences} from '../../../shared/src/types';
 import {readJsonResponse} from '../../../shared/src/http';
 import {validatedApiUrl} from '../../../shared/src/transport';
 import { Platform } from 'react-native';
-import type {PollView} from '../../../server/functions/src/utils/polls';
+import type {PollView, PollDefinition} from '../../../server/functions/src/utils/polls';
 import type {PeopleActivityFeed, PeopleSettings, PeopleInvitation} from '../../../shared/src/people';
 import type {SavedDesign} from '../../../server/functions/src/utils/appearanceLibrary';
 import type {FeedResponse} from '../../../server/functions/src/utils/feedConfig';
@@ -28,6 +28,16 @@ export async function getSavedDashboardLayouts(): Promise<SavedDesign[]> {
 }
 
 export interface AvailablePoll {id: string; question: string}
+export async function createDashboardPoll(definition: PollDefinition, requestId: string): Promise<PollView> {
+  const result = await authenticatedRequest<{round: PollView}>('polls', 'Could not create the poll', {
+    method: 'POST', body: JSON.stringify({action: 'createDashboardPoll', definition, requestId}),
+    headers: {'X-Time-Zone': Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'},
+  });
+  if (!result.round || !/^[a-f0-9]{32}$/.test(result.round.id) || typeof result.round.question !== 'string') {
+    throw new Error('The server returned an invalid poll. Retry to check your poll.');
+  }
+  return result.round;
+}
 export async function getAvailableDashboardPolls(): Promise<AvailablePoll[]> {
   const result = await authenticatedRequest<{polls: AvailablePoll[]}>('pollFeed?available=1', 'Could not load available polls');
   if (!Array.isArray(result.polls) || !result.polls.every((poll) => poll && /^[a-f0-9]{32}$/.test(poll.id) && typeof poll.question === 'string')) {

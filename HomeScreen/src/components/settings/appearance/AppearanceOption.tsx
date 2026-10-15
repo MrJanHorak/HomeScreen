@@ -8,6 +8,7 @@ import {useTheme} from '../../../theme/ThemeContext';
 import {styles} from './appearanceStyles';
 
 interface OptionProps {
+  ref?: React.Ref<View>;
   label: string;
   accessibilityLabel?: string;
   selected?: boolean;
@@ -23,6 +24,7 @@ interface OptionProps {
 }
 
 export default function Option({
+  ref,
   label,
   accessibilityLabel,
   selected,
@@ -40,6 +42,7 @@ export default function Option({
   const [focused, setFocused] = useState(false);
   return (
     <Pressable
+      ref={ref}
       accessibilityRole='button'
       aria-expanded={expanded}
       accessibilityLabel={

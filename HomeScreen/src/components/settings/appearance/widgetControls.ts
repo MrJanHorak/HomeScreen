@@ -28,7 +28,7 @@ export function changeWidget(layout: WidgetLayout, id: string, action: WidgetAct
   let widgets = [...layout.widgets];
   let grid = layout.grid;
   if (action.type === 'remove') {
-    if (widget.kind !== 'feed') return layout;
+    if (widget.kind !== 'feed' && widget.kind !== 'poll') return layout;
     widgets = widgets.filter((item) => item.id !== id);
     if (grid) grid = {...grid, items: grid.items.filter((item) => item.id !== id)};
   } else if (action.type === 'swap' && grid) {
@@ -39,7 +39,8 @@ export function changeWidget(layout: WidgetLayout, id: string, action: WidgetAct
     if (!selected || !other) return layout;
     grid = {...grid, items: grid.items.map((item) => item.id === id ? {...other, id} : item.id === other.id ? {...selected, id: other.id} : item)};
   } else if (action.type === 'order') {
-    const next = index + action.direction;
+    let next = index + action.direction;
+    while (next >= 0 && next < widgets.length && !widgets[next].visible) next += action.direction;
     if (next < 0 || next >= widgets.length) return layout;
     [widgets[index], widgets[next]] = [widgets[next], widgets[index]];
   } else if (action.type === 'visibility') {
