@@ -87,7 +87,12 @@ snapshot hydration and a summary request independently. A valid local snapshot
 clears card loading immediately; a successful network response replaces it and
 persists the new summary. A late disk read cannot overwrite a network response.
 The five-minute refresh and Settings refresh reuse one in-flight summary request,
-with a 15-second abort timer. Failed refreshes keep the last displayed summary.
+with a 15-second deadline covering authentication and the HTTP response. Failed
+refreshes keep the last displayed summary and retry after one, two, then four
+minutes, capped at the normal five-minute cadence. Background/inactive AppState
+transitions cancel pending work quietly and pause polling. Returning to active
+starts a fresh request immediately; old completions cannot overwrite it. The
+deadline releases the session even when authentication or transport ignores abort.
 
 `src/services/dashboardCache.ts` stores a versioned, UID-scoped AsyncStorage entry
 containing schedule, upcoming events, tasks, meals, activity, default-city weather,
@@ -99,7 +104,11 @@ a snapshot stays visible during an outage; the 24-hour limit applies to restorat
 Saved data can include yesterday's schedule or completed tasks until refresh succeeds.
 
 The dashboard labels restored data with its saved timestamp and refresh state.
-After a live refresh fails, the error banner includes the last summary timestamp.
+After a live refresh fails, a single muted line below favorite apps says refresh
+is delayed and retrying, with the last summary timestamp. Its space is always
+reserved so failures do not shift cards. Technical errors appear in Device &
+Connectivity settings; refresh logs record time, duration and failure category
+without tokens or dashboard content.
 `src/services/dashboardSession.ts` coordinates restore/refresh races and prevents
 updates or persistence after provider disposal. Sign-out and server-reported
 session revocation remove the account's snapshot through `clearLocalUserData`;

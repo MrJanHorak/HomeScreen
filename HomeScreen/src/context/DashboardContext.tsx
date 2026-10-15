@@ -7,6 +7,7 @@ import React, {
   useRef,
   ReactNode,
 } from 'react';
+import { AppState } from 'react-native';
 import type {
   Weather,
   CalendarEvent,
@@ -63,7 +64,7 @@ interface DashboardContextValue {
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);
 
-const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // Auto-refresh every 5 minutes
+const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 function keepIfUnchanged<T>(previous: T, next: T): T {
   return JSON.stringify(previous) === JSON.stringify(next) ? previous : next;
@@ -283,13 +284,13 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     });
     sessionRef.current = session;
     void session.restore();
-    void session.refresh();
-    const interval = setInterval(() => void session.refresh(), REFRESH_INTERVAL_MS);
+    session.start(AppState.currentState !== 'background' && AppState.currentState !== 'inactive');
+    const appState = AppState.addEventListener('change', (state) => session.setForeground(state === 'active'));
     return () => {
       mountedRef.current = false;
       session.dispose();
       sessionRef.current = null;
-      clearInterval(interval);
+      appState.remove();
     };
   }, [uid, applySummary]);
 

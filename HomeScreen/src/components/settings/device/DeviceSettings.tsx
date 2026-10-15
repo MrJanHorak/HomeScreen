@@ -13,7 +13,7 @@ import SettingsPanel from '../shared/SettingsPanel';
 export default function DeviceSettings() {
   const theme = useTheme();
   const { user, signOut } = useAuth();
-  const { isLive, isCached, refresh } = useDashboard();
+  const { isLive, lastUpdated, error, refresh } = useDashboard();
   const { focusProps, focusStyle } = useControlFocus();
   const [deviceName, setDeviceName] = useState('HomeScreen TV');
   useEffect(() => {
@@ -44,10 +44,13 @@ export default function DeviceSettings() {
         <DeviceInfoRow
           icon='cloud-sync'
           label='Data Sync'
-          value={isLive ? 'Connected & Live' : isCached ? 'Saved dashboard' : 'Unavailable'}
+          value={isLive ? 'Connected & Live' : lastUpdated ? 'Showing saved data' : 'Unavailable'}
           iconColor={isLive ? '#10B981' : '#F59E0B'}
           valueColor={isLive ? '#10B981' : '#F59E0B'}
         />
+        {error && <Text style={[styles.infoLabel, {color: theme.colors.textSecondary}]}>
+          {`Last refresh: ${error}${lastUpdated ? `\nLast updated: ${new Date(lastUpdated).toLocaleString()}` : ''}`}
+        </Text>}
         <DeviceInfoRow
           icon='account-circle-outline'
           label='Google Account'

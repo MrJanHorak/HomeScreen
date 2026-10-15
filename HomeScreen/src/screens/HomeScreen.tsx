@@ -17,8 +17,8 @@ import AmbientScreen from '../components/ambient/AmbientScreen';
 import {useNarration} from '../accessibility/NarrationContext';
 
 function HomeScreen() {
-  const { error, isCached, lastUpdated } = useDashboard();
-  const savedData = lastUpdated ? `Saved dashboard from ${new Date(lastUpdated).toLocaleString()}` : '';
+  const { error, lastUpdated } = useDashboard();
+  const savedData = lastUpdated ? `Last updated ${new Date(lastUpdated).toLocaleString()}` : '';
   const { appearance, ambientPhotos } = useAppearance();
   const theme = useTheme();
   const compact = useCompactTVLayout();
@@ -58,21 +58,20 @@ function HomeScreen() {
       {/* Top Header */}
       <HeaderBar onOpenSettings={() => setActiveModal('settings')} />
 
-      {error && (
-        <View style={styles.errorBanner}>
-          <TVText
-            text={isCached
-              ? `${savedData}. Refresh unavailable; will retry.`
-              : `Live data unavailable: ${error}${savedData ? `. ${savedData}` : ''}`}
-            typography="caption"
-            color="accent"
-          />
-        </View>
-      )}
-
       <DashboardLayout cards={appearance.cards} grid={appearance.grid} widgetLayout={appearance.widgetLayout} onOpen={setActiveModal} />
 
       <FavoriteAppsCarousel />
+
+      {/* Reserve a quiet footer so connection changes never move the cards. */}
+      <View style={styles.syncStatus} pointerEvents="none">
+        {error && <TVText
+          text={`Refresh delayed · Retrying automatically${savedData ? ` · ${savedData}` : ''}`}
+          typography="caption"
+          color="textSecondary"
+          numberOfLines={1}
+          style={styles.syncText}
+        />}
+      </View>
 
       <DashboardDetailModal topic={activeModal} onClose={closeModal} onPreviewAmbient={previewAmbient} />
     </View>
@@ -86,13 +85,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
   },
-  errorBanner: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    marginBottom: 8,
-    alignSelf: 'flex-start',
-  },
+  syncStatus: { height: 24, paddingTop: 4, alignItems: 'flex-end', justifyContent: 'center' },
+  syncText: { fontSize: 14, lineHeight: 18 },
   ambientFrame: { position: 'absolute' },
 });

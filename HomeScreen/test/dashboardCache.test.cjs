@@ -265,7 +265,7 @@ test('a hanging summary request is aborted after 15 seconds and can be retried',
   })});
   const refresh = s.session.refresh();
   t.mock.timers.tick(15000); await refresh;
-  assert.equal(s.failures[0].message, 'Request timed out'); assert.equal(s.settled, 1);
+  assert.match(s.failures[0].message, /timed out/); assert.equal(s.settled, 1);
   s.session.dispose();
 });
 test('DashboardProvider clears card loading from disk, maps default-city weather, and retains it offline', async (t) => {
@@ -288,6 +288,7 @@ test('DashboardProvider clears card loading from disk, maps default-city weather
   const locations = data.savedLocations;
   const {DashboardProvider} = load('src/context/DashboardContext.tsx', {
     react,
+    'react-native': {AppState: {currentState: 'active', addEventListener: () => ({remove() {}})}},
     'react/jsx-runtime': {jsx: (_type, props) => props},
     './AuthContext': {useAuth: () => ({user: {uid: 'owner'}})},
     '../services/api': {fetchDashboardSummary: () => network.promise,
@@ -342,6 +343,7 @@ test('preference hydration and city-list edits do not fetch the summary again; d
   let requests = 0, weatherRequests = [];
   const {DashboardProvider} = load('src/context/DashboardContext.tsx', {
     react, 'react/jsx-runtime': {jsx: (_type, props) => props},
+    'react-native': {AppState: {currentState: 'active', addEventListener: () => ({remove() {}})}},
     './AuthContext': {useAuth: () => ({user: {uid: 'owner'}})},
     '../services/api': {
       fetchDashboardSummary: async () => {requests++; return data;},
@@ -398,11 +400,67 @@ test('cached dashboard synchronization stays quiet, but failures still show save
     '../components/ambient/useAmbientMode': () => ({active: false}),
     '../accessibility/NarrationContext': {useNarration: () => ({stop: () => {}})},
   });
-  assert.equal(HomeScreen().props.children[1], null, 'restored data needs no routine sync banner');
+  const footer = () => HomeScreen().props.children[3];
+  assert.equal(footer().props.children, null, 'restored data needs no routine sync banner');
+  assert.equal(footer().props.style.height, 24, 'footer space remains stable');
   data = {...data, error: 'Offline'};
-  const message = HomeScreen().props.children[1].props.children.props.text;
-  assert.match(message, /Saved dashboard from/);
-  assert.match(message, /Refresh unavailable; will retry/);
+  const message = footer().props.children.props.text;
+  assert.match(message, /Last updated/);
+  assert.match(message, /Retrying automatically/);
+  assert.equal(footer().props.children.props.numberOfLines, 1);
   data = {...data, isCached: false};
-  assert.match(HomeScreen().props.children[1].props.children.props.text, /Live data unavailable: Offline/);
+  assert.equal(footer().props.children.props.text, message);
+  assert.doesNotMatch(message, /Offline/);
+});
+
+test('a stuck token refresh releases after the deadline even if fetch ignores abort', async (t) => {
+  t.mock.timers.enable({apis: ['setTimeout']});
+  const stuck = deferred(); let calls = 0;
+  const s = sessionSetup({fetch: () => ++calls === 1 ? stuck.promise : Promise.resolve(summary('Recovered'))});
+  t.after(() => s.session.dispose());
+  const first = s.session.refresh();
+  t.mock.timers.tick(15000); await first;
+  assert.equal(s.failures.length, 1);
+  await s.session.refresh();
+  assert.equal(s.applied[0].data.tasks[0].title, 'Recovered');
+  stuck.resolve(summary('Too late')); await flush();
+  assert.equal(s.applied.length, 1);
+});
+
+test('standby cancels quietly and resume replaces the suspended request immediately', async (t) => {
+  t.mock.timers.enable({apis: ['setTimeout']});
+  const old = deferred(); let calls = 0; const signals = [];
+  const s = sessionSetup({fetch: (signal) => {
+    signals.push(signal); calls++;
+    return calls === 1 ? old.promise : Promise.resolve(summary('Awake'));
+  }});
+  t.after(() => s.session.dispose());
+  s.session.start();
+  s.session.setForeground(false);
+  assert.equal(signals[0].aborted, true);
+  s.session.setForeground(true);
+  await flush();
+  assert.equal(calls, 2); assert.equal(s.failures.length, 0);
+  assert.equal(s.applied[0].data.tasks[0].title, 'Awake');
+  old.reject(new Error('Canceled in standby')); await flush();
+  assert.equal(s.failures.length, 0);
+  s.session.setForeground(true); await flush(); assert.equal(calls, 2);
+  t.mock.timers.tick(300000); await flush(); assert.equal(calls, 3);
+  s.session.setForeground(false);
+  t.mock.timers.tick(600000); await flush(); assert.equal(calls, 3);
+});
+
+test('failed polling backs off, recovery restores normal cadence, disposal stops polling', async (t) => {
+  t.mock.timers.enable({apis: ['setTimeout']});
+  let calls = 0;
+  const s = sessionSetup({fetch: async () => {calls++; if (calls < 3) throw new Error('Offline'); return summary();}});
+  t.after(() => s.session.dispose());
+  s.session.start(false); await flush(); assert.equal(calls, 0);
+  s.session.setForeground(true); await flush(); assert.equal(calls, 1);
+  t.mock.timers.tick(59999); await flush(); assert.equal(calls, 1);
+  t.mock.timers.tick(1); await flush(); assert.equal(calls, 2);
+  t.mock.timers.tick(120000); await flush(); assert.equal(calls, 3);
+  t.mock.timers.tick(299999); await flush(); assert.equal(calls, 3);
+  t.mock.timers.tick(1); await flush(); assert.equal(calls, 4);
+  s.session.dispose(); t.mock.timers.tick(600000); await flush(); assert.equal(calls, 4);
 });
