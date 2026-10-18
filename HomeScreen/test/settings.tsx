@@ -8,6 +8,7 @@ import ReadingSettings from '../src/components/settings/appearance/ReadingSettin
 import AmbientSettings from '../src/components/settings/ambient/AmbientSettings';
 import AmbientBackdrop from '../src/components/ambient/AmbientBackdrop';
 import PollSettings from '../src/components/settings/polls/PollSettings';
+import FavoriteAppsSettings from '../src/components/settings/favorites/FavoriteAppsSettings';
 function Settings() {
   const [section, setSection] = useState('cards');
   const [previewAmbient, setPreviewAmbient] = useState(false);
@@ -20,6 +21,7 @@ function Settings() {
       <button onClick={() => setSection('reading')}>Fonts & reading tab</button>
       <button onClick={() => setSection('ambient')}>Ambient tab</button>
       <button onClick={() => setSection('polls')}>Polls tab</button>
+      <button onClick={() => setSection('apps')}>Apps tab</button>
     </View>
     {section === 'cards' ? <View style={{flex: 1, minHeight: 0, flexDirection: 'row', gap: 18}}>
       {tvSidebar && <View style={{width: 190, padding: 12, borderRightWidth: 1, borderRightColor: '#ffffff18'}}>
@@ -28,7 +30,7 @@ function Settings() {
       <WidgetCardSettings onOpenPolls={() => setSection('polls')}/>
     </View> : (
       <ScrollView style={{maxHeight: 560}}>
-        {section === 'polls' ? <PollSettings/> : section === 'ambient' ? <AmbientSettings onPreview={() => setPreviewAmbient(true)}/> : section === 'reading' ? <ReadingSettings/> : <SavedLayoutSettings/>}
+        {section === 'apps' ? <FavoriteAppsSettings/> : section === 'polls' ? <PollSettings/> : section === 'ambient' ? <AmbientSettings onPreview={() => setPreviewAmbient(true)}/> : section === 'reading' ? <ReadingSettings/> : <SavedLayoutSettings/>}
       </ScrollView>
     )}
     <pre data-appearance style={{display: 'none'}}>{JSON.stringify(appearance)}</pre>

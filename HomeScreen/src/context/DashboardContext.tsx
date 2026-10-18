@@ -27,6 +27,7 @@ import { getUserPreferences, saveUserPreferences } from '../services/api';
 import { useAuth } from './AuthContext';
 import { loadDashboardCache, saveDashboardCache } from '../services/dashboardCache';
 import { createDashboardSession } from '../services/dashboardSession';
+import {preferWeather, weatherLocationKey, weatherRefreshInterval} from '../services/weatherState';
 import {
   DEFAULT_LOCATIONS,
   ExtendedWeather,
@@ -63,8 +64,6 @@ interface DashboardContextValue {
 }
 
 const DashboardContext = createContext<DashboardContextValue | null>(null);
-
-const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 function keepIfUnchanged<T>(previous: T, next: T): T {
   return JSON.stringify(previous) === JSON.stringify(next) ? previous : next;
@@ -104,6 +103,9 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const previousDefaultWeatherKey = useRef(defaultWeatherKey);
   const sessionRef = useRef<ReturnType<typeof createDashboardSession> | null>(null);
   const mountedRef = useRef(false);
+  const accountRef = useRef(uid);
+  accountRef.current = uid;
+  const weatherRequests = useRef(new Map<string, Promise<void>>());
   const preferenceState = useRef<{
     value: UserPreferences;
     revision: number;
@@ -132,6 +134,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     };
     preferenceState.current = state;
     setSavedLocations(DEFAULT_LOCATIONS);
+    setWeatherByLocation({});
     setActiveLocationState(DEFAULT_LOCATIONS[0]);
     setLocationError(null);
     if (!uid) return;
@@ -251,9 +254,9 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     const defaultLocation = locations.find((location) => location.isDefault) || locations[0];
     if (defaultLocation && data.weather) {
       setWeatherByLocation((previous) => {
-        const weather = keepIfUnchanged(previous[defaultLocation.id], data.weather);
-        return weather === previous[defaultLocation.id]
-          ? previous : { ...previous, [defaultLocation.id]: weather };
+        const key = weatherLocationKey(defaultLocation);
+        const weather = keepIfUnchanged(previous[key], preferWeather(previous[key], data.weather));
+        return weather === previous[key] ? previous : { ...previous, [key]: weather };
       });
     }
     setIsCached(cached);
@@ -383,53 +386,65 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   const getWeatherForLoc = useCallback(
     (loc: SavedLocation): ExtendedWeather =>
-      getWeatherForLocation(loc, weatherByLocation[loc.id]),
+      getWeatherForLocation(loc, weatherByLocation[weatherLocationKey(loc)]),
     [weatherByLocation],
   );
 
   const currentActiveWeather = getWeatherForLoc(activeLocation);
 
-  const loadLocationWeather = useCallback(async (loc: SavedLocation) => {
-    try {
-      const result = await fetchLocationWeather(loc.query);
-      if (!mountedRef.current) return;
+  const loadLocationWeather = useCallback((loc: SavedLocation): Promise<void> => {
+    if (!uid) return Promise.resolve();
+    const key = weatherLocationKey(loc);
+    const requestKey = `${uid}:${key}`;
+    const pending = weatherRequests.current.get(requestKey);
+    if (pending) return pending;
+    const current = () => mountedRef.current && accountRef.current === uid &&
+      locationsRef.current.some((saved) => weatherLocationKey(saved) === key);
+    const request = (async () => {
+      let result: Weather;
+      try {
+        result = await fetchLocationWeather(loc.query);
+      } catch (error) {
+        console.warn(`Weather unavailable for ${loc.query}:`, error);
+        result = {temp: '--', condition: 'Unavailable'};
+      }
+      if (!current()) return;
       setWeatherByLocation((previous) => {
-        if (keepIfUnchanged(previous[loc.id], result) === previous[loc.id])
-          return previous;
-        return { ...previous, [loc.id]: result };
+        if (!current()) return previous;
+        const weather = keepIfUnchanged(previous[key], preferWeather(previous[key], result));
+        return weather === previous[key] ? previous : {...previous, [key]: weather};
       });
-    } catch (error) {
-      if (!mountedRef.current) return;
-      console.warn(`Weather unavailable for ${loc.query}:`, error);
-      setWeatherByLocation((previous) => {
-        // A failed refresh should not replace weather we already displayed.
-        if (previous[loc.id]) return previous;
-        return {
-          ...previous,
-          [loc.id]: { temp: '--', condition: 'Unavailable' },
-        };
-      });
-    }
-  }, []);
+    })();
+    weatherRequests.current.set(requestKey, request);
+    void request.finally(() => weatherRequests.current.delete(requestKey));
+    return request;
+  }, [uid]);
 
+  // Prefetch every secondary city. Tab selection does not start another request.
+  const secondaryWeatherKey = JSON.stringify(savedLocations.filter((loc) => loc.id !== defaultLocation.id)
+    .map((loc) => [loc.id, loc.query]));
   useEffect(() => {
-    if (activeLocation.isDefault) return;
-    void loadLocationWeather(activeLocation);
-    const interval = setInterval(
-      () => void loadLocationWeather(activeLocation),
-      REFRESH_INTERVAL_MS,
-    );
-    return () => clearInterval(interval);
-  }, [activeLocation, loadLocationWeather]);
+    if (!uid) return;
+    const secondary = locationsRef.current.filter((loc) => loc.id !== defaultLocation.id);
+    if (!secondary.length) return;
+    const refreshCities = () => {
+      if (AppState.currentState === 'background' || AppState.currentState === 'inactive') return;
+      void Promise.all(secondary.map(loadLocationWeather));
+    };
+    refreshCities();
+    const interval = setInterval(refreshCities, weatherRefreshInterval(secondary.length));
+    const listener = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refreshCities();
+    });
+    return () => {clearInterval(interval); listener.remove();};
+  }, [uid, secondaryWeatherKey, defaultLocation.id, loadLocationWeather]);
 
   const refresh = useCallback(async () => {
     await Promise.all([
       loadData(),
-      ...(activeLocation.isDefault
-        ? []
-        : [loadLocationWeather(activeLocation)]),
+      ...savedLocations.filter((loc) => loc.id !== defaultLocation.id).map(loadLocationWeather),
     ]);
-  }, [activeLocation, loadData, loadLocationWeather]);
+  }, [savedLocations, defaultLocation.id, loadData, loadLocationWeather]);
 
   // A new default city needs weather, not another fetch of the entire dashboard.
   // Ignore list/name changes and the initial render, which already fetches a summary.

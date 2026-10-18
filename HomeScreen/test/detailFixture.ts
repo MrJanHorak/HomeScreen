@@ -17,6 +17,8 @@ export const auth = {currentUser: {uid: 'test-owner'}};
 export const useAuth = () => ({user: {uid: 'test-owner'}, signOut: noop});
 const date = (offset: number) => {const d = new Date(); d.setDate(d.getDate() + offset); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;};
 const weather = {temp: '72°', condition: 'Partly cloudy', location: 'Home', feelsLike: 70, high: 78, low: 61, humidity: 54,
+  highLowPeriod: 'rest_of_day', observedAt: new Date().toISOString(), timezoneOffset: -14400,
+  resolvedLocation: {name: 'Harlem', country: 'US', lat: 33.414, lon: -82.312},
   windSpeed: 4, windDirection: 'NW', pressure: 1012,
   forecast: Array.from({length: 5}, (_, i) => ({day: ['Fri', 'Sat', 'Sun', 'Mon', 'Tue'][i], high: 78, low: 61, condition: 'Partly cloudy', icon: 'sun'})),
   hourly: ['2 PM', '5 PM', '8 PM', '11 PM', '2 AM'].map((time, i) => ({time, temp: 73-i, pop: '10%', icon: 'sun'}))};

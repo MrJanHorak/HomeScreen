@@ -32,7 +32,8 @@ export async function fetchUserDashboard(userId: string, timeZone = "UTC"): Prom
       stepGoal: tokens.stepGoal,
       distanceGoal: tokens.distanceGoal,
     }, timeZone),
-    fetchLocalWeather(tokens.location || tokens.weatherCity),
+    fetchLocalWeather(tokens.savedLocations?.find((loc) => loc.isDefault)?.query ||
+      tokens.savedLocations?.[0]?.query || tokens.location || tokens.weatherCity),
     fetchMealPlan(tokens.mealSheet),
   ]);
 

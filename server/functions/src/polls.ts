@@ -129,7 +129,9 @@ export async function handlePolls(req: Request, res: Response): Promise<void> {
     try {
       if (!identity.deviceId) fail(403, "Create this poll from a linked TV");
       await createDashboardPoll(req, res, identity.userId, identity.deviceId!);
-    } catch (error) {handleError(res, error);}
+    } catch (error) {
+      handleError(res, error);
+    }
     return;
   }
   if (!identity.owner) {

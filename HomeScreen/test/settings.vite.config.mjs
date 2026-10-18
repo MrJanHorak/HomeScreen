@@ -7,8 +7,12 @@ export default {
   esbuild: {jsx: 'automatic'},
   optimizeDeps: {entries: ['settings.html'], rolldownOptions: {moduleTypes: {'.js': 'jsx'}, resolve: {extensions: ['.web.js', '.js', '.mjs', '.ts', '.tsx', '.json']}}},
   cacheDir: 'node_modules/.vite-settings',
-  resolve: {extensions: ['.web.tsx', '.web.ts', '.web.js', '.tsx', '.ts', '.js', '.json'], alias: {'react-native': path.resolve(root, '../node_modules/react-native-web')}},
+  resolve: {extensions: ['.web.tsx', '.web.ts', '.web.js', '.tsx', '.ts', '.js', '.json'], alias: {
+    'react-native': path.resolve(root, '../node_modules/react-native-web'),
+    '@expo/vector-icons': path.join(root, 'fixtureIcons.tsx'),
+  }},
   plugins: [{name: 'settings-fixtures', enforce: 'pre', resolveId(id) {
+    if (/\/hooks\/useFavoriteApps$/.test(id)) return path.join(root, 'favoriteAppsFixture.tsx');
     if (id === './speechDriver') return path.resolve(root, '../src/accessibility/speechDriver.web.ts');
     if (id === './narrationEnvironment') return path.resolve(root, '../src/accessibility/narrationEnvironment.web.ts');
     if (/\/theme\/useReadingFonts$/.test(id) || id === './useReadingFonts') return path.join(root, 'readingFontFixture.ts');

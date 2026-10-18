@@ -52,6 +52,8 @@ test('expired, future-dated, incompatible and corrupted entries are ignored', as
       JSON.stringify({version: 1, uid: 'owner', summary: {...data, updatedAt}})),
     JSON.stringify({version: 1, uid: 'owner', summary: {...data, tasks: [{}]}}),
     JSON.stringify({version: 1, uid: 'owner', summary: {...data, weather: {...data.weather, forecast: [{}]}}}),
+    ...[{resolvedLocation: {name: 'Harlem', lat: '33', lon: -82}}, {observedAt: 'invalid'}, {timezoneOffset: 'UTC'}].map((patch) =>
+      JSON.stringify({version: 1, uid: 'owner', summary: {...data, weather: {...data.weather, ...patch}}})),
     'x'.repeat(1024 * 1024 + 1),
   ];
   for (const raw of entries) {disk.set(key, raw); assert.equal(await cache.loadDashboardCache('owner'), null);}
@@ -297,6 +299,7 @@ test('DashboardProvider clears card loading from disk, maps default-city weather
     '../services/dashboardCache': {loadDashboardCache: async (uid) => {assert.equal(uid, 'owner'); return data;},
       saveDashboardCache: async () => {}},
     '../services/dashboardSession': {createDashboardSession},
+    '../services/weatherState': load('src/services/weatherState.ts'),
     '../services/weatherLocationService': {DEFAULT_LOCATIONS: [{id: 'ny', name: 'New York', query: 'New York, US', isDefault: true}],
       loadStoredLocations: async () => ({locations, activeId: 'denver'}), persistLocations: async () => {},
       getWeatherForLocation: (loc, weather) => ({...weather, location: loc.query})},
@@ -352,6 +355,7 @@ test('preference hydration and city-list edits do not fetch the summary again; d
     },
     '../services/dashboardCache': {loadDashboardCache: async () => data, saveDashboardCache: async () => {}},
     '../services/dashboardSession': {createDashboardSession},
+    '../services/weatherState': load('src/services/weatherState.ts'),
     '../services/weatherLocationService': {
       DEFAULT_LOCATIONS: locations, loadStoredLocations: async () => ({locations: [...locations], activeId: 'denver'}),
       persistLocations: async () => {}, getWeatherForLocation: (loc, weather) => ({...weather, location: loc.query}),
@@ -371,6 +375,10 @@ test('preference hydration and city-list edits do not fetch the summary again; d
   await render().addLocation('Paris', 'Paris, FR'); render(); await flush();
   assert.equal(requests, 1, 'adding a non-default city must leave other dashboard data alone');
   assert.deepEqual(weatherRequests, ['Paris, FR']);
+  await render().setActiveLocation(locations[0]); render(); await flush();
+  assert.equal(render().activeLocation.id, 'denver');
+  assert.equal(render().getWeatherForLoc(render().savedLocations[1]).temp, '72°', 'inactive cities are already loaded');
+  assert.deepEqual(weatherRequests, ['Paris, FR'], 'tab changes reuse prefetched weather');
   await render().setDefaultLocation(render().savedLocations[1].id); render(); await flush();
   assert.equal(requests, 1, 'changing the default must update only weather');
   assert.equal(weatherRequests.at(-1), 'Paris, FR');

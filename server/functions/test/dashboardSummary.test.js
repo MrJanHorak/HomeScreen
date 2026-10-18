@@ -85,3 +85,29 @@ test('explicit synchronization requires a successful cache write', async (t) => 
   t.mock.method(db, 'saveDashboardCache', async () => {throw new Error('cache unavailable');});
   await assert.rejects(syncUserDashboard('owner'), /cache unavailable/);
 });
+
+test('saved default query takes precedence over obsolete legacy coordinates', async (t) => {
+  setup(t, {location: {lat: 40, lon: -74}, savedLocations: [
+    {id: 'home', name: 'Home', query: 'Harlem, GA, US', isDefault: true},
+  ]});
+  await fetchUserDashboard('owner');
+  assert.deepEqual(weather.fetchLocalWeather.mock.calls[0].arguments, ['Harlem, GA, US']);
+});
+
+test('a cached dashboard rechecks the independent weather cache without refreshing Google data', async (t) => {
+  setup(t);
+  t.mock.method(requestAuth, 'authenticatedUserId', async () => 'owner');
+  const cached = {updatedAt: '2026-10-17T20:00:00Z', weather: {temp: '82°', condition: 'Rain'},
+    savedLocations: [{id: 'home', query: 'Harlem, GA, US', isDefault: true}]};
+  t.mock.method(db, 'getDashboardCache', async () => ({summary: cached, cachedAtMs: Date.now()}));
+  const response = {set() {}, status(code) {this.code = code; return this;}, json(body) {this.body = body;}};
+  await handleGetDashboardSummary({method: 'GET', header: () => 'UTC'}, response);
+  assert.equal(response.code, 200);
+  assert.equal(response.body.weather.temp, '72°');
+  assert.equal(response.body.updatedAt, cached.updatedAt, 'refreshing weather must not extend other data freshness');
+  assert.equal(calendar.fetchCalendarEvents.mock.callCount(), 0);
+  assert.deepEqual(weather.fetchLocalWeather.mock.calls[0].arguments, ['Harlem, GA, US']);
+  t.mock.method(weather, 'fetchLocalWeather', async () => ({temp: '--', condition: 'Unknown'}));
+  await handleGetDashboardSummary({method: 'GET', header: () => 'UTC'}, response);
+  assert.equal(response.body.weather, cached.weather, 'weather failures preserve the last usable result');
+});

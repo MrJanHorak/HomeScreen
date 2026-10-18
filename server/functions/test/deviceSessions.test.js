@@ -57,13 +57,17 @@ test("ordinary cached dashboard requests record the TV clock timezone before pol
   stubAuth(t, {dashboardDeviceId: id});
   const updates = stubDevice(t, {revokedAtMs: 0, lastSeenAtMs: Date.now()});
   const cache = require("../lib/utils/db");
-  t.mock.method(cache, "getDashboardCache", async () => ({cachedAtMs: Date.now(), summary: {cached: true}}));
+  const weather = {temp: "62°", condition: "Clear"};
+  t.mock.method(cache, "getDashboardCache", async () => ({cachedAtMs: Date.now(), summary: {cached: true,
+    savedLocations: [{id: "home", query: "Harlem, GA, US", isDefault: true}], weather}}));
+  t.mock.method(require("../lib/services/weatherService"), "fetchLocalWeather", async () => weather);
   t.mock.method(cache, "recordUserQuota", async () => {throw new Error("Cache hit must not refresh providers");});
   const req = request(); req.headers["x-time-zone"] = "America/New_York";
   const res = response();
   await require("../lib/getDashboardSummary").handleGetDashboardSummary(req, res);
   assert.equal(res.statusCode, 200);
-  assert.deepEqual(res.body, {cached: true});
+  assert.equal(res.body.cached, true);
+  assert.deepEqual(res.body.weather, weather);
   assert.deepEqual(updates, [{timeZone: "America/New_York"}]);
 });
 

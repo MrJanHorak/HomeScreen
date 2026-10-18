@@ -1,9 +1,10 @@
 import {Response} from "express";
 import {onRequest, Request} from "firebase-functions/v2/https";
-import {getAuthorizationVersion, getDashboardCache, recordUserQuota, saveDashboardCache} from "./utils/db";
+import {getAuthorizationVersion, getDashboardCache, getStoredUserTokens, recordUserQuota, saveDashboardCache} from "./utils/db";
 import { authenticatedUserId } from "./utils/requestAuth";
 import {logSafeError} from "./utils/safeLog";
 import {fetchUserDashboard} from "./services/dashboardSummary";
+import {fetchLocalWeather} from "./services/weatherService";
 
 export const getDashboardSummaryHandler = onRequest(
   {
@@ -34,7 +35,13 @@ export async function handleGetDashboardSummary(req: Request, res: Response): Pr
 
     const cached = await getDashboardCache(userId);
     if (cached && Date.now() - cached.cachedAtMs < 10 * 60 * 1000) {
-      res.status(200).json(cached.summary);
+      // Weather has its own TTL. Reusing the summary must not extend that TTL.
+      const locations = cached.summary.savedLocations;
+      const city = locations?.find((loc) => loc.isDefault)?.query || locations?.[0]?.query;
+      const tokens = city ? undefined : await getStoredUserTokens(userId);
+      const weather = await fetchLocalWeather(city || tokens?.location || tokens?.weatherCity);
+      const usable = Number.isFinite(parseFloat(weather.temp));
+      res.status(200).json({...cached.summary, weather: usable ? weather : cached.summary.weather});
       return;
     }
 

@@ -197,10 +197,14 @@ for (const width of [960, 1920]) for (const reading of [false, true]) {
       }).map((node) => node.textContent.slice(0, 100)));
       assert.deepEqual(horizontalOverflow, [], 'Text and panels must not spill horizontally');
       if (width === 960 && topic === 'weather') {
+        assert.match(await page.getByTestId('weather-range').innerText(), /Rest of day H 78° · L 61°/);
+        assert.match(await page.getByTestId('weather-observed-at').innerText(), /Observed.*location time/);
+        assert.match(await page.getByTestId('weather-resolved-location').innerText(), /Harlem, US/);
         const lastDay = await page.getByTestId('weather-detail-day').last().boundingBox();
         assert.ok(lastDay.y + lastDay.height <= content.y + content.height, 'All five forecast days fit on the first screen');
         const pressure = await page.getByText('1012 hPa', {exact: true}).boundingBox();
-        assert.ok(pressure.y + pressure.height <= content.y + content.height, 'Weather metrics fit alongside the forecast');
+        if (pressure.y + pressure.height > content.y + content.height) await page.screenshot({path: '../artifacts/weather-layout-debug.png'});
+        assert.ok(pressure.y + pressure.height <= content.y + content.height, `Weather metrics fit alongside the forecast: ${JSON.stringify({pressure, content})}`);
         const hero = await page.getByTestId('weather-overview-hero').boundingBox();
         const temperature = await page.getByTestId('weather-overview-temperature').boundingBox();
         const metrics = await page.getByTestId('weather-overview-metrics').boundingBox();

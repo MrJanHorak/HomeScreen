@@ -4,7 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useDashboard } from '../../../context/DashboardContext';
 import useCompactTVLayout from '../../../hooks/useCompactTVLayout';
 import { useTheme } from '../../../theme/ThemeContext';
-import { formatTemperature, weatherConditionIcon } from '../../../helpers/weatherHelpers';
+import { formatTemperature, formatWeatherRange, weatherConditionIcon } from '../../../helpers/weatherHelpers';
 import CardHeader from '../shared/CardHeader';
 import CardDetailsHint from '../shared/CardDetailsHint';
 import type { CardDimensions } from '../shared/types';
@@ -23,10 +23,7 @@ export default function WeatherDashboardCard({ width, height }: CardDimensions) 
   const hours = available ? weather?.hourly || [] : [];
   const days = available ? weather?.forecast || [] : [];
   const hasFeelsLike = available && Number.isFinite(weather?.feelsLike);
-  const highLow = available ? [
-    Number.isFinite(weather?.high) ? `H ${formatTemperature(weather?.high)}` : '',
-    Number.isFinite(weather?.low) ? `L ${formatTemperature(weather?.low)}` : '',
-  ].filter(Boolean).join(' · ') : '';
+  const highLow = available ? formatWeatherRange(weather) : '';
   const metrics = available ? [
     Number.isFinite(weather?.windSpeed) ? { icon: 'weather-windy' as const,
       text: `${weather?.windSpeed} mph wind${weather?.windDirection ? ` · ${weather.windDirection}` : ''}` } : null,

@@ -23,6 +23,13 @@ function validSummary(data: any): data is DashboardSummaryResponse {
     (data.health.activeMinutes === null || numbers(data.health, ['activeMinutes'])) &&
     (data.health.weekly === undefined || list(data.health.weekly, day)) &&
     strings(data.weather, ['temp', 'condition']) &&
+    ['observedAt', 'fetchedAt'].every((key) => data.weather[key] === undefined ||
+      (typeof data.weather[key] === 'string' && Number.isFinite(Date.parse(data.weather[key])))) &&
+    (data.weather.timezoneOffset === undefined || numbers(data.weather, ['timezoneOffset'])) &&
+    (data.weather.highLowPeriod === undefined || data.weather.highLowPeriod === 'rest_of_day') &&
+    (data.weather.resolvedLocation === undefined || (strings(data.weather.resolvedLocation, ['name']) &&
+      numbers(data.weather.resolvedLocation, ['lat', 'lon']) &&
+      (data.weather.resolvedLocation.country === undefined || typeof data.weather.resolvedLocation.country === 'string'))) &&
     (data.weather.forecast === undefined || list(data.weather.forecast, (item) => strings(item, ['day', 'condition', 'icon']) && numbers(item, ['high', 'low']))) &&
     (data.weather.hourly === undefined || list(data.weather.hourly, (item) => strings(item, ['time', 'icon', 'pop']) && numbers(item, ['temp']))) &&
     (data.savedLocations === undefined || list(data.savedLocations, (item) => strings(item, ['id', 'name', 'query'])));

@@ -1,6 +1,6 @@
 import Pressable from '../../shared/NarratedPressable';
 import Text from '../../shared/ReadingText';
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import {Image, StyleSheet, View} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFavoriteApps } from '../../../hooks/useFavoriteApps';
@@ -20,7 +20,35 @@ export default function FavoriteAppsSettings() {
   } = useFavoriteApps();
   const theme = useTheme();
   const [focused, setFocused] = useState<string | null>(null);
+  const moveButtons = useRef(new Map<string, View>());
+  const pendingMove = useRef<{
+    packageName: string;
+    index: number;
+    direction: -1 | 1;
+  } | null>(null);
+  const favoriteOrder = JSON.stringify(favoriteApps.map((app) => app.packageName));
   const favorites = new Set(favoriteApps.map((app) => app.packageName));
+
+  useLayoutEffect(() => {
+    const move = pendingMove.current;
+    if (!move) return;
+    pendingMove.current = null;
+    const index = favoriteApps.findIndex((app) => app.packageName === move.packageName);
+    if (index !== move.index + move.direction) return;
+
+    // Moving a keyed row can detach its focused native view. Restore focus
+    // after the new order is committed, keeping it on the same app.
+    // At either end, use the opposite arrow because the pressed one is disabled.
+    const action = move.direction === -1
+      ? (index === 0 ? 'right' : 'left')
+      : (index === favoriteApps.length - 1 ? 'left' : 'right');
+    const frame = requestAnimationFrame(() => {
+      const target = moveButtons.current.get(`${move.packageName}-${action}`);
+      if (target?.requestTVFocus) target.requestTVFocus();
+      else target?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [favoriteOrder]);
 
   const focusProps = (id: string) => ({
     onFocus: () => setFocused(id),
@@ -150,6 +178,11 @@ export default function FavoriteAppsSettings() {
             ).map((action) => (
               <Pressable
                 key={action.id}
+                ref={(node) => {
+                  const id = `${app.packageName}-${action.id}`;
+                  if (node) moveButtons.current.set(id, node);
+                  else moveButtons.current.delete(id);
+                }}
                 accessibilityRole='button'
                 accessibilityLabel={`${action.label} ${app.label}`}
                 disabled={
@@ -157,7 +190,14 @@ export default function FavoriteAppsSettings() {
                     ? index === 0
                     : index === favoriteApps.length - 1
                 }
-                onPress={() => moveFavorite(app.packageName, action.direction)}
+                onPress={() => {
+                  pendingMove.current = {
+                    packageName: app.packageName,
+                    index,
+                    direction: action.direction,
+                  };
+                  moveFavorite(app.packageName, action.direction);
+                }}
                 {...focusProps(`${app.packageName}-${action.id}`)}
                 style={[
                   styles.smallButton,

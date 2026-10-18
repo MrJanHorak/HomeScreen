@@ -6,6 +6,34 @@ let browser;
 before(async () => {browser = await chromium.launch({headless: true, ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? {executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE} : {})});});
 after(async () => {await browser?.close();});
 const state = (page) => page.locator('[data-appearance]').textContent().then(JSON.parse);
+
+test('favorite app arrows follow the same app through repeated moves and list boundaries', async (t) => {
+  const page = await browser.newPage(); t.after(() => page.close());
+  await page.goto(url);
+  await page.getByRole('button', {name: 'Apps tab', exact: true}).click();
+  const arrow = (direction) => page.getByRole('button', {name: `Move ${direction} Charlie`, exact: true});
+  const order = () => page.getByRole('button', {name: /^Move left /}).evaluateAll((buttons) => buttons.map((button) => button.getAttribute('aria-label').replace('Move left ', '')));
+  const move = async (direction, expected, nextDirection = direction) => {
+    await page.keyboard.press('Enter');
+    await page.waitForFunction((expected) => {
+      const buttons = [...document.querySelectorAll('[aria-label^="Move left "]')];
+      return JSON.stringify(buttons.map((button) => button.getAttribute('aria-label').replace('Move left ', ''))) === JSON.stringify(expected);
+    }, expected);
+    await page.waitForFunction((label) => document.activeElement?.getAttribute('aria-label') === label, `Move ${nextDirection} Charlie`, {timeout: 3000});
+    assert.deepEqual(await order(), expected);
+  };
+
+  await arrow('left').focus();
+  await move('left', ['Alpha', 'Charlie', 'Bravo', 'Delta']);
+  await move('left', ['Charlie', 'Alpha', 'Bravo', 'Delta'], 'right');
+  assert.equal(await arrow('left').isDisabled(), true);
+  await move('right', ['Alpha', 'Charlie', 'Bravo', 'Delta']);
+  await move('right', ['Alpha', 'Bravo', 'Charlie', 'Delta']);
+  await move('right', ['Alpha', 'Bravo', 'Delta', 'Charlie'], 'left');
+  assert.equal(await arrow('right').isDisabled(), true);
+  await move('left', ['Alpha', 'Bravo', 'Charlie', 'Delta']);
+});
+
 async function openAdd(page, category) {
   await page.getByRole('button', {name: 'Add cards', exact: true}).click();
   const header = page.getByRole('button', {name: category, exact: true});

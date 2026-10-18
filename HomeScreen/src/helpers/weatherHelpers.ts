@@ -1,5 +1,6 @@
 import type { ComponentProps } from 'react';
 import type { MaterialCommunityIcons } from '@expo/vector-icons';
+import type {Weather} from '../../../shared/src/types';
 
 type MaterialIconName = ComponentProps<typeof MaterialCommunityIcons>['name'];
 
@@ -13,6 +14,26 @@ export const formatTemperature = (temp: number | null | undefined) => {
   const roundedTemp = Math.round(temp);
   return `${roundedTemp}°`;
 };
+
+/** Legacy cached min/max fields were current spatial variation, not daily H/L. */
+export function formatWeatherRange(weather?: Weather | null): string {
+  return weather?.highLowPeriod === 'rest_of_day' && Number.isFinite(weather.high) && Number.isFinite(weather.low)
+    ? `Rest of day H ${formatTemperature(weather.high)} · L ${formatTemperature(weather.low)}` : '';
+}
+
+export function formatWeatherObservation(weather: Weather): string {
+  const observed = Date.parse(weather.observedAt || '');
+  if (!Number.isFinite(observed)) return 'Observation time unavailable';
+  const shifted = new Date(observed + (weather.timezoneOffset || 0) * 1000);
+  const date = shifted.toLocaleString('en-US', {month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone: 'UTC'});
+  return `Observed ${date} (${weather.timezoneOffset === undefined ? 'UTC' : 'location time'})`;
+}
+
+export function formatResolvedWeatherLocation(weather: Weather): string {
+  const resolved = weather.resolvedLocation;
+  if (!resolved) return '';
+  return `OpenWeather: ${resolved.name}${resolved.country ? `, ${resolved.country}` : ''} (${resolved.lat.toFixed(3)}, ${resolved.lon.toFixed(3)})`;
+}
 
 export const formatHighLow = (high: number, low: number) => {
   const formattedHigh = formatTemperature(high);

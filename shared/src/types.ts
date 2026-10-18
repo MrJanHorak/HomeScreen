@@ -31,6 +31,11 @@ export interface HourlyForecastItem {
 export interface Weather {
   temp: string;
   condition: string;
+  highLowPeriod?: 'rest_of_day';
+  observedAt?: string;
+  fetchedAt?: string;
+  timezoneOffset?: number;
+  resolvedLocation?: {name: string; country?: string; lat: number; lon: number};
   location?: string;
   temperature?: number;
   feelsLike?: number;
