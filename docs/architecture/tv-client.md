@@ -29,6 +29,14 @@ installed-app labels/artwork are cached in process and invalidated by package
 changes; see [TV experience](../../HomeScreen/TV_EXPERIENCE.md) for limits and
 hardware verification.
 
+While ambient is active, `components/ambient/AmbientWakeControl.tsx` mounts the
+TvWatchNext module's `AmbientWakeView`. This transparent native view takes focus
+and consumes arrow/Select presses locally, emitting one `onWake` after release.
+It does not register as a dashboard return target. This avoids depending on the
+global TV-event listener for ambient wake; the October 23 Sony test found that
+listener insufficient even after adding a focused JavaScript control. The
+[TV experience guide](../../HomeScreen/TV_EXPERIENCE.md) owns rollout and behavior.
+
 `SettingsDetailView` handles side-menu navigation and delegates weather and device
 controls to `WeatherSettings` and `DeviceSettings`. These sections reuse
 `SettingsPanel` and `useControlFocus`. See the repository's

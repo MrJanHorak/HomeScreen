@@ -14,6 +14,7 @@ import { useAppearance, useTheme } from '../theme/ThemeContext';
 import useCompactTVLayout from '../hooks/useCompactTVLayout';
 import useAmbientMode from '../components/ambient/useAmbientMode';
 import AmbientScreen from '../components/ambient/AmbientScreen';
+import AmbientWakeControl from '../components/ambient/AmbientWakeControl';
 import {useNarration} from '../accessibility/NarrationContext';
 import {ScreenFocusProvider, ScreenFocusRestorer} from '../navigation/ScreenFocus';
 import DashboardFocusFrame from '../navigation/DashboardFocusFrame';
@@ -69,6 +70,7 @@ function HomeScreenContent() {
         right: compact ? -30 : -theme.spacing.safeHorizontal,
       }]}>
         <AmbientScreen preference={appearance.ambient} selectedPhotos={ambientPhotos} />
+        <AmbientWakeControl onWake={ambient.wake}/>
       </View>}
 
       <DashboardDetailModal topic={activeModal} onClose={closeModal} onPreviewAmbient={previewAmbient} />

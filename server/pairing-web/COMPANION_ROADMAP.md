@@ -31,6 +31,13 @@ Reconciled October 23, 2026 through `55ef529`. Checked milestones are implemente
 The sequence below follows the [completion gates](../../docs/NEXT_STEPS.md); start activity feasibility alongside the TV baseline.
 
 - [ ] Finish remaining current-build TV remote/lifecycle/offline checks; capture a controlled rendering trace before performance changes. October 22 benchmark results are mixed, not an established speedup.
+  The [October 23 baseline](../../docs/reviews/tv-baseline-2026-10-23.md) records
+  partial passes, an ambient arrow-wake failure and a freeze during ARD return;
+  standby recovery, motion persistence and two later ARD returns passed with
+  mirroring off. The ambient native-handler update then passed all four preview
+  arrows plus Select/Back and automatic-idle arrow return to Activity on the Sony.
+  The original freeze and other outstanding
+  checks still need diagnosis/retest before closing the hardware gate.
 - [ ] Prove activity replacement access/metric coverage, select and implement a migration before Fit support ends. Current vendor guidance and the server-versus-phone decision are in the next-step plan.
 - [ ] Verify deployed revisions and real consent, vote cookie forwarding, TV poll creation/retry, activity expiry/revocation and settings sync; follow feature release guides and [security setup](../SECURITY.md).
 - [ ] Expose Calendar/Tasks provider failure and freshness separately from true empty data. Cached startup and separate RSS persistence already exist; remaining offline feeds need explicit expiry/privacy choices.

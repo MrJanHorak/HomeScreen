@@ -32,6 +32,15 @@ commit. Removed items fall back to a neighboring registered entry. Detail contro
 do not overwrite the dashboard return target. This does not introduce global
 remote interception or system Home-button remapping.
 
+The October 23 ambient wake fix adds a focusable native surface over ambient
+content. It handles the four arrows and Select/Enter locally, consumes both
+halves of the press, then returns focus to the saved dashboard entry. It requests
+focus again when the Settings modal's window finishes closing. Back retains the
+existing app handler; system and media keys keep their normal routing. Native
+TV-event key releases and focus/blur events do not reset the idle timer or dismiss
+a newly opened preview. This requires rebuilding/installing the TV APK because
+the existing local module now exports `AmbientWakeView`.
+
 Settings → Accessibility → Motion offers **Use device setting** and **Reduce motion**.
 It is saved on this TV, independently of account appearance. The system setting
 is observed through Android accessibility or the browser's reduced-motion media

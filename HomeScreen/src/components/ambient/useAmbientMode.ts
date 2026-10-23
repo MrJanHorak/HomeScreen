@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AppState, BackHandler, Platform, TVEventHandler } from 'react-native';
 
 /** Idle time is measured from remote or keyboard input while the app is foregrounded. */
@@ -8,6 +8,8 @@ export function useAmbientMode(
   suspended: boolean,
 ) {
   const [active, setActive] = useState(false);
+  const activeRef = useRef(active);
+  activeRef.current = active;
   const [foreground, setForeground] = useState(
     AppState.currentState !== 'background',
   );
@@ -21,9 +23,12 @@ export function useAmbientMode(
   useEffect(() => {
     if (!Platform.isTV) return;
     const subscription = TVEventHandler.addListener((event) => {
-      // Focus changes also emit TV events; they are not remote activity.
+      // The select release can arrive after its onPress opens the preview.
+      // Ambient's focused control owns Select so its release cannot activate a dashboard item.
       if (
         event?.eventType &&
+        event.eventKeyAction !== 1 &&
+        !(activeRef.current && event.eventType === 'select') &&
         event.eventType !== 'focus' &&
         event.eventType !== 'blur'
       )

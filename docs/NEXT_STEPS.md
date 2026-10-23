@@ -13,6 +13,16 @@ unit coverage are substantial, but the October 22 measurements do not establish
 focus restoration, standby recovery, ambient behavior, or an overall speedup.
 Finish this evidence before another visual redesign.
 
+The [October 23 baseline pass](reviews/tv-baseline-2026-10-23.md) found an ambient
+arrow-wake failure and a TV freeze during the first ARD-return sequence. Diagnose
+and retest failures before treating step 1 as complete or moving to a
+performance change. The ambient native-handler update subsequently passed all
+four preview-arrow checks plus Select/Back and automatic-idle arrow return to
+Activity on the Sony; the dated report records the binary and validation.
+Standby recovery, motion persistence and two later ARD
+returns passed with mirroring off. These successful individual checks do not erase
+the original failure; the report distinguishes observed passes and open work.
+
 | Order | Work and reason | Completion evidence |
 | --- | --- | --- |
 | 1. TV baseline | Identify the installed APK by source/build record and hash; run the remaining [TV smoke checks](../HomeScreen/TV_TEST_CHECKLIST.md) and [cached-start checks](architecture/tv-client.md#cached-cold-start). Recent commits changed background cancellation, return focus, app discovery and ambient mounting together. | A dated device/build record with actual results for detail/favorite return, ambient wake, both motion modes, standby, offline restart/reconnect, account isolation, app install/update/disable, system settings and input behavior. Record unsupported OEM controls and reproducible failures. Fix failures and rerun affected checks. |

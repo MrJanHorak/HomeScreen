@@ -21,6 +21,18 @@ broader hardware checks remain pending. See the [dated device results](reviews/t
 Desktop benchmark tooling records scenario/build metadata, compares results, and
 uses fresh command WaitTime for resume because this TV caches cold TotalTime.
 
+October 23 baseline follow-up: the installed header-update hash was confirmed,
+Activity-detail return and system-settings section return passed, and ambient
+arrow wake initially failed while Back worked. A later signed native-handler
+build passed all four preview-arrow checks plus Select/Back and automatic-idle
+arrow return to Activity on the Sony; it requires a new TV APK. A TV freeze during the ARD-return sequence
+required recovery; surviving diagnostics do not identify its cause. Mirroring
+was closed for the resumed pass. Physical standby wake, online app restart,
+motion persistence and two later ARD-main-screen returns passed; the original
+motion choice was restored. The original freeze is not proven fixed, and the
+hardware gate remains open; see the
+[dated baseline results](reviews/tv-baseline-2026-10-23.md).
+
 October 9–17 changes also implement cached startup and bounded resume retries,
 RSS/Atom widgets, grouped schedule details, beyond-goal activity visuals, pinned
 meal details, wider media queue previews, sticky Cards/live ambient previews,

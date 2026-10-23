@@ -400,6 +400,7 @@ test('cached dashboard synchronization stays quiet, but failures still show save
     '../components/shared/TVText': 'text', '../components/dashboard/header/HeaderBar': 'header',
     '../components/dashboard/DashboardLayout': 'dashboard', '../components/dashboard/favorites/FavoriteAppsCarousel': 'favorites',
     '../components/details/DashboardDetailModal': 'modal', '../components/ambient/AmbientScreen': 'ambient',
+    '../components/ambient/AmbientWakeControl': 'ambient-wake',
     '../context/DashboardContext': {useDashboard: () => data},
     '../context/PollsContext': {usePollVisibility: () => () => {}},
     '../context/FeedsContext': {useFeedVisibility: () => () => {}},

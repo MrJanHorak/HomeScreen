@@ -74,6 +74,10 @@ class TvWatchNextModule : Module() {
     Name("TvWatchNext")
     Events("onAppsChanged")
 
+    View(AmbientWakeView::class) {
+      Events("onWake")
+    }
+
     OnCreate {
       val context = requireNotNull(appContext.reactContext).applicationContext
       val filter = IntentFilter().apply {

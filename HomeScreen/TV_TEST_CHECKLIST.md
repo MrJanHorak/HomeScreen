@@ -13,13 +13,25 @@ include the starting item, buttons pressed, expected destination, and actual des
 | --- | --- | --- | --- |
 | Startup | Open HomeScreen after installation. | Dashboard appears; returning paired TVs keep their account and layout. | Observed on Sony VU1, October 22; five cold starts per build |
 | Header | Inspect the main header. | Clock and Settings gear; TV controls are under Settings → Device. | Verified on Sony VU1, October 22 |
-| Details return | Select a widget, open its details, then Back. | Focus returns to the same widget. | Not run |
-| Favorite return | Open a favorite app, then return with Back or reopen HomeScreen. | The same app tile is selected; the favorites row reveals it. | Not run |
-| Ambient wake | Open Settings → Ambient → Preview. Press an arrow to wake. | Dashboard returns with the previous entry point selected and the layout intact. | Not run |
-| Reduced motion | Settings → Accessibility → Reduce motion. Navigate cards, then preview ambient. Close and reopen HomeScreen. | Focus border remains visible without zoom; photo/plasma movement stops; preference is retained. | Not run |
-| TV controls | Open Settings → Device; try Network settings, then return. | Correct system panel opens; HomeScreen returns to its Device panel. | Not run |
-| Inputs | In TV controls, inspect names/states. If available, select a known input. | Custom names are used and the input opens, or a clear unsupported-control message appears. Devices with no inputs show no input list. | Not run |
-| Standby | Put the TV in standby, wake it, then reopen HomeScreen if needed. | Clock catches up, current data refreshes, and focus/navigation still work. | Not run |
+| Details return | Select a widget, open its details, then Back. | Focus returns to the same widget. | Passed for Activity on Sony VU1, October 23; other domains/removal fallback untested |
+| Favorite return | Open a favorite app, then return with Back or reopen HomeScreen. | The same app tile is selected; the favorites row reveals it. | Two ARD-main-screen returns passed without mirroring, October 23; original freeze unresolved |
+| Ambient wake | Open Settings → Ambient → Preview. Press an arrow to wake; also wait for automatic idle entry and wake. | Dashboard returns with the previous entry point selected and the layout intact. | Original build failed; native-handler update passed all four preview arrows, Select/Back and automatic-idle arrow return to Activity on Sony, October 23; see dated follow-up |
+| Reduced motion | Settings → Accessibility → Reduce motion. Navigate cards, then preview ambient. Close and reopen HomeScreen. | Focus border remains visible without zoom; photo/plasma movement stops; preference is retained. | Card scale, sampled static photo and restart persistence passed October 23; full plasma/OS checks pending; original preference restored |
+| TV controls | Open Settings → Device; try Network settings, then return. | Correct system panel opens; HomeScreen returns to its Device panel. | Network/Android panels and section return passed October 23 |
+| Inputs | In TV controls, inspect names/states. If available, select a known input. | Custom names are used and the input opens, or a clear unsupported-control message appears. Devices with no inputs show no input list. | Presence checked; switching/no-input devices untested |
+| Standby | Put the TV in standby, wake it, then reopen HomeScreen if needed. | Clock catches up, current data refreshes, and focus/navigation still work. | Physical wake, retained process/section, clock and eventual data recovery passed October 23; network ADB dropped during sleep |
+
+October 23 follow-up: installed APK identity and Activity-detail return passed;
+system Network/Android shortcuts opened and returned to the Device section.
+Ambient arrow wake initially failed; a later signed native-handler update passed
+all four preview arrows plus Select/Back and automatic-idle arrow return to
+Activity. A user-observed TV freeze
+interrupted the first favorite-return attempt; a later cold launch succeeded
+after reboot with Android Studio mirroring closed. Physical standby wake and two
+later ARD returns passed; motion preference persistence passed and the original
+choice was restored. The baseline gate remains
+open. The [dated baseline report](../docs/reviews/tv-baseline-2026-10-23.md)
+owns detailed results, diagnostic limits and outstanding checks.
 
 Optional follow-ups after the first pass:
 
@@ -54,7 +66,7 @@ same version/code, so keep the hash and source/build record together. Desktop
 benchmark/report tooling changes do not require another TV app build; the header
 UI change did require the signed update recorded in the device report.
 
-Only the Startup and Header rows above have recorded physical-TV results. Device
-panel control presence was also inspected in the dated report; actual shortcuts,
-input switching and the remaining lifecycle/focus/motion checks are pending.
+Startup/Header have October 22 device results; the table includes later October
+23 results and limitations. The dated baseline report owns current follow-up
+evidence. Input switching and the remaining lifecycle/accessibility checks are pending.
 Do not treat packaging checks as device results.
