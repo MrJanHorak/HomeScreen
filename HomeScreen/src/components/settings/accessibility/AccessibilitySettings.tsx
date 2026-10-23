@@ -4,9 +4,11 @@ import Text from '../../shared/ReadingText';
 import Option from '../appearance/AppearanceOption';
 import {useNarration} from '../../../accessibility/NarrationContext';
 import VoicePicker from './VoicePicker';
+import {useMotion} from '../../../accessibility/MotionContext';
 import {groupVoices, languageName, voiceDisplay, voiceLanguage} from '../../../accessibility/voiceGroups';
 
 export default function AccessibilitySettings() {
+  const motion = useMotion();
   const {preference, ready, screenReader, canDetectScreenReader, voices, voicesLoading, speechStatus, error, setPreference, announce, stop, refreshVoices} = useNarration();
   const [showVoices, setShowVoices] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -16,6 +18,18 @@ export default function AccessibilitySettings() {
   const selectedGroup = selectedVoice && groups.find((group) => group.id === voiceLanguage(selectedVoice));
   const selectedDisplay = selectedVoice && voiceDisplay(selectedVoice, selectedGroup?.voices.findIndex((voice) => voice.identifier === selectedVoice.identifier) ?? 0);
   return <View style={styles.section}>
+    {!showVoices && <>
+      <Text style={styles.title} accessibilityRole='header'>Motion</Text>
+      <Text style={styles.description}>Saved on this TV. Reduced motion removes focus zoom, background movement, and long fades. Ambient information still changes position occasionally.</Text>
+      <View style={styles.options}>
+        <Option compact label='Use device setting' selected={motion.preference === 'system'} disabled={!motion.ready}
+          onPress={() => motion.setPreference('system')}/>
+        <Option compact label='Reduce motion' selected={motion.preference === 'reduced'} disabled={!motion.ready}
+          onPress={() => motion.setPreference('reduced')}/>
+      </View>
+      <Text style={styles.description}>{motion.reduced ? 'Reduced motion is active.' : 'Standard motion is active.'}</Text>
+      {motion.error && <Text accessibilityRole='alert' style={styles.description}>{motion.error}</Text>}
+    </>}
     {!showVoices && <><Text style={styles.title} accessibilityRole='header'>Spoken navigation</Text>
     <Text style={styles.description}>Hear selections as you navigate. Saved on this TV.</Text>
     <Text style={styles.label}>Read selections aloud</Text>

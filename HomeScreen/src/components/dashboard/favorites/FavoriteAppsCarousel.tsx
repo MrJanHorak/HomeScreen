@@ -6,11 +6,20 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFavoriteApps } from '../../../hooks/useFavoriteApps';
 import { useTheme } from '../../../theme/ThemeContext';
 import useCompactTVLayout from '../../../hooks/useCompactTVLayout';
+import {useMotion} from '../../../accessibility/MotionContext';
+import {useRememberedFocus} from '../../../navigation/ScreenFocus';
+import type {LaunchableApp} from '../../../hooks/useFavoriteApps';
+
+function FavoriteTile({app, children, ...props}: React.ComponentProps<typeof Pressable> & {app: LaunchableApp}) {
+  const focus = useRememberedFocus(`app:${app.packageName}`);
+  return <Pressable {...props} ref={focus.ref} onFocus={(event) => {focus.onFocus(); props.onFocus?.(event);}}>{children}</Pressable>;
+}
 
 export default function FavoriteAppsCarousel() {
   const { favoriteApps, visible, status, launchApp } = useFavoriteApps();
   const theme = useTheme();
   const compact = useCompactTVLayout();
+  const {reduced} = useMotion();
   const scrollRef = useRef<ScrollView>(null);
   const [focused, setFocused] = useState<string | null>(null);
   const [failedApp, setFailedApp] = useState<string | null>(null);
@@ -53,7 +62,7 @@ export default function FavoriteAppsCarousel() {
           onScroll={({nativeEvent}) => { scrollOffset.current = nativeEvent.contentOffset.x; }} scrollEventThrottle={16}
           contentContainerStyle={[styles.tiles, {paddingHorizontal: edgeInset}]}>
           {favoriteApps.map((app, index) => (
-            <Pressable
+            <FavoriteTile app={app}
               key={app.packageName}
               accessibilityRole="button"
               accessibilityLabel={`Open ${app.label}`}
@@ -65,7 +74,7 @@ export default function FavoriteAppsCarousel() {
                 if (left < target) target = left;
                 else if (right > target + viewportWidth.current) target = right - viewportWidth.current;
                 target = Math.max(0, Math.min(target, contentWidth.current - viewportWidth.current));
-                scrollRef.current?.scrollTo({ x: target, animated: true });
+                scrollRef.current?.scrollTo({ x: target, animated: !reduced });
               }}
               onBlur={() => setFocused(null)}
               onPress={async () => {
@@ -78,6 +87,7 @@ export default function FavoriteAppsCarousel() {
                 { width: tileWidth, borderColor: focused === app.packageName
                   ? theme.colors.focusRing : theme.colors.glassBorder },
                 focused === app.packageName && styles.focusedTile,
+                focused === app.packageName && reduced && {transform: [{scale: 1}]},
               ]}
             >
               {app.imageUri ? (
@@ -87,7 +97,7 @@ export default function FavoriteAppsCarousel() {
                   {app.label}
                 </Text>
               )}
-            </Pressable>
+            </FavoriteTile>
           ))}
         </ScrollView>
       )}

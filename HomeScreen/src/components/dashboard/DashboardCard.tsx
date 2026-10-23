@@ -35,7 +35,7 @@ function MeasuredDashboardCard({id, widget, onOpen, style, label}: DashboardCard
   const person = people.find((p) => p.id === widget?.personId);
   const activityLabel = widget?.personId ? `Activity for ${person?.name || 'unavailable person'}. Open details` : undefined;
   return (
-    <TVCard cardId={kind === 'poll' || kind === 'feed' ? undefined : kind as CardId} widgetStyle={widget?.style} style={style}
+    <TVCard focusId={`widget:${id}`} cardId={kind === 'poll' || kind === 'feed' ? undefined : kind as CardId} widgetStyle={widget?.style} style={style}
       accessibilityLabel={label || activityLabel || (kind === 'feed' ? `${widget?.feed?.title || 'Feed'}. Open stories and sources` : `${CARD_LABELS[kind as CardId]}. Open details`)}
       onPress={() => onOpen(id)}>
       <View style={{flex: 1, minHeight: 0, minWidth: 0}}

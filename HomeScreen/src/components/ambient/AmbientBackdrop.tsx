@@ -4,6 +4,7 @@ import type { ImageSourcePropType } from 'react-native';
 import type { AmbientPreference } from '../../theme/appearance';
 import type { SelectedPhoto } from '../../services/api';
 import PlasmaBackdrop from './PlasmaBackdrop';
+import {useMotion} from '../../accessibility/MotionContext';
 
 import galleryOne from '../../../assets/media/wp8860764-nasa-4k-wallpapers.jpg';
 import galleryTwo from '../../../assets/media/wp8860783-nasa-4k-wallpapers.jpg';
@@ -19,6 +20,7 @@ export default function AmbientBackdrop({
   preference: AmbientPreference;
   selectedPhotos: SelectedPhoto[];
 }) {
+  const {reduced, foreground} = useMotion();
   const photos = useMemo<ImageSourcePropType[]>(() => {
     if (preference.photoSource === 'selected')
       return selectedPhotos.map((photo) => ({ uri: photo.dataUrl }));
@@ -38,7 +40,7 @@ export default function AmbientBackdrop({
   }, [photos, motion]);
 
   useEffect(() => {
-    if (!photos.length) return;
+    if (!photos.length || reduced || !foreground) {motion.setValue(0); return;}
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(motion, {
@@ -55,19 +57,20 @@ export default function AmbientBackdrop({
     );
     loop.start();
     return () => loop.stop();
-  }, [motion, photoIntervalMs, photos.length]);
+  }, [motion, photoIntervalMs, photos.length, reduced, foreground]);
 
   useEffect(() => {
-    if (photos.length < 2) return;
+    if (photos.length < 2 || !foreground) return;
     const timer = setInterval(() => {
       setPreviousPhoto(photoIndex);
       setPhotoIndex((index) => (index + 1) % photos.length);
     }, photoIntervalMs);
     return () => clearInterval(timer);
-  }, [photoIndex, photoIntervalMs, photos]);
+  }, [photoIndex, photoIntervalMs, photos, foreground]);
 
   useEffect(() => {
     if (previousPhoto === null) return;
+    if (reduced || !foreground) {setPreviousPhoto(null); photoOpacity.setValue(1); return;}
     photoOpacity.setValue(0);
     const transition = Animated.timing(photoOpacity, {
       toValue: 1,
@@ -78,7 +81,7 @@ export default function AmbientBackdrop({
       if (finished) setPreviousPhoto(null);
     });
     return () => transition.stop();
-  }, [photoIndex, photoOpacity, previousPhoto]);
+  }, [photoIndex, photoOpacity, previousPhoto, reduced, foreground]);
 
   const photoMotion = {
     transform: [
@@ -112,7 +115,7 @@ export default function AmbientBackdrop({
             <Animated.Image
               source={photos[previousPhoto]}
               resizeMode='cover'
-              style={[styles.photo, photoMotion]}
+              style={[styles.photo, !reduced && photoMotion]}
             />
           )}
           <Animated.Image
@@ -120,7 +123,7 @@ export default function AmbientBackdrop({
             resizeMode='cover'
             style={[
               styles.photo,
-              photoMotion,
+              !reduced && photoMotion,
               { opacity: previousPhoto === null ? 1 : photoOpacity },
             ]}
           />

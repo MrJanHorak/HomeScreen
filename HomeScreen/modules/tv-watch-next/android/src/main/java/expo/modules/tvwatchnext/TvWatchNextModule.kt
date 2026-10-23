@@ -1,6 +1,9 @@
 package expo.modules.tvwatchnext
 
 import android.content.Intent
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -15,6 +18,39 @@ import java.io.ByteArrayOutputStream
 
 class TvWatchNextModule : Module() {
   private val readTvListings = "android.permission.READ_TV_LISTINGS"
+  private val apps = AppCatalogCache<List<Map<String, String?>>>()
+  private var receiverContext: Context? = null
+  private val packageReceiver = object : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+      apps.invalidate()
+      sendEvent("onAppsChanged", emptyMap<String, Any>())
+    }
+  }
+
+  private fun launchableApps(): List<Map<String, String?>> = apps.get {
+    val context = requireNotNull(appContext.reactContext)
+    val manager = context.packageManager
+    val found = linkedMapOf<String, Map<String, String?>>()
+    for (category in listOf(Intent.CATEGORY_LEANBACK_LAUNCHER, Intent.CATEGORY_LAUNCHER)) {
+      val intent = Intent(Intent.ACTION_MAIN).addCategory(category)
+      @Suppress("DEPRECATION")
+      val matches = manager.queryIntentActivities(intent, 0)
+      for (match in matches) {
+        val activity = match.activityInfo ?: continue
+        val packageName = activity.packageName
+        if (packageName == context.packageName || found.containsKey(packageName)) continue
+        val label = manager.getApplicationLabel(activity.applicationInfo).toString()
+        val imageUri = runCatching {
+          val drawable = activity.loadBanner(manager)
+            ?: activity.applicationInfo.loadBanner(manager)
+            ?: activity.applicationInfo.loadIcon(manager)
+          thumbnail(drawable)
+        }.getOrNull()
+        found[packageName] = mapOf("packageName" to packageName, "label" to label, "imageUri" to imageUri)
+      }
+    }
+    found.values.sortedBy { it["label"]?.lowercase() ?: "" }
+  }
 
   private fun thumbnail(drawable: Drawable): String {
     val width = 160
@@ -36,34 +72,51 @@ class TvWatchNextModule : Module() {
 
   override fun definition() = ModuleDefinition {
     Name("TvWatchNext")
+    Events("onAppsChanged")
+
+    OnCreate {
+      val context = requireNotNull(appContext.reactContext).applicationContext
+      val filter = IntentFilter().apply {
+        addAction(Intent.ACTION_PACKAGE_ADDED)
+        addAction(Intent.ACTION_PACKAGE_REMOVED)
+        addAction(Intent.ACTION_PACKAGE_REPLACED)
+        addAction(Intent.ACTION_PACKAGE_CHANGED)
+        addDataScheme("package")
+      }
+      if (Build.VERSION.SDK_INT >= 33) {
+        context.registerReceiver(packageReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+      } else {
+        @Suppress("DEPRECATION")
+        context.registerReceiver(packageReceiver, filter)
+      }
+      receiverContext = context
+    }
+
+    OnDestroy {
+      receiverContext?.unregisterReceiver(packageReceiver)
+      receiverContext = null
+      apps.invalidate()
+    }
 
     AsyncFunction("getLaunchableApps") {
-      val context = requireNotNull(appContext.reactContext)
-      val manager = context.packageManager
-      val apps = linkedMapOf<String, Map<String, String?>>()
-      for (category in listOf(Intent.CATEGORY_LEANBACK_LAUNCHER, Intent.CATEGORY_LAUNCHER)) {
-        val intent = Intent(Intent.ACTION_MAIN).addCategory(category)
-        @Suppress("DEPRECATION")
-        val matches = manager.queryIntentActivities(intent, 0)
-        for (match in matches) {
-          val activity = match.activityInfo ?: continue
-          val packageName = activity.packageName
-          if (packageName == context.packageName || apps.containsKey(packageName)) continue
-          val label = manager.getApplicationLabel(activity.applicationInfo).toString()
-          val imageUri = runCatching {
-            val drawable = activity.loadBanner(manager)
-              ?: activity.applicationInfo.loadBanner(manager)
-              ?: activity.applicationInfo.loadIcon(manager)
-            thumbnail(drawable)
-          }.getOrNull()
-          apps[packageName] = mapOf(
-            "packageName" to packageName,
-            "label" to label,
-            "imageUri" to imageUri
-          )
-        }
-      }
-      apps.values.sortedBy { it["label"]?.lowercase() ?: "" }
+      launchableApps()
+    }
+
+    AsyncFunction("refreshLaunchableApps") {
+      apps.invalidate()
+      launchableApps()
+    }
+
+    AsyncFunction("getTvSystemStatus") {
+      TvSystemControls(requireNotNull(appContext.reactContext)).status()
+    }
+
+    AsyncFunction("openTvSettings") { section: String ->
+      TvSystemControls(requireNotNull(appContext.reactContext)).openSettings(section)
+    }
+
+    AsyncFunction("openTvInput") { id: String ->
+      TvSystemControls(requireNotNull(appContext.reactContext)).openInput(id)
     }
 
     AsyncFunction("launchApp") { packageName: String ->

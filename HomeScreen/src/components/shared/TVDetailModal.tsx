@@ -5,6 +5,7 @@ import {Modal, View, StyleSheet, Platform, BackHandler, useWindowDimensions} fro
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../theme/ThemeContext';
 import {DetailBackContext, DetailFrameContext} from './DetailLayout';
+import {useMotion} from '../../accessibility/MotionContext';
 
 export interface TVDetailModalProps {
   visible: boolean;
@@ -29,6 +30,7 @@ export default function TVDetailModal({
   children,
 }: TVDetailModalProps) {
   const theme = useTheme();
+  const {reduced} = useMotion();
   const screen = useWindowDimensions();
   const compact = screen.height < 700;
   const [frame, setFrame] = React.useState({width: screen.width - 56, height: screen.height - 100});
@@ -89,7 +91,7 @@ export default function TVDetailModal({
     <Modal
       transparent
       visible={visible}
-      animationType='fade'
+      animationType={reduced ? 'none' : 'fade'}
       onRequestClose={handleBack}
     >
       <View style={[styles.scrim, compact && styles.compactScrim]}>

@@ -26,6 +26,8 @@ interface FavoriteAppPreferences {
 
 interface TvAppsModule {
   getLaunchableApps(): Promise<LaunchableApp[]>;
+  refreshLaunchableApps?(): Promise<LaunchableApp[]>;
+  addListener?(event: 'onAppsChanged', listener: () => void): {remove(): void};
   launchApp(packageName: string): Promise<boolean>;
 }
 
@@ -73,14 +75,17 @@ export function FavoriteAppsProvider({
   const preferencesRef = useRef(preferences);
   preferencesRef.current = preferences;
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (force = true) => {
     if (!nativeApps || typeof nativeApps.getLaunchableApps !== 'function') {
       setStatus('unavailable');
       return;
     }
     try {
-      const apps = await nativeApps.getLaunchableApps();
-      setAvailableApps(apps);
+      const apps = await (force && nativeApps.refreshLaunchableApps
+        ? nativeApps.refreshLaunchableApps() : nativeApps.getLaunchableApps());
+      setAvailableApps((current) => current.length === apps.length && current.every((app, index) =>
+        app.packageName === apps[index].packageName && app.label === apps[index].label &&
+        app.imageUri === apps[index].imageUri) ? current : apps);
       setStatus('ready');
     } catch (error) {
       console.warn('Could not list TV apps:', error);
@@ -136,12 +141,20 @@ export function FavoriteAppsProvider({
   }, [loaded, preferences, user?.uid]);
 
   useEffect(() => {
-    void refresh();
+    void refresh(false);
     if (Platform.OS !== 'android') return;
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void refresh();
+      if (state === 'active') void refresh(false);
     });
-    return () => subscription.remove();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const packages = nativeApps?.refreshLaunchableApps && nativeApps.addListener?.('onAppsChanged', () => {
+      clearTimeout(timer);
+      // A package update can emit several broadcasts. Coalesce them and defer work when covered.
+      timer = setTimeout(() => {
+        if (AppState.currentState === 'active') void refresh(false);
+      }, 150);
+    });
+    return () => {subscription.remove(); packages && packages.remove(); clearTimeout(timer);};
   }, [refresh]);
 
   useEffect(() => {
@@ -158,6 +171,7 @@ export function FavoriteAppsProvider({
         active = false;
       };
     const sync = async () => {
+      if (AppState.currentState === 'background' || AppState.currentState === 'inactive') return;
       if (state.busy) return;
       state.busy = true;
       try {
@@ -200,9 +214,11 @@ export function FavoriteAppsProvider({
     };
     void sync();
     const timer = setInterval(() => void sync(), 45000);
+    const foreground = AppState.addEventListener('change', (value) => {if (value === 'active') void sync();});
     return () => {
       active = false;
       clearInterval(timer);
+      foreground.remove();
     };
   }, [loaded, user?.uid, availableApps, status]);
 

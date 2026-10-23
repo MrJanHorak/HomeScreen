@@ -15,6 +15,8 @@ import {
 } from '../../../../server/functions/src/utils/cardStyle';
 import useCompactTVLayout from '../../hooks/useCompactTVLayout';
 import type {CardStyle} from '../../../../server/functions/src/utils/cardStyle';
+import {useMotion} from '../../accessibility/MotionContext';
+import {useRememberedFocus} from '../../navigation/ScreenFocus';
 
 interface TVCardProps {
   title?: string;
@@ -24,6 +26,7 @@ interface TVCardProps {
   accessibilityLabel?: string;
   cardId?: CardId;
   widgetStyle?: CardStyle;
+  focusId?: string;
 }
 
 export default function TVCard({
@@ -34,8 +37,11 @@ export default function TVCard({
   accessibilityLabel,
   cardId,
   widgetStyle,
+  focusId,
 }: TVCardProps) {
   const theme = useTheme();
+  const {reduced} = useMotion();
+  const focus = useRememberedFocus(focusId);
   const { appearance } = useAppearance();
   const compact = useCompactTVLayout();
   const [isFocused, setIsFocused] = useState(false);
@@ -80,7 +86,7 @@ export default function TVCard({
     borderColor: isFocused
       ? theme.colors.focusRing
       : cardTheme.colors.glassBorder,
-    transform: [{ scale: isFocused ? theme.tvAnimation.focusScale : 1.0 }],
+    transform: [{ scale: isFocused && !reduced ? theme.tvAnimation.focusScale : 1.0 }],
     shadowColor: isFocused ? theme.colors.focusRing : '#000',
     shadowOpacity: isFocused ? 0.5 : 0.35,
     shadowRadius: isFocused ? 24 : 16,
@@ -103,7 +109,7 @@ export default function TVCard({
         boxShadow: isFocused
           ? `0 0 30px ${theme.colors.focusGlow}, 0 20px 40px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.3)`
           : '0 12px 32px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.15)',
-        transition:
+        transition: reduced ? 'none' :
           'transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease, border-color 0.2s ease, background-color 0.2s ease',
         outline: 'none',
       } as any,
@@ -112,9 +118,10 @@ export default function TVCard({
 
   return (
     <Pressable
+      ref={focus.ref}
       accessibilityRole='button'
       accessibilityLabel={accessibilityLabel}
-      onFocus={() => setIsFocused(true)}
+      onFocus={() => {setIsFocused(true); focus.onFocus();}}
       onBlur={() => setIsFocused(false)}
       onPress={onPress}
       style={[

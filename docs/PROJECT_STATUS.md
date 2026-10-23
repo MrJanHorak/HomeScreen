@@ -6,6 +6,13 @@ The core household dashboard is substantially accomplished: the six original inf
 
 ## Checked original vision
 
+October 22, 2026 source update: installed-app metadata/artwork caching with package
+invalidation, stable dashboard return focus, TV-local reduced motion, standard
+Android network/settings/input controls, and an explicit-target hardware benchmark
+are implemented. See [TV experience](../HomeScreen/TV_EXPERIENCE.md) for behavior,
+verification, release requirements, and attribution. System Home replacement and a
+standalone Android screensaver remain open; no hardware speedup is established.
+
 ### Household information
 
 - [x] Today's schedule and upcoming events from Google Calendar; detail agenda and event status.

@@ -10,7 +10,8 @@ import {useDetailLayout} from '../../shared/DetailLayout';
 export default function PollDetailView({roundId}: {roundId: string}) {
   const {rounds, stale, loading, offsetMs} = usePolls(); const poll = rounds[roundId]; const theme = useTheme();
   const {compact} = useDetailLayout();
-  const now = useTVClock() + offsetMs; const open = poll?.state === 'open' && (poll.endsAtMs === null || now < poll.endsAtMs);
+  const now = useTVClock(poll?.state === 'open' && poll.endsAtMs !== null ? poll.endsAtMs - offsetMs : undefined) + offsetMs;
+  const open = poll?.state === 'open' && (poll.endsAtMs === null || now < poll.endsAtMs);
   const ink = {color: theme.colors.textPrimary};
   if (!poll) return <View style={{gap: 20}}><Text style={[ink, {fontSize: 28}]}>{loading ? 'Loading poll…' : 'This poll is unavailable.'}</Text>
     <Text style={[ink, {fontSize: 20}]}>Manage saved polls in the companion site.</Text>

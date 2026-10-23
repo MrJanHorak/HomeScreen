@@ -11,6 +11,7 @@ import type { AmbientPreference } from '../../theme/appearance';
 import type { SelectedPhoto } from '../../services/api';
 import type { CalendarEvent } from '../../../../shared/src/types';
 import AmbientBackdrop from './AmbientBackdrop';
+import {useMotion} from '../../accessibility/MotionContext';
 
 const INFO_INTERVAL_MS = 90_000;
 
@@ -53,6 +54,7 @@ interface Props {
 
 export default function AmbientScreen({ preference, selectedPhotos }: Props) {
   const theme = useTheme();
+  const {reduced, foreground} = useMotion();
   const { weather, schedule, upcomingEvents, health, tasks, meals } =
     useDashboard();
   const [now, setNow] = useState(() => new Date());
@@ -63,21 +65,26 @@ export default function AmbientScreen({ preference, selectedPhotos }: Props) {
   const entrance = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (!foreground) return;
     const clock = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(clock);
-  }, []);
+  }, [foreground]);
 
   useEffect(() => {
+    if (reduced || !foreground) {entrance.setValue(1); return;}
     Animated.timing(entrance, {
       toValue: 1,
       duration: 1200,
       useNativeDriver: true,
     }).start();
     return () => entrance.stopAnimation();
-  }, [entrance]);
+  }, [entrance, reduced, foreground]);
 
   useEffect(() => {
+    if (!foreground) return;
+    if (reduced) infoOpacity.setValue(1);
     const timer = setInterval(() => {
+      if (reduced) {infoOpacity.setValue(1); setSlot((current) => (current + 1) % 4); return;}
       Animated.timing(infoOpacity, {
         toValue: 0,
         duration: 900,
@@ -96,10 +103,13 @@ export default function AmbientScreen({ preference, selectedPhotos }: Props) {
       clearInterval(timer);
       infoOpacity.stopAnimation();
     };
-  }, [infoOpacity]);
+  }, [infoOpacity, reduced, foreground]);
 
   useEffect(() => {
+    if (!foreground) return;
+    if (reduced) detailOpacity.setValue(1);
     const timer = setInterval(() => {
+      if (reduced) {detailOpacity.setValue(1); setInfoIndex((current) => current + 1); return;}
       Animated.timing(detailOpacity, {
         toValue: 0,
         duration: 700,
@@ -118,7 +128,7 @@ export default function AmbientScreen({ preference, selectedPhotos }: Props) {
       clearInterval(timer);
       detailOpacity.stopAnimation();
     };
-  }, [detailOpacity, preference.infoCycleSeconds]);
+  }, [detailOpacity, preference.infoCycleSeconds, reduced, foreground]);
 
   const weatherText =
     weather && weather.temp !== '--'

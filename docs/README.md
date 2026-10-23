@@ -11,6 +11,7 @@ Reviewed and reorganized October 9, 2026. Start with [project status](PROJECT_ST
 | [Companion roadmap](../server/pairing-web/COMPANION_ROADMAP.md) | Completed product milestones and next work |
 | [TV README](../HomeScreen/README.md) | TV setup, user workflows, and fixture commands |
 | [Release guide](../HomeScreen/RELEASE.md) | Signing, APK/AAB builds, installation, and publication |
+| [TV experience](../HomeScreen/TV_EXPERIENCE.md) | App caching, focus restoration, motion, TV controls, and hardware benchmarks |
 | [Functions README](../server/functions/README.md) | Backend setup and API overview |
 | [Companion README](../server/pairing-web/README.md) | Browser setup, publishing, and account workflows |
 | [Layout contract](../server/pairing-web/DASHBOARD_LAYOUT.md) | Published appearance, legacy grid, and instance compatibility |

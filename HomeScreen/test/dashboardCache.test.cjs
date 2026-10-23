@@ -407,8 +407,10 @@ test('cached dashboard synchronization stays quiet, but failures still show save
     '../hooks/useCompactTVLayout': () => true,
     '../components/ambient/useAmbientMode': () => ({active: false}),
     '../accessibility/NarrationContext': {useNarration: () => ({stop: () => {}})},
+    '../navigation/ScreenFocus': {ScreenFocusProvider: 'focus-provider', ScreenFocusRestorer: 'focus-restorer'},
+    '../navigation/DashboardFocusFrame': 'focus-frame',
   });
-  const footer = () => HomeScreen().props.children[3];
+  const footer = () => HomeScreen().props.children.type().props.children[1].props.children[3];
   assert.equal(footer().props.children, null, 'restored data needs no routine sync banner');
   assert.equal(footer().props.style.height, 24, 'footer space remains stable');
   data = {...data, error: 'Offline'};

@@ -12,7 +12,7 @@ import type {Widget} from '../../../../../server/functions/src/utils/widgets';
 export default function PollDashboardCard({widget, width, height}: {widget: Widget; width: number; height: number}) {
   const {rounds, stale, loading, offsetMs} = usePolls(); const poll = rounds[widget.roundId || ''];
   const theme = useTheme(); const scale = useCompactTVLayout() ? 1 : 1.4;
-  const now = useTVClock() + offsetMs;
+  const now = useTVClock(poll?.state === 'open' && poll.endsAtMs !== null ? poll.endsAtMs - offsetMs : undefined) + offsetMs;
   const question = poll?.question || (loading ? 'Loading poll…' : 'Poll unavailable');
   const closed = poll && (poll.state !== 'open' || poll.endsAtMs !== null && now >= poll.endsAtMs);
   const plan = pollCardLayout(width, height, scale, question, !!poll?.joinUrl && !closed, widget.presentation);

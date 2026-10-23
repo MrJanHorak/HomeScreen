@@ -34,6 +34,12 @@ The screenshots capture one configured TV using automatic rows on October 1, 202
 | Card settings | [Card order and live preview](../assets/Screenshot_20261001_175228.png) |
 | Ambient mode | [Ambient photo and information](../assets/Screenshot_20261001_174401.png) |
 
+## TV experience
+
+For app caching, return focus, reduced motion, Android TV controls, and repeatable
+device measurements, see the [TV experience guide](TV_EXPERIENCE.md). Source
+acknowledgments and the bundled MIT notice are in [third-party notices](THIRD_PARTY_NOTICES.md).
+
 ## Fonts and reading
 
 Open **Settings → Fonts & reading** for the **Dyslexia-friendly** preset: bundled

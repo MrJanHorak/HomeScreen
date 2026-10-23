@@ -3,6 +3,7 @@ import Text from '../shared/ReadingText';
 import React, { useState } from 'react';
 import {Modal, StyleSheet, View} from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
+import {useMotion} from '../../accessibility/MotionContext';
 
 interface ExitConfirmationModalProps {
   visible: boolean;
@@ -16,13 +17,14 @@ export default function ExitConfirmationModal({
   onExit,
 }: ExitConfirmationModalProps) {
   const theme = useTheme();
+  const {reduced} = useMotion();
   const [focusedButton, setFocusedButton] = useState<'stay' | 'exit' | null>(null);
 
   return (
     <Modal
       transparent
       visible={visible}
-      animationType="fade"
+      animationType={reduced ? 'none' : 'fade'}
       onRequestClose={onCancel}
     >
       <View style={styles.scrim}>

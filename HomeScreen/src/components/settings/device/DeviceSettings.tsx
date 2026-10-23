@@ -9,6 +9,7 @@ import { useDashboard } from '../../../context/DashboardContext';
 import { useControlFocus } from '../../../hooks/useControlFocus';
 import { getCurrentDevice } from '../../../services/api';
 import SettingsPanel from '../shared/SettingsPanel';
+import TvSystemControls from './TvSystemControls';
 
 export default function DeviceSettings() {
   const theme = useTheme();
@@ -30,6 +31,7 @@ export default function DeviceSettings() {
 
   return (
     <>
+      <TvSystemControls />
       {/* Device & Account Card */}
       <SettingsPanel>
         <Text style={[styles.cardTitle, { color: theme.colors.textPrimary }]}>

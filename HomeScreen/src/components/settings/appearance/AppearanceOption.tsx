@@ -6,6 +6,7 @@ import {View} from 'react-native';
 import type {StyleProp, ViewStyle} from 'react-native';
 import {useTheme} from '../../../theme/ThemeContext';
 import {styles} from './appearanceStyles';
+import {useMotion} from '../../../accessibility/MotionContext';
 
 interface OptionProps {
   ref?: React.Ref<View>;
@@ -39,6 +40,7 @@ export default function Option({
   style,
 }: OptionProps) {
   const theme = useTheme();
+  const {reduced} = useMotion();
   const [focused, setFocused] = useState(false);
   return (
     <Pressable
@@ -73,7 +75,7 @@ export default function Option({
             : theme.colors.glassSurface,
           opacity: disabled ? 0.45 : 1,
         },
-        focused && (large || compact ? {borderWidth: 3} : styles.focused),
+        focused && (large || compact || reduced ? {borderWidth: 3} : styles.focused),
         style,
       ]}
     >

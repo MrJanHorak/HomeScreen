@@ -4,6 +4,10 @@ Reviewed October 9, 2026. Checked milestones are implemented in source; use the 
 
 ## Completed milestones
 
+- [x] October 22 TV experience source update: cached installed apps, stable return focus,
+  device-local reduced motion, standard TV controls, and hardware benchmark tooling.
+  Motion remains configured on each TV; see [TV experience](../../HomeScreen/TV_EXPERIENCE.md).
+
 - [x] Pair TV with permanent companion QR/address, Google browser ownership, and individually named/revocable managed TV sessions. Unmanaged legacy sessions must pair again.
 - [x] Account connections, permission explanations, meal Sheet setup, disconnect/sign-out/deletion controls.
 - [x] Automatic rows and validated 12×6 free layout with drag/swap/resize, numeric/keyboard controls, and adaptive TV cards.

@@ -1,8 +1,9 @@
 import React, {forwardRef, isValidElement, useEffect, useRef, useState} from 'react';
-import {Pressable as NativePressable} from 'react-native';
+import {Platform, Pressable as NativePressable} from 'react-native';
 import type {PressableProps, View} from 'react-native';
 import {useNarration} from '../../accessibility/NarrationContext';
 import {selectionAnnouncement} from '../../accessibility/narration';
+import {useMotion} from '../../accessibility/MotionContext';
 
 function childLabel(children: React.ReactNode): string {
   return React.Children.toArray(children).map((child) => {
@@ -16,6 +17,7 @@ function childLabel(children: React.ReactNode): string {
 /** Keeps the native control, ref, styles and focus handlers intact. */
 const NarratedPressable = forwardRef<View, PressableProps>(function NarratedPressable(props, ref) {
   const {announce, blur, stop, narrating} = useNarration();
+  const {reduced} = useMotion();
   const owner = useRef({}).current;
   const [focused, setFocused] = useState(false);
   const renderedChildren = typeof props.children === 'function'
@@ -30,6 +32,9 @@ const NarratedPressable = forwardRef<View, PressableProps>(function NarratedPres
   useEffect(() => () => blur(owner), [blur, owner]);
 
   return <NativePressable {...props} ref={ref}
+    style={reduced ? (state) => [typeof props.style === 'function' ? props.style(state) : props.style,
+      {transform: [{scale: 1}]}, Platform.OS === 'web' && {transition: 'none'} as any] : props.style}
+    tvParallaxProperties={reduced ? {...props.tvParallaxProperties, enabled: false, magnification: 1, pressMagnification: 1} : props.tvParallaxProperties}
     accessibilityRole={props.accessibilityRole || 'button'} accessibilityLabel={label || undefined}
     onFocus={(event) => {setFocused(true); props.onFocus?.(event);}}
     onBlur={(event) => {setFocused(false); blur(owner); props.onBlur?.(event);}}

@@ -10,7 +10,7 @@ import useReadingFonts from './useReadingFonts';
 import {normalizeReading} from '../../../server/functions/src/utils/reading';
 import type {ReadingPreference} from '../../../server/functions/src/utils/reading';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import {validWidgetLayout, legacyWidgetProjection, widgetsFromLegacy} from '../../../server/functions/src/utils/widgets';
 import type {WidgetLayout} from '../../../server/functions/src/utils/widgets';
 import {
@@ -206,6 +206,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (!uid || !ready) return;
     const currentGeneration = generation.current;
     const timer = setInterval(() => {
+      if (AppState.currentState === 'background' || AppState.currentState === 'inactive') return;
       if (pendingWrites.current) return;
       void getUserAppearance()
         .then((remote) => {

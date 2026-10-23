@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
 import Svg, { Circle, Defs, RadialGradient, Stop } from 'react-native-svg';
+import {useMotion} from '../../accessibility/MotionContext';
 
 function PlasmaBlob({
   color,
@@ -14,6 +15,7 @@ function PlasmaBlob({
   height: number;
 }) {
   const motion = useRef(new Animated.Value(0)).current;
+  const {reduced, foreground} = useMotion();
   const gradientId = `plasma-${useId().replace(/:/g, '')}`;
   const size = Math.max(width, height) * (index === 1 ? 0.95 : 0.8);
   const positions = [
@@ -23,6 +25,7 @@ function PlasmaBlob({
   ];
 
   useEffect(() => {
+    if (reduced || !foreground) {motion.setValue(0); return;}
     const duration = 38_000 + index * 11_000;
     const animation = Animated.loop(
       Animated.sequence([
@@ -40,7 +43,7 @@ function PlasmaBlob({
     );
     animation.start();
     return () => animation.stop();
-  }, [index, motion]);
+  }, [index, motion, reduced, foreground]);
 
   return (
     <Animated.View

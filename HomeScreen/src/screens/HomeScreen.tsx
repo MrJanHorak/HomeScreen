@@ -15,8 +15,10 @@ import useCompactTVLayout from '../hooks/useCompactTVLayout';
 import useAmbientMode from '../components/ambient/useAmbientMode';
 import AmbientScreen from '../components/ambient/AmbientScreen';
 import {useNarration} from '../accessibility/NarrationContext';
+import {ScreenFocusProvider, ScreenFocusRestorer} from '../navigation/ScreenFocus';
+import DashboardFocusFrame from '../navigation/DashboardFocusFrame';
 
-function HomeScreen() {
+function HomeScreenContent() {
   const { error, lastUpdated } = useDashboard();
   const savedData = lastUpdated ? `Last updated ${new Date(lastUpdated).toLocaleString()}` : '';
   const { appearance, ambientPhotos } = useAppearance();
@@ -38,47 +40,45 @@ function HomeScreen() {
     ambient.preview();
   };
 
-  if (ambient.active) {
-    return (
-      <View style={styles.container}>
-        <View style={[styles.ambientFrame, {
-          top: compact ? -16 : -theme.spacing.safeVertical,
-          bottom: compact ? -16 : -theme.spacing.safeVertical,
-          left: compact ? -30 : -theme.spacing.safeHorizontal,
-          right: compact ? -30 : -theme.spacing.safeHorizontal,
-        }]}>
-          <AmbientScreen preference={appearance.ambient} selectedPhotos={ambientPhotos} />
-        </View>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      {/* Top Header */}
-      <HeaderBar onOpenSettings={() => setActiveModal('settings')} />
+      <ScreenFocusRestorer active={activeModal === null && !ambient.active}/>
+      <DashboardFocusFrame hidden={ambient.active} style={styles.container}>
+        <HeaderBar onOpenSettings={() => setActiveModal('settings')} onOpenDevice={() => setActiveModal('device')} />
 
-      <DashboardLayout cards={appearance.cards} grid={appearance.grid} widgetLayout={appearance.widgetLayout} onOpen={setActiveModal} />
+        <DashboardLayout cards={appearance.cards} grid={appearance.grid} widgetLayout={appearance.widgetLayout} onOpen={setActiveModal} />
 
-      <FavoriteAppsCarousel />
+        <FavoriteAppsCarousel />
 
-      {/* Reserve a quiet footer so connection changes never move the cards. */}
-      <View style={styles.syncStatus} pointerEvents="none">
-        {error && <TVText
-          text={`Refresh delayed · Retrying automatically${savedData ? ` · ${savedData}` : ''}`}
-          typography="caption"
-          color="textSecondary"
-          numberOfLines={1}
-          style={styles.syncText}
-        />}
-      </View>
+        {/* Reserve a quiet footer so connection changes never move the cards. */}
+        <View style={styles.syncStatus} pointerEvents="none">
+          {error && <TVText
+            text={`Refresh delayed · Retrying automatically${savedData ? ` · ${savedData}` : ''}`}
+            typography="caption"
+            color="textSecondary"
+            numberOfLines={1}
+            style={styles.syncText}
+          />}
+        </View>
+      </DashboardFocusFrame>
+
+      {ambient.active && <View style={[styles.ambientFrame, {
+        top: compact ? -16 : -theme.spacing.safeVertical,
+        bottom: compact ? -16 : -theme.spacing.safeVertical,
+        left: compact ? -30 : -theme.spacing.safeHorizontal,
+        right: compact ? -30 : -theme.spacing.safeHorizontal,
+      }]}>
+        <AmbientScreen preference={appearance.ambient} selectedPhotos={ambientPhotos} />
+      </View>}
 
       <DashboardDetailModal topic={activeModal} onClose={closeModal} onPreviewAmbient={previewAmbient} />
     </View>
   );
 }
 
-export default HomeScreen;
+export default function HomeScreen() {
+  return <ScreenFocusProvider><HomeScreenContent /></ScreenFocusProvider>;
+}
 
 const styles = StyleSheet.create({
   container: {

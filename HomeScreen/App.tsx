@@ -13,6 +13,7 @@ import {PollsProvider} from './src/context/PollsContext';
 import {PeopleProvider} from './src/context/PeopleContext';
 import {FeedsProvider} from './src/context/FeedsContext';
 import {NarrationProvider} from './src/accessibility/NarrationContext';
+import {MotionProvider} from './src/accessibility/MotionContext';
 
 import backgroundImage from './assets/media/wp8860764-nasa-4k-wallpapers.jpg';
 
@@ -82,7 +83,7 @@ export default function App() {
   return (
     <AuthProvider>
       <ThemeProvider>
-        <NarrationProvider><ThemedScreen /></NarrationProvider>
+        <MotionProvider><NarrationProvider><ThemedScreen /></NarrationProvider></MotionProvider>
       </ThemeProvider>
     </AuthProvider>
   );
