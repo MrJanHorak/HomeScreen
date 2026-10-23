@@ -10,26 +10,30 @@ This October 1, 2026 screenshot predates polls, shared activity, reading control
 
 ## Current scope
 
-Implemented in source, audited October 9, 2026:
+Implemented in source, reconciled with git history through `55ef529` on October 23, 2026:
 
 - Schedule, tasks with completion, activity/goals, weather/forecasts, optional meal Sheets, and Continue Watching with supported Android Play Next intents.
 - Favorite installed apps, remote-selectable detail panels, TV pairing, encrypted server-side Google credentials, connection controls, and individually managed TV sessions.
 - Automatic rows or a bounded 12×6 widget canvas, visibility/order/sizing, card styles, background photos, ambient mode, and synchronized account appearance.
 - Companion drafts, Undo/Redo, named designs, published history, weather/goals, Photos selection, and per-TV favorite apps.
-- Reusable household polls, QR voting, results, and independently arranged poll widgets.
+- Reusable household polls, QR voting, results, independently arranged poll widgets, and limited multiple-choice creation on the TV.
 - Consented activity sharing from other Google accounts, with one activity widget per person.
 - OpenDyslexic and reading controls, optional device-local spoken navigation, and responsive settings/detail layouts.
 - Multiple RSS/Atom feed widgets, companion presets/custom URLs/previews, and TV source selection, story summaries and QR links. Added October 10; see [Feed widgets](server/pairing-web/FEEDS.md).
+- Account-scoped cached startup, foreground/resume refresh with retries, improved weather freshness, cached installed apps/artwork, return-focus memory, local reduced motion, and Android TV controls under Settings → Device.
 
 **Most of the core household dashboard is implemented.** The broader vision is still incomplete: personal profiles, independent per-TV layouts, watchlists/recently watched, a broader media catalog, calendar week/month views, full task editing, universal search, smart-home integrations, and automatic time-of-day modes remain open.
 
-Source completion does not establish production availability. The October 6 release guide records a signed APK/AAB and a TV install; later features need their applicable deployments/new TV build and hardware checks. This documentation audit did not inspect production or build/install an APK. See [the checked vision, deviations, gaps, and release evidence](docs/PROJECT_STATUS.md).
+Source completion does not establish production availability. October 22 evidence records signed APK verification, an in-place Sony TV update, five benchmark passes per build and Device-panel inspection. Frame results were mixed; broader remote, ambient, standby, accessibility and integration checks remain open. This October 23 documentation audit did not inspect production or build/install an APK. See [project status and release evidence](docs/PROJECT_STATUS.md).
+
+**Next:** finish the current-build TV smoke pass and capture a controlled rendering trace; start activity-provider migration feasibility alongside that work. The [next-step plan](docs/NEXT_STEPS.md) explains the order, reasons and completion gates.
 
 ## Start here
 
 | Purpose | Guide |
 | --- | --- |
 | Progress against the original vision; remaining priorities | [Project status](docs/PROJECT_STATUS.md) |
+| Ordered work, reasoning and completion evidence | [Next steps](docs/NEXT_STEPS.md) |
 | All documentation and placement rules | [Documentation index](docs/README.md) |
 | Run, configure, and use the TV app | [TV README](HomeScreen/README.md) |
 | Signed releases, network installation, Google Play | [Release guide](HomeScreen/RELEASE.md) |

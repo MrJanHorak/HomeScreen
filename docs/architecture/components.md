@@ -9,26 +9,26 @@ that obscure ownership.
 
 ```text
 App
-└── AuthProvider → ThemeProvider → NarrationProvider → ThemedScreen
+└── AuthProvider → ThemeProvider → MotionProvider → NarrationProvider → ThemedScreen
     ├── TVScreenWrapper → Root
     │   ├── StartupScreen while authentication/appearance loads
     │   ├── PairingScreen when signed out
-    │   └── DashboardProvider → WatchNextProvider → FavoriteAppsProvider → PeopleProvider → PollsProvider
-    │       └── HomeScreen
-    │           ├── AmbientScreen when idle or previewing
-    │           └── Dashboard when active
-    │               ├── HeaderBar
-    │               ├── Data-error banner
-    │               ├── DashboardLayout
-    │               │   ├── Automatic rows OR DashboardGrid
-    │               │   └── DashboardCard (TVCard + inner measurement)
-    │               │       └── AdaptiveDashboardCard
-    │               │           └── Weather / Schedule / Activity / Media / Meals / Tasks / Polls / Person activity
-    │               │               └── CardContent and domain-specific views
-    │               ├── FavoriteAppsCarousel
-    │               └── DashboardDetailModal → TVDetailModal
-    │                   ├── Domain detail view
-    │                   └── SettingsDetailView → feature settings panels
+    │   └── DashboardProvider → WatchNextProvider → FavoriteAppsProvider → PeopleProvider → PollsProvider → FeedsProvider
+    │       └── HomeScreen → ScreenFocusProvider
+    │           ├── AmbientScreen overlay when idle or previewing
+    │           ├── DashboardFocusFrame (stays mounted; hidden/inert beneath ambient)
+    │           │   ├── HeaderBar
+    │           │   ├── DashboardLayout
+    │           │   │   ├── Automatic rows OR DashboardGrid
+    │           │   │   └── DashboardCard (TVCard + inner measurement)
+    │           │   │       └── AdaptiveDashboardCard
+    │           │   │           └── Weather / Schedule / Activity / Media / Meals / Tasks / Polls / Person activity / Feeds
+    │           │   │               └── CardContent and domain-specific views
+    │           │   ├── FavoriteAppsCarousel
+    │           │   └── Reserved sync-status footer
+    │           └── DashboardDetailModal → TVDetailModal
+    │               ├── Domain detail view
+    │               └── SettingsDetailView → feature settings panels
     └── ExitConfirmationModal on Android
 ```
 
@@ -38,6 +38,12 @@ and measurement. Measurement happens inside the themed shell so padding and
 custom borders are excluded. `AdaptiveDashboardCard` selects domain content and
 preserves loading behavior. `DashboardDetailModal` owns detail definitions and
 the Settings ambient-preview callback.
+
+`ScreenFocusProvider` retains dashboard return targets while details/settings own
+their focus scope. Ambient mode overlays the mounted dashboard so measurements
+and widget state survive; dashboard controls are disabled for focus/accessibility
+while covered. `MotionProvider` owns the device-local motion preference. The
+header has no separate TV-controls shortcut; controls live in Settings → Device.
 
 Use `components/<area>/<domain>` for private UI and `components/<area>/shared`
 for reuse within an area. `components/shared` is TV-wide UI; cross-area hooks

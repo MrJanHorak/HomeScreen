@@ -8,8 +8,8 @@ HomeScreen is an ad-free household dashboard built with Expo, React Native TV, a
 
 - The home dashboard shows a clock and greeting, six built-in configurable cards plus optional poll, shared-activity and RSS/Atom feed widgets (schedule, activity, media, weather, meals, and tasks), and a favorite-app row. Selecting a card opens a larger detail panel.
 - A TV pairing code and QR link connect the app to a Google account through the companion [pairing site](../server/pairing-web/README.md). Firebase Authentication persists the TV session.
-- The [Cloud Functions backend](../server/functions/README.md) provides Google Calendar, Google Tasks, Google Fit activity, OpenWeatherMap weather, and an optional Google Sheets dinner plan. Dashboard data refreshes every five minutes. Individual upstream failures do not prevent the other cards from loading.
-- Cached cold startup restores the signed-in account's last successful dashboard summary while refreshing in the background. Snapshots up to 24 hours old show a saved-data timestamp and remain visible during outages; sign-out or session revocation removes them. First-ever startup and expired caches need a connection. See [cache behavior and verification](../docs/architecture/tv-client.md#cached-cold-start).
+- The [Cloud Functions backend](../server/functions/README.md) provides Google Calendar, Google Tasks, Google Fit activity, OpenWeatherMap weather, and an optional Google Sheets dinner plan. Dashboard data refreshes every five minutes while foregrounded and immediately on resume. Background work is canceled; failed refreshes keep displayed data and retry with backoff. Individual upstream failures do not prevent the other cards from loading.
+- Cached cold startup restores the signed-in account's last successful dashboard summary while refreshing in the background. Snapshots up to 24 hours old retain their source timestamp and remain visible during outages; after a refresh failure, the footer shows the timestamp and retry status. Sign-out or session revocation removes them. First-ever startup and expired caches need a connection. See [cache behavior and verification](../docs/architecture/tv-client.md#cached-cold-start).
 - Native Firebase sign-in now persists in Expo SecureStore. Rebuild and reinstall the Android TV binary after updating dependencies or native plugins; a Metro reload cannot add the native SecureStore module.
 - On Android TV, Continue Watching reads titles that installed apps publish to the system Play Next row. The web preview uses sample media data.
 - Settings include color palettes, a custom accent, backgrounds, layout presets, card order/visibility/width, saved weather locations, favorite apps, meal connection, and device controls. Appearance settings sync through the backend; some TV-specific preferences are local to the device.
@@ -114,9 +114,10 @@ rows of tabs. This gives each settings section the full remaining height. Speech
 help is expandable so the main controls stay near the top.
 
 All dashboard detail views share a smaller header and wider content frame. Weather
-places current conditions beside forecasts; Activity places today's metrics beside
-the week; Meals places the next dinner beside following dinners without duplicating
-it. Schedule and Tasks use two columns when room permits. Compact TV media and poll
+places current conditions beside forecasts; Activity shows today's metrics,
+beyond-goal progress and the week, with fetch/status information below. Meals pins
+the current dinner while following meals scroll. Schedule uses a grouped agenda;
+Tasks uses two columns when room permits. Compact TV media and poll
 views have smaller artwork/QR areas and less padding. Content dimensions, font choice
 and system font scale determine whether columns fit. Long lists and larger text
 remain scrollable; information is not silently discarded to force a single screen.
@@ -128,6 +129,21 @@ at 960×540 and 1920×1080. Start
 `node ../server/pairing-web/node_modules/vite/bin/vite.js --config test/details.vite.config.mjs`,
 then run `npm run test:details` with Playwright available. Real TV remote traversal,
 overscan and TalkBack should still be verified on hardware after installing.
+
+**Settings → Cards** separates Arrange cards from Add cards. Choose Adjust to
+move/resize a visible card while the live preview stays in view. Hidden cards,
+feeds, shared activity and polls have grouped add controls. Hiding keeps the
+card's settings; removing a feed/poll removes its layout entry. Removing a poll
+card preserves its round/votes. **Settings → Ambient** includes a live backdrop
+thumbnail as well as the full-screen Preview action. See the
+[settings regression guide](test/SETTINGS.md) for detailed behavior and fixtures.
+
+Weather details preload secondary saved cities while foregrounded, preserve newer
+usable observations and display the provider observation time in that location's
+local time. Today's H/L describes the remaining forecast samples, not a measured
+full-day range; forecast points are three hours apart. These changes require
+updated Functions and TV code together; see the
+[weather/cache contract](../server/functions/README.md).
 
 ## Run the app
 
@@ -179,7 +195,7 @@ RSS/Atom feed cards can be added on the TV or in companion Dashboard → Layout 
 
 Open **Settings → People** to invite another Google account to consent to activity-only sharing. Each person can have an independently arranged activity widget and revoke their share; this does not switch the dashboard login or grant layout editing. See [People](../server/pairing-web/PEOPLE.md).
 
-Create reusable polls and voting rounds on the companion **Polls** page; add round widgets in Dashboard Studio, publish, and let participants scan the QR. Names stay private to the owner; browser-level duplicate protection is not verified-person identity. See [Polls](../server/pairing-web/POLLS.md). The TV Cards section can hide/show built-ins, polls, and shared activity; Layout can apply saved companion designs.
+Create reusable polls and voting rounds on the companion **Polls** page; add round widgets in Dashboard Studio, publish, and let participants scan the QR. **Settings → Polls** on the TV also creates a two-to-six-choice poll and starts a round, then offers a separate Add created poll card action. If the layout is full, the created poll remains available; retrying a lost response reuses the request ID. Deploy the updated `polls` function before releasing this TV build. Full management stays on the companion. Names stay private to the owner; browser-level duplicate protection is not verified-person identity. See [Polls](../server/pairing-web/POLLS.md). The TV Cards section can hide/show built-ins, polls, and shared activity; Layout can apply saved companion designs.
 
 ### Connect a meal plan
 
@@ -240,6 +256,12 @@ opportunities and the shared components that support them.
 The app includes `assets/tv-banner.png` for the launcher tile, `assets/icon.png` for the square icon, and `assets/homescreen-splash.png` for the startup mark. Edit and run `scripts/generate-brand-assets.ps1`, or replace the PNGs. Keep the banner at 16:9 with readable text. After changing artwork, run `npx expo prebuild --platform android`, then build and reinstall the app; a Metro reload cannot update native assets.
 
 ## Next steps
+
+Follow the [ordered next-step plan](../docs/NEXT_STEPS.md): finish the remaining
+TV smoke/lifecycle checks, capture a controlled rendering trace, and start
+activity-provider feasibility alongside this work. The October 22 Sony results
+show mixed frame timings and partial UI verification; the
+[smoke checklist](TV_TEST_CHECKLIST.md) records the checks still open.
 
 The [companion roadmap](../server/pairing-web/COMPANION_ROADMAP.md) and [project status](../docs/PROJECT_STATUS.md) track remaining work. Polls, shared activity, RSS/Atom feeds, saved designs/history, reading controls, and cached dashboard cold startup are implemented in source. Profiles/general household roles, independent per-TV appearance, daily-content widgets, full calendar/task management, broader media, first-load prefetch, and offline coverage for other feeds remain open. Current-build TV readability, remote focus, accessibility, and reliability still need hardware checks.
 

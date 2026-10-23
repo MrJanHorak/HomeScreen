@@ -1,6 +1,6 @@
 # Vision and implementation status
 
-Audited October 9, 2026 against source at `5d3ee1e`, the pre-audit README, original TV design/MVP plan, component guides, tests, and dated release/security evidence. Checked items mean **implemented in source for the stated scope**, not fully deployed or certified on hardware. Unchecked items include partial implementations, explained below.
+Reconciled October 23, 2026 against source through `55ef529` and all 17 commits after the October 9 documentation baseline `5b0d802`. The original vision audit used `5d3ee1e`, the pre-audit README and original TV design/MVP plan. Checked items mean **implemented in source for the stated scope**, not fully deployed or certified on hardware. Unchecked items include partial implementations, explained below. See the [history audit](reviews/history-documentation-audit-2026-10-23.md) for commit coverage and [next-step plan](NEXT_STEPS.md) for completion gates.
 
 The core household dashboard is substantially accomplished: the six original information cards, live integrations, remote detail panels, appearance customization, favorite apps, and idle ambient mode all exist. The broader product vision is incomplete. A single percentage would obscure the difference between implemented dashboard behavior, optional future ideas, and public-release readiness.
 
@@ -21,6 +21,13 @@ broader hardware checks remain pending. See the [dated device results](reviews/t
 Desktop benchmark tooling records scenario/build metadata, compares results, and
 uses fresh command WaitTime for resume because this TV caches cold TotalTime.
 
+October 9–17 changes also implement cached startup and bounded resume retries,
+RSS/Atom widgets, grouped schedule details, beyond-goal activity visuals, pinned
+meal details, wider media queue previews, sticky Cards/live ambient previews,
+voice-preview refinements, TV poll creation and weather freshness improvements.
+These refine the implemented dashboard; they do not add calendar week/month
+browsing, task editing, profiles or a media catalog.
+
 ### Household information
 
 - [x] Today's schedule and upcoming events from Google Calendar; detail agenda and event status.
@@ -28,10 +35,10 @@ uses fresh command WaitTime for resume because this TV caches cold TotalTime.
 - [x] Google Tasks lists, due labels, and remote task completion.
 - [ ] Full task management and completed-task history: upstream reads incomplete tasks; creation, editing, reopening, and persistent completed history are missing.
 - [x] Daily activity, goals, basic metrics, and seven-day history via Google Fit.
-- [x] Current weather, hourly/daily forecasts, saved locations, active/default city, and details.
+- [x] Current weather, three-hour forecast samples and daily aggregates, saved locations, active/default city, and details. Default-city precedence, independent ten-minute weather caching, observation timestamps and foreground secondary-city preloading are implemented. Today's H/L covers remaining forecast samples, not full-day observed extrema.
 - [x] Today's and upcoming dinners from an optional read-only Google Sheet, including supplied meal metadata.
 - [ ] Full meal planning: editing, recipes/groceries views, and broader household meal management are missing.
-- [x] Household polls for movie/game/dinner/activity questions, reusable rounds, QR participation, and aggregate TV results. These are generic polls; no movie/game catalog is attached.
+- [x] Household polls for movie/game/dinner/activity questions, reusable rounds, QR participation, and aggregate TV results. Settings → Polls also creates a limited two-to-six-choice poll/round with idempotent retries; full management remains on the companion. These are generic polls; no movie/game catalog is attached.
 - [x] RSS/Atom feed widget instances with per-card source/title/headline limits, companion previews/custom URLs, TV source selection/story summaries/QR links, and cached outage fallback. Added October 10; see [Feeds](../server/pairing-web/FEEDS.md) for release and validation scope.
 
 ### Personalization and idle use
@@ -48,7 +55,8 @@ uses fresh command WaitTime for resume because this TV caches cold TotalTime.
 
 ### Entertainment, platform, and reliability
 
-- [x] Favorite installed app launcher row.
+- [x] Favorite installed app launcher row with native in-process metadata/artwork caching, package-change invalidation and manual refresh.
+- [x] Return-focus memory, dashboard state preserved beneath ambient mode, TV-local reduced motion, and standard network/settings/input controls under Settings → Device. The extra header shortcut was removed.
 - [x] Continue Watching from supported Android Play Next publishers, local queue/hide controls, and provider program intents when available.
 - [ ] Media hub: TMDB/catalog lookup, persistent personal watchlists, recently watched, music-specific shortcuts, and user-controlled recommendations are missing. A favorite music app can already be launched as an app.
 - [ ] Broader cross-app content links are missing beyond provider-published Play Next intents.
@@ -56,7 +64,8 @@ uses fresh command WaitTime for resume because this TV caches cold TotalTime.
 - [x] D-pad focus controls, back/exit behavior, adaptive widget layouts, and selectable detail views in source.
 - [ ] Full TV polish still requires current-build physical remote, TalkBack/narration, font-scale, overscan, QR-distance, and couch-readability checks; browser fixtures cover only part of this.
 - [x] Unified cached dashboard endpoint and isolation of upstream failures.
-- [x] Cached TV cold startup: an account-scoped dashboard summary persists locally and restores after session recovery while a background refresh runs. Saved snapshots up to 24 hours old show their source timestamp and remain visible on a refresh failure; sign-out/revocation clears them.
+- [x] Cached TV cold startup: an account-scoped dashboard summary persists locally and restores after session recovery while a background refresh runs. Saved snapshots up to 24 hours old retain their source timestamp and remain visible on a refresh failure; the failure footer shows the timestamp/retry state. Sign-out/revocation clears them. Restoring a snapshot alone does not show a dashboard freshness label while the initial request is pending.
+- [x] Foreground summary refresh with a 15-second whole-operation deadline, immediate resume refresh, background cancellation, deduplicated requests and one/two/four/five-minute recovery retries. Hardware standby/offline recovery still needs the recorded smoke pass.
 - [ ] Immediate/offline-first startup remains partial for first-ever launches, expired/missing caches, non-default-city weather, and separate Polls/People feeds. The backend still fetches providers on a cache miss. No scheduled dashboard prefetch exists; `syncUserData` is on demand.
 - [ ] Universal search, Home Assistant/smart-home controls, quotes/jokes/opt-in verses remain unimplemented. RSS/Atom news/information feeds were added October 10.
 - [ ] Other Smart TV platforms remain unimplemented; Android TV/Google TV is the native target, with a browser preview.
@@ -68,7 +77,7 @@ uses fresh command WaitTime for resume because this TV caches cold TotalTime.
 | Home, Calendar, Watch, Favorites, Settings, Smart Home pages and bottom navigation | One dashboard, favorite-app row, modal details, and settings side menu | Simpler navigation supports the calm dashboard; standalone calendar/watch browsing remains absent. |
 | Personal profiles and household-specific dashboards | One owner UID/configuration; other accounts can consent to activity-only sharing | Shared activity is useful, but layout ownership and personal feeds still do not switch by profile. |
 | Broad media hub, TMDB, local watchlist, and deep links | Android Play Next and installed-app shortcuts | Content and resume behavior depend on publishers/device support. |
-| Synchronize → cache → immediate display | Ten-minute backend cache, five-minute dashboard requests, persisted TV summary restored during background refresh | Returning TVs can display a saved summary offline after session recovery; first-ever/expired-cache latency and scheduled prefetch remain open. |
+| Synchronize → cache → immediate display | Ten-minute backend summary cache with independent weather recheck, five-minute foreground requests and immediate resume refresh, persisted TV summary restored during background refresh | Returning TVs can display a saved summary offline after session recovery; first-ever/expired-cache latency and scheduled prefetch remain open. |
 | General customization | Bounded 12×6 geometry and typed appearance, with fixed header/favorites | Predictable sizing and validation; arbitrary layouts/design tokens remain constrained. |
 | Mostly TV-centric implementation | Companion studio, draft/history lifecycle, voting portal, and account controls | Makes remote-unfriendly editing practical, but increases maintenance and deployment scope. |
 | Possible household polls and activity | Browser/invitation voting and explicit activity consent/expiry | Beyond the old signed-in-only poll roadmap; browser voting is not one verified person per vote. |
@@ -78,21 +87,24 @@ These changes broadly preserve the ad-free, useful, calm dashboard intent. The m
 
 ## Missing work and recommended order
 
-1. **Establish current release evidence.** Test applicable backend, Hosting, indexes/TTL and a current TV binary in staging; verify Google consent, Hosting vote cookies, two-account activity sharing/revocation, settings synchronization, and physical remote/readability. Recheck IAM, dependencies, cost/abuse controls, privacy/retention, OAuth verification, and Play requirements from the security/release guides. Earlier observations do not establish today's production state.
-2. **Migrate activity away from Google Fit.** The current adapters use Fit REST. Google's [Fit migration guide](https://developer.android.com/health-and-fitness/health-connect/migration/fit) says support lasts only through the end of 2026. The [Google Health API page](https://developers.google.com/health) currently says new projects are not being onboarded. Validate project eligibility and needed metrics before choosing the replacement; Health Connect would need a phone-side ingestion path. These vendor statements were checked October 9.
-3. **Close core-use gaps before adding more widgets.** Validate cached cold startup on hardware, improve first-load/cache freshness and remaining offline feeds, and expose provider-specific failure/staleness states (Calendar/Tasks currently become empty arrays when their providers fail). Decide whether week/month calendar views, task editing/history, or watchlists are the next household priority.
-4. **Decide the ownership model.** Choose whether profiles, household roles/source-specific sharing, or independent per-TV designs are needed. Activity invitations grant activity viewing only; they do not solve collaborative dashboard management.
-5. **Expand optional scope deliberately.** Media catalogs/linking, time-of-day modes, universal search, and smart-home controls can follow. RSS/Atom feed widgets were added October 10. The original plan listed possibilities rather than a commitment to implement all of them.
+The [next-step plan](NEXT_STEPS.md) is authoritative for order, reasons and completion evidence:
+
+1. **Finish the current-build TV baseline, then profile rendering.** Complete the remaining remote/lifecycle/offline checks. Use a controlled native trace to investigate the mixed October 22 frame results before changing shared rendering.
+2. **Start activity migration feasibility alongside the baseline.** Fit REST is still in use. Google's [migration guide](https://developer.android.com/health-and-fitness/health-connect/migration/fit) retains the end-of-2026 support limit, while the [Health API site](https://developers.google.com/health) now describes new-developer onboarding. Prove project access and metric coverage before selecting a server adapter or phone ingestion route. Guidance rechecked October 23.
+3. **Close integration/release and data-trust gaps.** Record the applicable deployed revisions, live consent/vote/sharing/sync results and security/release gates. Add explicit Calendar/Tasks failure and freshness states; successful empty arrays currently hide upstream failures.
+4. **Deliver one core-use workflow.** Calendar source selection and week navigation are the recommended next feature after reliability; validate household demand against task editing/history or watchlists. Decide ownership before implementing profiles or per-TV designs.
+5. **Defer optional expansion until those gates pass.** Broader media, search, smart-home and time-of-day modes remain possible scope rather than commitments. RSS/Atom is already implemented.
 
 ## Release and verification evidence
 
 | Evidence | What it establishes | What remains unknown |
 | --- | --- | --- |
 | [October 5 security review](../server/SECURITY_REVIEW.md) | Dated source fixes and production observations, including excessive IAM and a then-debug-signed APK | Current IAM, deployment of fixes, dependency state, and later-feature security coverage were not rechecked in this audit. |
-| [October 6 release guide](../HomeScreen/RELEASE.md) | Records signed APK/AAB checks and install/cold launch on one Sony TV | Does not validate October 7–9 changes or all hardware interactions; 16 KB runtime and Play review remain outstanding. The debug-signature finding has newer documented build evidence. |
+| [October 6 release guide](../HomeScreen/RELEASE.md) | Records signed APK/AAB checks and install/cold launch on one Sony TV | Historical build evidence; 16 KB runtime and Play review remain outstanding. Later source is not covered by that build alone. |
+| [October 22 TV report](reviews/tv-benchmark-2026-10-22.md) and [smoke checklist](../HomeScreen/TV_TEST_CHECKLIST.md) | Signed `025c1a9` baseline, signed header-cleanup update, five benchmark passes per build, retained account/preferences, header and Device-panel inspection on Sony VU1 | Mixed frame results; both builds contain the app cache. Detail/favorite return, ambient/motion, actual input switching, standby and broader accessibility/integration checks remain open. |
 | [Polls](../server/pairing-web/POLLS.md), [People](../server/pairing-web/PEOPLE.md), TV accessibility guides | Source behavior, mocked coverage, and required staging/hardware flows | Current rollout, multi-account consent, live latency/capacity, native accessibility, and physical usability remain unverified here. |
 
-The original audit changed documentation only; the subsequent cached-start implementation is described in the [TV client architecture](architecture/tv-client.md#cached-cold-start). Historical test counts in dated design/review documents remain historical. Browser, emulator, cloud, and hardware checks are not inferred from unit/type checks.
+Both documentation audits changed documentation only; intervening implementation is described in the [TV client architecture](architecture/tv-client.md#cached-cold-start) and feature guides. Fresh October 23 local checks are recorded in the [history audit](reviews/history-documentation-audit-2026-10-23.md#validation). Historical test counts below and in dated design/review documents remain historical. Browser, emulator, cloud, and hardware checks are not inferred from unit/type checks.
 
 Fresh October 9 checks: `npm run typecheck` passed for both clients and the backend build. `npm test` passed 51 TV tests and 123 backend tests; 12 emulator-dependent backend tests skipped because no Firestore emulator was configured. Local documentation validation checked 33 Markdown documents and 204 relative links/heading anchors with no missing targets. `git diff --check` passed. Browser fixtures, cloud deployment, OAuth smoke tests, APK builds, and physical hardware checks were not rerun for this documentation-only change.
 
@@ -115,7 +127,7 @@ Key source paths used for the assessment:
 - [Endpoint exports](../server/functions/src/index.ts), [Hosting routes](../server/firebase.json), and [companion route shell](../server/pairing-web/src/app/companionPage.ts).
 - [Polls provider](../HomeScreen/src/context/PollsContext.tsx), [People provider](../HomeScreen/src/context/PeopleContext.tsx), and [narration provider](../HomeScreen/src/accessibility/NarrationContext.tsx).
 
-## Documentation findings and cleanup
+## October 9 documentation findings and cleanup
 
 The documentation was **not fully current or consistently structured**. The root README mixed vision, implementation updates, API detail, troubleshooting, and future ideas. The roadmap/TV README called polls, sharing, history, and reading controls future work. Companion instructions incorrectly described legacy session auto-registration, a pairing-root redirect, TV-only Photos selection, and the earlier five-page site. Folder diagrams omitted providers/features, and security prose described only six-card geometry.
 

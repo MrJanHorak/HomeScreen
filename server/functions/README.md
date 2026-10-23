@@ -81,6 +81,7 @@ Aggregates Calendar events, Tasks, Fitness activity, local Weather, and optional
       "windDirection": "NW",
       "high": 78,
       "low": 61,
+      "highLowPeriod": "rest_of_day",
       "forecast": []
     },
     "upcomingEvents": [],

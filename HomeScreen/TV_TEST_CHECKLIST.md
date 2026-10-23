@@ -1,8 +1,8 @@
 # TV installation smoke test
 
 Use this after installing the October 22 TV experience build from USB. These checks
-need only the remote. No ADB connection is needed. The expected source revision is
-`025c1a9`; the later on-TV header cleanup is a working-tree update described in the
+need only the remote. No ADB connection is needed. The original baseline is
+`025c1a9`; the later on-TV header cleanup was committed in `55ef529` and is described in the
 [dated device report](../docs/reviews/tv-benchmark-2026-10-22.md). The app still
 reports version `1.0.0` / code `1`, so that number alone does not distinguish builds.
 
@@ -47,7 +47,14 @@ The release build was verified October 22, 2026:
 - `assets/cleanyourtv-notice.txt` was present and matched the tracked source exactly.
 
 The checked APK is `android/app/build/outputs/apk/release/app-release.apk`. A rebuilt
-APK can have a different hash. The benchmark/report changes added after `025c1a9`
-run on the computer and do not require another TV app build.
+APK can have a different hash. The header-cleanup APK installed on the Sony has
+SHA-256 `1ff60fd311b11c2bdcf79e19ebd5e857fc5d63bc00d6f23ea69b9262772d8b31`;
+the baseline hash above identifies the earlier header version. Both report the
+same version/code, so keep the hash and source/build record together. Desktop
+benchmark/report tooling changes do not require another TV app build; the header
+UI change did require the signed update recorded in the device report.
 
-Physical-TV checks above are pending; do not treat local packaging checks as device results.
+Only the Startup and Header rows above have recorded physical-TV results. Device
+panel control presence was also inspected in the dated report; actual shortcuts,
+input switching and the remaining lifecycle/focus/motion checks are pending.
+Do not treat packaging checks as device results.

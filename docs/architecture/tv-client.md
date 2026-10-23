@@ -1,24 +1,33 @@
 # Current HomeScreen structure
 
 ```text
-TVScreenWrapper / AuthProvider / ThemeProvider / NarrationProvider / DashboardProvider / PeopleProvider / PollsProvider / FeedsProvider
-└── HomeScreen
+AuthProvider / ThemeProvider / MotionProvider / NarrationProvider / TVScreenWrapper
+└── DashboardProvider / WatchNextProvider / FavoriteAppsProvider / PeopleProvider / PollsProvider / FeedsProvider
+  └── HomeScreen / ScreenFocusProvider
     ├── HeaderBar (greeting, clock/date, settings)
-    ├── Data-error banner, when needed
     ├── DashboardLayout
     │   ├── Automatic rows from appearance.cards; or
     │   └── DashboardGrid from appearance.grid (12 columns × 6 rows)
     │       └── DashboardCard (TVCard + inner measurement) → AdaptiveDashboardCard
     │           └── components/dashboard/<domain>/*DashboardCard
-    │   Weather · Schedule · Activity · Media · Meals · Tasks · Polls · Person activity
+    │   Weather · Schedule · Activity · Media · Meals · Tasks · Polls · Person activity · Feeds
     ├── FavoriteAppsCarousel (outside the movable grid)
+    ├── Reserved sync-status footer (quiet refresh/retry status)
     └── DashboardDetailModal → TVDetailModal
-        └── Weather / Schedule / Activity / Media / Meals / Tasks / Polls / Person activity / Settings
+        └── Weather / Schedule / Activity / Media / Meals / Tasks / Polls / Person activity / Feeds / Settings
 
-Idle → AmbientScreen; remote input → dashboard
+Idle → AmbientScreen overlay; remote input → same mounted dashboard
 ```
 
 The current `appearance.widgetLayout` adds stable widget instances and independent bindings/styles; legacy `cards`/`grid` remain a built-in fallback. People, Polls and RSS/Atom providers use separate feeds. RSS/Atom snapshots have their own account-scoped, validated disk cache. Source paths below are relative to `HomeScreen/` unless explicitly rooted.
+
+The dashboard's focus frame stays mounted beneath ambient mode, preserving card
+measurements/state while suppressing covered controls' focus/accessibility.
+Screen-local focus memory restores a stable widget/app/settings target after
+details, ambient or an external app. Motion preference is device-local. Native
+installed-app labels/artwork are cached in process and invalidated by package
+changes; see [TV experience](../../HomeScreen/TV_EXPERIENCE.md) for limits and
+hardware verification.
 
 `SettingsDetailView` handles side-menu navigation and delegates weather and device
 controls to `WeatherSettings` and `DeviceSettings`. These sections reuse
@@ -39,7 +48,8 @@ cards lives in `src/components/dashboard/shared`. Settings sections live in
 invalid or unsupported grid. `src/theme/ThemeContext.tsx` caches account-scoped
 appearance, saves changes, and refreshes remote settings every 45 seconds. The
 pure grid contract in `../server/functions/src/utils/dashboardLayout.ts` is shared
-by the backend, TV, and companion; Metro watches that folder explicitly.
+by the backend, TV, and companion; Metro watches that folder explicitly. Appearance
+polling pauses while the app is backgrounded.
 
 `dashboard/AdaptiveDashboardCard.tsx` selects a domain component and preserves
 the shared loading state. Each domain component lives in its own subfolder of
@@ -103,8 +113,9 @@ received the response. Storage errors do not prevent live startup. Once displaye
 a snapshot stays visible during an outage; the 24-hour limit applies to restoration.
 Saved data can include yesterday's schedule or completed tasks until refresh succeeds.
 
-The dashboard labels restored data with its saved timestamp and refresh state.
-After a live refresh fails, a single muted line below favorite apps says refresh
+The provider retains the restored snapshot's timestamp and cached flag, but cache
+restoration alone does not show a dashboard freshness label while the first live
+request is pending. After a live refresh fails, a single muted line below favorite apps says refresh
 is delayed and retrying, with the last summary timestamp. Its space is always
 reserved so failures do not shift cards. Technical errors appear in Device &
 Connectivity settings; refresh logs record time, duration and failure category
@@ -121,7 +132,18 @@ Non-default-city weather, Polls, and consented People activity use separate feed
 and are not persisted in this summary. People activity intentionally retains its
 existing memory-only expiry/revocation behavior. Provider-specific Calendar/Tasks
 failures still become empty arrays in a successful backend summary. Backend
-prefetch, image caching, and current-build physical TV testing remain separate work.
+prefetch and broader content-image caching remain separate work; native app
+artwork already has an in-process cache. Secondary-city weather now preloads and
+refreshes in the foreground, but is not persisted in the summary. The October 22
+Sony checks establish partial startup/UI evidence, not the offline and lifecycle
+matrix below. See the [next-step plan](../NEXT_STEPS.md).
+
+Weather has an independent ten-minute backend cache which is rechecked even on
+a summary-cache hit. The TV keeps newer usable observations when older summary
+data or failed location requests arrive. H/L values describe future forecast
+samples for the rest of the location's day; they are not observed daily extrema.
+See [Functions weather behavior](../../server/functions/README.md) for timestamps,
+secondary-city request cadence and rollout dependencies.
 
 `npm test` includes cache and session regression checks for offline restoration,
 refresh recovery, account isolation/cleanup, disk failure, invalid/expired entries,
@@ -130,7 +152,8 @@ the network is pending or unavailable. For hardware verification:
 
 1. Load a paired TV online; note its populated summary and selected default city.
 2. Force-stop the app, disconnect the network, and relaunch. Confirm cards appear
-   after session restoration with the saved timestamp and remain after refresh fails.
+   after session restoration and remain after refresh fails; the failure footer
+   should then show the saved timestamp and retry status.
    Also test a stalled connection: remote appearance must not hold the startup screen.
 3. Reconnect and use Settings refresh. Confirm current data replaces the snapshot
    and the saved-data banner clears.

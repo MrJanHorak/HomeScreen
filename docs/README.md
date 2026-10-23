@@ -1,6 +1,6 @@
 # Documentation index
 
-Reviewed and reorganized October 9, 2026. Start with [project status](PROJECT_STATUS.md) for the checked original vision, deviations, missing work, and limits of the evidence.
+Reorganized October 9; reconciled with history through `55ef529` on October 23, 2026. Start with [project status](PROJECT_STATUS.md) for the checked vision and evidence, then [next steps](NEXT_STEPS.md) for the ordered work and completion gates.
 
 ## Current guides
 
@@ -8,6 +8,7 @@ Reviewed and reorganized October 9, 2026. Start with [project status](PROJECT_ST
 | --- | --- |
 | [Root README](../README.md) | Project introduction and entry points |
 | [Project status](PROJECT_STATUS.md) | Vision completion and prioritized gaps |
+| [Next steps](NEXT_STEPS.md) | Ordered work, dependencies, reasoning and completion gates |
 | [Companion roadmap](../server/pairing-web/COMPANION_ROADMAP.md) | Completed product milestones and next work |
 | [TV README](../HomeScreen/README.md) | TV setup, user workflows, and fixture commands |
 | [Release guide](../HomeScreen/RELEASE.md) | Signing, APK/AAB builds, installation, and publication |
@@ -41,6 +42,7 @@ Reviewed and reorganized October 9, 2026. Start with [project status](PROJECT_ST
 - [TV design specification](vision/tv-ui-design.md): original design and checked MVP phases; proposed screens are not shipped behavior.
 - [Code quality review](reviews/code-quality.md): maintainability findings and historical checks.
 - [October 22 TV benchmark](reviews/tv-benchmark-2026-10-22.md): Sony measurements, header cleanup and on-device verification.
+- [October 23 history/documentation audit](reviews/history-documentation-audit-2026-10-23.md): coverage of all 17 commits since the October 9 documentation baseline, corrections and local validation.
 - [Companion UX review](../server/pairing-web/UX_REVIEW.md): dated assessments and settings coverage.
 - [October 5 security review](../server/SECURITY_REVIEW.md) and its [evidence directory](../server/security-review/2026-10-05): dated findings; later release evidence is recorded separately.
 

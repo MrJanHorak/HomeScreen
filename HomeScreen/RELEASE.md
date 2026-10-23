@@ -17,6 +17,15 @@ The signed APK was installed over network ADB on the Sony BRAVIA at
 (versionCode 1) with no `DEBUGGABLE` package flag. The previous debug app was
 manually uninstalled, so this release needs account pairing again.
 
+Later evidence, October 22: the signed `025c1a9` baseline and an in-place signed
+header-cleanup update were verified on the Sony VU1. Five benchmark passes per
+build and header/Device-panel inspection are recorded in the
+[dated device report](../docs/reviews/tv-benchmark-2026-10-22.md). The
+[smoke checklist](TV_TEST_CHECKLIST.md) distinguishes APK identities and records
+remaining remote/lifecycle checks. These results do not extend the October 6 AAB
+or 16 KB checks to a later build; use the [next-step gates](../docs/NEXT_STEPS.md)
+for current verification priorities.
+
 ## 1. Check the build tools and application configuration
 
 Run from the TV app directory:
