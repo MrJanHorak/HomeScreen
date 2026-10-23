@@ -54,15 +54,13 @@ const SECTIONS: {
 
 export default function SettingsDetailView({
   onPreviewAmbient = () => {},
-  initialSection = 'colors',
 }: {
   onPreviewAmbient?: () => void;
-  initialSection?: SettingsSection;
 }) {
   const theme = useTheme();
   const {height} = useWindowDimensions();
   const compact = height < 700;
-  const [section, setSection] = useState<SettingsSection>(initialSection);
+  const [section, setSection] = useState<SettingsSection>('colors');
   const scrollRef = useRef<ScrollView>(null);
   const menuRef = useRef<ScrollView>(null);
   const menuItems = useRef<Record<string, {y: number; height: number}>>({});
@@ -90,7 +88,7 @@ export default function SettingsDetailView({
               key={item.id}
               accessibilityRole='tab'
               accessibilityLabel={`${item.label} settings`}
-              hasTVPreferredFocus={item.id === initialSection}
+              hasTVPreferredFocus={item.id === 'colors'}
               accessibilityState={{ selected: active }}
               onPress={() => changeSection(item.id)}
               onLayout={({nativeEvent: {layout}}) => {menuItems.current[item.id] = layout;}}

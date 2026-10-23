@@ -7,6 +7,10 @@ Reviewed October 9, 2026. Checked milestones are implemented in source; use the 
 - [x] October 22 TV experience source update: cached installed apps, stable return focus,
   device-local reduced motion, standard TV controls, and hardware benchmark tooling.
   Motion remains configured on each TV; see [TV experience](../../HomeScreen/TV_EXPERIENCE.md).
+  Follow-up adds signed-APK verification, a USB-install smoke test, and comparison
+  reports for device benchmarks. Five passes per build and Settings → Device
+  presence checks completed on the Sony VU1; see [device results](../../docs/reviews/tv-benchmark-2026-10-22.md)
+  for mixed frame timings and the remaining hardware checks.
 
 - [x] Pair TV with permanent companion QR/address, Google browser ownership, and individually named/revocable managed TV sessions. Unmanaged legacy sessions must pair again.
 - [x] Account connections, permission explanations, meal Sheet setup, disconnect/sign-out/deletion controls.

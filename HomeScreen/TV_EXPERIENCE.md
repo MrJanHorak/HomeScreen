@@ -23,7 +23,7 @@ summary's existing foreground-aware refresh/cache behavior is retained.
 
 ## Focus and motion
 
-Dashboard widgets, favorite apps, Settings, and TV controls register stable focus
+Dashboard widgets, favorite apps, and Settings register stable focus
 IDs with screen-local memory. The dashboard stays mounted beneath ambient mode,
 preserving measurements and state while disabling focus/accessibility on its controls.
 Closing a detail panel, waking from ambient mode,
@@ -42,7 +42,7 @@ one position. Ambient animation loops and timers stop when backgrounded.
 
 ## TV controls
 
-The Android header's **TV controls** button opens Settings → Device. It shows
+Open **Settings → Device** for TV controls. It shows
 Wi-Fi/Ethernet/offline status, Network settings and Android settings shortcuts,
 and visible passthrough inputs reported by Android's `TvInputManager`, using custom
 input names when available. Devices with no reported inputs show no input list.
@@ -76,11 +76,22 @@ unit tests, native Kotlin compilation, Android Metro/Hermes export, and the
 benchmark's dry run passed. Browser checks used installed Chrome with bundled
 Playwright. They do not establish native TV focus behavior or a hardware speedup.
 
+Later that evening, five passes per build were completed on a Sony BRAVIA VU1
+(Android 11), and the header shortcut was removed and verified on the TV. Results,
+the resume-timing correction, and outstanding hardware checks are in the
+[dated benchmark report](../docs/reviews/tv-benchmark-2026-10-22.md). TV TypeScript
+checks and all 112 current unit tests passed. Frame-timing results are mixed;
+an overall speedup has not been established.
+
 On a physical TV, verify return focus after an app launch, a detail panel, Android
 settings, and ambient mode. Also remove/reorder the focused widget through the
 companion. Install/update/disable an app while another app is foregrounded, then
 return and confirm the app list is current. Check both motion choices, the OS's
 animation setting, input naming/switching, and devices without HDMI inputs.
+
+For a USB install, the [remote-only smoke test](TV_TEST_CHECKLIST.md) is the first
+step. It also records the checked APK identity and keeps actual TV results separate
+from local build verification.
 
 ## Repeatable device benchmark
 
@@ -92,9 +103,9 @@ and does not install builds or change the default launcher.
 
 ```powershell
 node scripts/benchmark-tv.cjs --help
-node scripts/benchmark-tv.cjs --serial 192.168.1.103:5555 --label before --runs 5
+node scripts/benchmark-tv.cjs --serial 192.168.1.103:5555 --label before --build-id OLD_COMMIT --runs 5
 # Install the comparison build using the release guide, then repeat:
-node scripts/benchmark-tv.cjs --serial 192.168.1.103:5555 --label after --runs 5
+node scripts/benchmark-tv.cjs --serial 192.168.1.103:5555 --label after --build-id NEW_COMMIT --runs 5
 ```
 
 Optional `--adb` selects the executable, `--component` selects an activity within
@@ -108,6 +119,41 @@ directory. Compare all repetitions, including outliers. The records contain mode
 Android/firmware, Android activity launch/wait times, navigation frame percentiles,
 Android's jank counts, and final process PSS memory. Unavailable metrics are null.
 Raw dumps and other apps' process lists are not saved.
+
+New schema-2 recordings also save the scenario's exact delays/key sequence,
+component, and installed app version/debuggable flag. `--build-id` is an
+operator-supplied source label, not an independently verified installed commit.
+Older schema-1 recordings remain readable by the comparison tool.
+
+Compare the two result files without contacting the TV:
+
+```powershell
+node scripts/compare-tv-benchmarks.cjs "artifacts/tv-benchmarks/before-TIMESTAMP.json" "artifacts/tv-benchmarks/after-TIMESTAMP.json"
+# Save a reviewable report, refusing to replace an existing file:
+node scripts/compare-tv-benchmarks.cjs "before.json" "after.json" --out "comparison.md"
+# Machine-readable summary:
+node scripts/compare-tv-benchmarks.cjs "before.json" "after.json" --format json
+```
+
+The report shows medians, signed changes, valid sample counts, retained outliers
+above twice the median, frame-weighted jank, and the final PSS snapshot. Its frame
+p50/p95 rows are medians of per-run percentiles, not pooled percentiles. Jank delta
+is in percentage points. Missing values stay missing and percentage changes from
+a zero baseline are omitted. Known model/Android/firmware, package, scenario, or
+debuggable-mode mismatches stop comparison; missing legacy metadata is called out.
+The operator still needs to use the same TV, layout, data, wallpaper and motion
+setting. These small samples do not establish statistical significance.
+
+The comparison follow-up passed all 111 default unit tests, including 9 report
+regressions covering outliers, weighted jank, missing/zero metrics, metadata
+mismatches, legacy data, installed-app metadata, file handling and CLI output.
+The schema-2 benchmark dry run passed. No new TV app build is needed for these
+desktop tooling changes.
+
+Cold launch uses Android `TotalTime`; resume comparison uses `WaitTime`. The
+Sony BRAVIA Android 11 test repeats cold `TotalTime` values when an existing
+activity resumes, so those values must not be presented as fresh resume timings.
+`WaitTime` measures the activity-manager command wait, not first-frame readiness.
 
 Android launch timing measures activity startup, not first populated dashboard
 content. Frame duration measures drawing, not key-to-focus latency. The frame ring

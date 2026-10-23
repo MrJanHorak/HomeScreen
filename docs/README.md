@@ -40,6 +40,7 @@ Reviewed and reorganized October 9, 2026. Start with [project status](PROJECT_ST
 - [Historical README snapshot](vision/original-readme.md): pre-audit accumulated intent and notes.
 - [TV design specification](vision/tv-ui-design.md): original design and checked MVP phases; proposed screens are not shipped behavior.
 - [Code quality review](reviews/code-quality.md): maintainability findings and historical checks.
+- [October 22 TV benchmark](reviews/tv-benchmark-2026-10-22.md): Sony measurements, header cleanup and on-device verification.
 - [Companion UX review](../server/pairing-web/UX_REVIEW.md): dated assessments and settings coverage.
 - [October 5 security review](../server/SECURITY_REVIEW.md) and its [evidence directory](../server/security-review/2026-10-05): dated findings; later release evidence is recorded separately.
 

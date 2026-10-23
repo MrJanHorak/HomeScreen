@@ -9,15 +9,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import useCompactTVLayout from '../../../hooks/useCompactTVLayout';
 import {useRememberedFocus} from '../../../navigation/ScreenFocus';
 
-export default function HeaderBar({ onOpenSettings, onOpenDevice }: { onOpenSettings: () => void; onOpenDevice?: () => void }) {
+export default function HeaderBar({ onOpenSettings }: { onOpenSettings: () => void }) {
   const currentTime = useCurrentDateTime();
   const greeting = useGreeting(currentTime.currentHour);
   const theme = useTheme();
   const compact = useCompactTVLayout();
   const [settingsFocused, setSettingsFocused] = useState(false);
-  const [deviceFocused, setDeviceFocused] = useState(false);
   const settingsFocus = useRememberedFocus('header:settings');
-  const deviceFocus = useRememberedFocus('header:device');
 
   return (
     <View style={[styles.headerContainer, compact && styles.compactHeader]}>
@@ -46,15 +44,6 @@ export default function HeaderBar({ onOpenSettings, onOpenDevice }: { onOpenSett
             {currentTime.formattedTime}
           </Text>
         </View>
-        {Platform.OS === 'android' && onOpenDevice && <Pressable
-          ref={deviceFocus.ref} accessibilityRole='button' accessibilityLabel='TV controls'
-          onPress={onOpenDevice} onFocus={() => {setDeviceFocused(true); deviceFocus.onFocus();}}
-          onBlur={() => setDeviceFocused(false)}
-          style={[styles.settingsButton, compact && styles.compactSettingsButton,
-            deviceFocused && [styles.settingsButtonFocused, {borderColor: theme.colors.focusRing}]]}>
-          <MaterialCommunityIcons name='television' size={compact ? 22 : 26}
-            color={deviceFocused ? theme.colors.textFocused : theme.colors.focusRing}/>
-        </Pressable>}
         <Pressable
           ref={settingsFocus.ref}
           accessibilityRole="button"

@@ -4,6 +4,17 @@
 const {execFileSync} = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
+const SCENARIO = Object.freeze({version: 1, coldSettleMs: 3000, settingsSettleMs: 1000,
+  resumeSettleMs: 2000, keySettleMs: 300, memorySettleMs: 5000,
+  keys: Object.freeze([22, 22, 21, 20, 22, 21, 19, 21])});
+
+function parseApp(text) {
+  const code = text.match(/\bversionCode=(\d+)/);
+  const name = text.match(/\bversionName=([^\r\n]+)/);
+  const flags = text.match(/\b(?:pkgFlags|flags)=\[([^\]]*)\]/);
+  return {versionCode: code ? Number(code[1]) : null, versionName: name ? name[1].trim().slice(0, 100) : null,
+    debuggable: flags ? /\bDEBUGGABLE\b/.test(flags[1]) : null};
+}
 
 function parseLaunch(text) {
   if (!/^Status:\s*ok\s*$/m.test(text) || /Error:|Exception|unable to resolve/i.test(text)) {
@@ -44,7 +55,7 @@ function parseMemory(text) {
 
 function options(args) {
   const result = {package: 'com.anonymous.mytvapp', runs: 5, label: 'baseline', out: 'artifacts/tv-benchmarks', adb: process.env.ADB || 'adb'};
-  const allowed = new Set(['serial', 'package', 'component', 'runs', 'label', 'out', 'adb']);
+  const allowed = new Set(['serial', 'package', 'component', 'runs', 'label', 'out', 'adb', 'build-id']);
   for (let index = 0; index < args.length; index++) {
     const name = args[index].replace(/^--/, '');
     if (name === 'help' || name === 'dry-run') {result[name] = true; continue;}
@@ -61,6 +72,7 @@ function options(args) {
   result.runs = Number(result.runs);
   if (!Number.isInteger(result.runs) || result.runs < 1 || result.runs > 30) throw new Error('--runs must be an integer from 1 to 30.');
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$/.test(result.label)) throw new Error('Use a short filename-safe label.');
+  if (result['build-id'] && (!/^[\x20-\x7e]{1,100}$/.test(result['build-id']))) throw new Error('--build-id must be 1–100 printable characters.');
   return result;
 }
 
@@ -79,28 +91,30 @@ async function benchmark(config) {
     return config['dry-run'] ? null : parseLaunch(output);
   };
   if (!config['dry-run'] && adb('get-state').trim() !== 'device') throw new Error('The selected ADB device is not ready.');
-  const result = {schema: 1, label: config.label, recordedAt: new Date().toISOString(), package: config.package,
+  const result = {schema: 2, label: config.label, recordedAt: new Date().toISOString(), package: config.package,
+    buildId: config['build-id'] || null, scenario: {...SCENARIO, component: config.component},
+    app: parseApp(shell('dumpsys', 'package', config.package)),
     device: {model: shell('getprop', 'ro.product.model').trim(), android: shell('getprop', 'ro.build.version.release').trim(),
       firmware: shell('getprop', 'ro.build.display.id').trim()}, cold: [], resume: [], navigation: [], memoryPssKb: null};
   for (let run = 0; run < config.runs; run++) {
     process.stdout.write(`Run ${run + 1}/${config.runs}\n`);
     shell('am', 'force-stop', config.package);
     result.cold.push(launch('-n', config.component));
-    await wait(3000);
+    await wait(SCENARIO.coldSettleMs);
     launch('-a', 'android.settings.SETTINGS');
-    await wait(1000);
+    await wait(SCENARIO.settingsSettleMs);
     result.resume.push(launch('-n', config.component));
-    await wait(2000);
+    await wait(SCENARIO.resumeSettleMs);
     shell('dumpsys', 'gfxinfo', config.package, 'reset');
     // Fixed sequence across row boundaries. No OK/Enter: never activate a household action.
-    for (const key of [22, 22, 21, 20, 22, 21, 19, 21]) {
+    for (const key of SCENARIO.keys) {
       shell('input', 'keyevent', String(key));
-      await wait(300);
+      await wait(SCENARIO.keySettleMs);
     }
     const frames = shell('dumpsys', 'gfxinfo', config.package, 'framestats');
     result.navigation.push(parseFrames(frames));
   }
-  await wait(5000);
+  await wait(SCENARIO.memorySettleMs);
   result.memoryPssKb = parseMemory(shell('dumpsys', 'meminfo', config.package));
   if (config['dry-run']) {process.stdout.write(JSON.stringify({commands}, null, 2) + '\n'); return;}
   const directory = path.resolve(config.out);
@@ -113,10 +127,10 @@ async function benchmark(config) {
 async function main() {
   const config = options(process.argv.slice(2));
   if (config.help) {
-    process.stdout.write('Usage: node scripts/benchmark-tv.cjs --serial IP:PORT [--label before] [--runs 5] [--out DIR] [--adb PATH] [--package NAME] [--component PACKAGE/ACTIVITY] [--dry-run]\nSwitches between HomeScreen and Android Settings, force-stops HomeScreen for cold starts, and sends arrow keys. Use a test TV with dialogs closed.\n');
+    process.stdout.write('Usage: node scripts/benchmark-tv.cjs --serial IP:PORT [--label before] [--build-id COMMIT] [--runs 5] [--out DIR] [--adb PATH] [--package NAME] [--component PACKAGE/ACTIVITY] [--dry-run]\nSwitches between HomeScreen and Android Settings, force-stops HomeScreen for cold starts, and sends arrow keys. Use a test TV with dialogs closed. Build ID is a label supplied by the operator.\n');
     return;
   }
   await benchmark(config);
 }
 if (require.main === module) main().catch((error) => {process.stderr.write(`${error.message}\n`); process.exitCode = 1;});
-module.exports = {parseLaunch, parseFrames, parseMemory, options, benchmark};
+module.exports = {parseLaunch, parseFrames, parseMemory, parseApp, options, benchmark, SCENARIO};

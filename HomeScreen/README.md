@@ -39,6 +39,7 @@ The screenshots capture one configured TV using automatic rows on October 1, 202
 For app caching, return focus, reduced motion, Android TV controls, and repeatable
 device measurements, see the [TV experience guide](TV_EXPERIENCE.md). Source
 acknowledgments and the bundled MIT notice are in [third-party notices](THIRD_PARTY_NOTICES.md).
+After a USB installation, use the [remote-only smoke test](TV_TEST_CHECKLIST.md).
 
 ## Fonts and reading
 

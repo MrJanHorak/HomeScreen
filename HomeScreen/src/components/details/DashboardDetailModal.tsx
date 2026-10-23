@@ -14,7 +14,7 @@ import FeedDetailView from './feeds/FeedDetailView';
 import {useAppearance} from '../../theme/ThemeContext';
 import {usePeople} from '../../context/PeopleContext';
 
-export type DetailTopic = CardId | 'settings' | 'device' | `poll_${string}` | `activity_${string}` | `feed_${string}`;
+export type DetailTopic = CardId | 'settings' | `poll_${string}` | `activity_${string}` | `feed_${string}`;
 
 type DetailDefinition = Pick<TVDetailModalProps,
   'title' | 'subtitle' | 'icon' | 'iconColor' | 'badgeText'> & {
@@ -68,9 +68,6 @@ export default function DashboardDetailModal({topic, onClose, onPreviewAmbient}:
   const {appearance} = useAppearance();
   const {people} = usePeople();
   if (!topic) return null;
-  if (topic === 'device') return <TVDetailModal visible onClose={onClose} title='TV controls' icon='television' spacious>
-    <SettingsDetailView initialSection='device' onPreviewAmbient={onPreviewAmbient}/>
-  </TVDetailModal>;
   if (topic.startsWith('feed_')) {
     const widget = appearance.widgetLayout?.widgets.find((w) => w.id === topic && w.kind === 'feed');
     return <TVDetailModal visible onClose={onClose} title={widget?.feed?.title || 'Feed'} subtitle="Stories and feed sources" icon="rss" iconColor="#F59E0B">

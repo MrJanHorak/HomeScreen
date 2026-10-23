@@ -13,6 +13,14 @@ are implemented. See [TV experience](../HomeScreen/TV_EXPERIENCE.md) for behavio
 verification, release requirements, and attribution. System Home replacement and a
 standalone Android screensaver remain open; no hardware speedup is established.
 
+Follow-up: a signed standalone APK at `025c1a9` passed signature/package/ABI and
+bundled-license verification. The connected Sony TV received the header cleanup
+through an in-place signed update. Five benchmark passes per build and the
+Settings → Device control-presence check completed; frame results are mixed and
+broader hardware checks remain pending. See the [dated device results](reviews/tv-benchmark-2026-10-22.md).
+Desktop benchmark tooling records scenario/build metadata, compares results, and
+uses fresh command WaitTime for resume because this TV caches cold TotalTime.
+
 ### Household information
 
 - [x] Today's schedule and upcoming events from Google Calendar; detail agenda and event status.

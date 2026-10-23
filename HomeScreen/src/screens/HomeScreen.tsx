@@ -44,7 +44,7 @@ function HomeScreenContent() {
     <View style={styles.container}>
       <ScreenFocusRestorer active={activeModal === null && !ambient.active}/>
       <DashboardFocusFrame hidden={ambient.active} style={styles.container}>
-        <HeaderBar onOpenSettings={() => setActiveModal('settings')} onOpenDevice={() => setActiveModal('device')} />
+        <HeaderBar onOpenSettings={() => setActiveModal('settings')} />
 
         <DashboardLayout cards={appearance.cards} grid={appearance.grid} widgetLayout={appearance.widgetLayout} onOpen={setActiveModal} />
 
