@@ -115,19 +115,23 @@ deadline releases the session even when authentication or transport ignores abor
 `src/services/dashboardCache.ts` stores a versioned, UID-scoped AsyncStorage entry
 containing schedule, upcoming events, tasks, meals, activity, default-city weather,
 saved location metadata, and the backend's `updatedAt` timestamp. Restoration
-rejects malformed, incompatible, oversized, future-dated, or more-than-24-hour-old
+rejects malformed, incompatible, oversized, future-dated, or more-than-seven-day-old
 entries. Age is measured from the source timestamp, rather than the time the TV
 received the response. Storage errors do not prevent live startup. Once displayed,
-a snapshot stays visible during an outage; the 24-hour limit applies to restoration.
+a snapshot stays visible during an outage; the seven-day limit applies to restoration.
 Saved data can include yesterday's schedule or completed tasks until refresh succeeds.
 
-The provider retains the restored snapshot's timestamp and cached flag, but cache
-restoration alone does not show a dashboard freshness label while the first live
-request is pending. After a live refresh fails, a single muted line below favorite apps says refresh
+The provider retains the restored snapshot's timestamp and cached flag. While the
+first live request is pending, a muted footer says Showing saved data, with the
+source date/time and Updating. After a live refresh fails, the footer says refresh
 is delayed and retrying, with the last summary timestamp. Its space is always
 reserved so failures do not shift cards. Technical errors appear in Device &
 Connectivity settings; refresh logs record time, duration and failure category
-without tokens or dashboard content.
+without tokens or dashboard content. Cache diagnostics identify restored, missing,
+expired, incompatible, oversized, future-dated and storage-failure outcomes without
+logging account identifiers or summary contents. The October 24 change extends the
+previous 24-hour restoration limit so daily/weekend openings retain a fallback;
+it neither renews source timestamps nor adds a new cache or persistence scope.
 `src/services/dashboardSession.ts` coordinates restore/refresh races and prevents
 updates or persistence after provider disposal. Sign-out and server-reported
 session revocation remove the account's snapshot through `clearLocalUserData`;
@@ -161,12 +165,13 @@ the network is pending or unavailable. For hardware verification:
 1. Load a paired TV online; note its populated summary and selected default city.
 2. Force-stop the app, disconnect the network, and relaunch. Confirm cards appear
    after session restoration and remain after refresh fails; the failure footer
-   should then show the saved timestamp and retry status.
+   should show the saved timestamp during refresh, then retry status on failure.
    Also test a stalled connection: remote appearance must not hold the startup screen.
 3. Reconnect and use Settings refresh. Confirm current data replaces the snapshot
    and the saved-data banner clears.
 4. Sign out/revoke the TV and pair another account. Confirm prior-account data is
-   absent. Also verify first-ever launch and a cache older than 24 hours offline.
+   absent. Also verify a one-to-six-day-old cache restores with its original
+   timestamp, plus first-ever launch and a cache older than seven days offline.
 
 Run `npm test` from `HomeScreen/` for request, cache/session, layout-planner, and activity-summary checks. To test
 rendered cards, start the fixture from the repository root:

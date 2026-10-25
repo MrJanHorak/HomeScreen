@@ -2,12 +2,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { DashboardSummaryResponse } from '../../../shared/src/types';
 
 export const DASHBOARD_CACHE_KEY = '@tv_dashboard_summary_v1';
-export const DASHBOARD_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+// Keep a bounded fallback across daily use and weekends, measured from the
+// source timestamp. The dashboard labels restored data until refresh succeeds.
+export const DASHBOARD_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_CHARACTERS = 1024 * 1024;
 const object = (value: any) => value && typeof value === 'object' && !Array.isArray(value);
 const strings = (value: any, keys: string[]) => object(value) && keys.every((key) => typeof value[key] === 'string');
 const numbers = (value: any, keys: string[]) => object(value) && keys.every((key) => typeof value[key] === 'number' && Number.isFinite(value[key]));
 const list = (value: any, check: (item: any) => boolean) => Array.isArray(value) && value.every(check);
+const cacheStatus = (result: string) => console.info('Dashboard cache', {result});
 
 /** Reject damaged/incompatible snapshots before they reach card renderers. */
 function validSummary(data: any): data is DashboardSummaryResponse {
@@ -39,12 +42,20 @@ export async function loadDashboardCache(uid: string): Promise<DashboardSummaryR
   if (!uid) return null;
   try {
     const raw = await AsyncStorage.getItem(`${DASHBOARD_CACHE_KEY}:${uid}`);
-    if (!raw || raw.length > MAX_CHARACTERS) return null;
+    if (!raw) { cacheStatus('missing'); return null; }
+    if (raw.length > MAX_CHARACTERS) { cacheStatus('oversized'); return null; }
     const entry = JSON.parse(raw);
+    if (entry?.version !== 1 || entry.uid !== uid || !validSummary(entry.summary)) {
+      cacheStatus('incompatible'); return null;
+    }
     const age = Date.now() - Date.parse(entry.summary?.updatedAt);
-    return entry.version === 1 && entry.uid === uid && validSummary(entry.summary) &&
-      age >= 0 && age <= DASHBOARD_CACHE_MAX_AGE_MS ? entry.summary : null;
+    if (age < 0 || age > DASHBOARD_CACHE_MAX_AGE_MS) {
+      cacheStatus(age < 0 ? 'future-dated' : 'expired'); return null;
+    }
+    cacheStatus('restored');
+    return entry.summary;
   } catch {
+    cacheStatus('read-failed');
     return null; // Storage failures must not prevent a network startup.
   }
 }
@@ -52,16 +63,17 @@ export async function loadDashboardCache(uid: string): Promise<DashboardSummaryR
 // Serialize writes and removal so an in-flight save cannot recreate a signed-out cache.
 const writes = new Map<string, Promise<void>>();
 function queue(uid: string, action: () => Promise<void>): Promise<void> {
-  const next = (writes.get(uid) || Promise.resolve()).then(action).catch(() => undefined);
+  const next = (writes.get(uid) || Promise.resolve()).then(action).catch(() => { cacheStatus('write-failed'); });
   writes.set(uid, next);
   void next.then(() => { if (writes.get(uid) === next) writes.delete(uid); });
   return next;
 }
 
 export function saveDashboardCache(uid: string, summary: DashboardSummaryResponse): Promise<void> {
-  if (!uid || !validSummary(summary)) return Promise.resolve();
+  if (!uid) return Promise.resolve();
+  if (!validSummary(summary)) { cacheStatus('save-incompatible'); return Promise.resolve(); }
   const raw = JSON.stringify({ version: 1, uid, summary });
-  if (raw.length > MAX_CHARACTERS) return Promise.resolve();
+  if (raw.length > MAX_CHARACTERS) { cacheStatus('save-oversized'); return Promise.resolve(); }
   return queue(uid, () => AsyncStorage.setItem(`${DASHBOARD_CACHE_KEY}:${uid}`, raw));
 }
 

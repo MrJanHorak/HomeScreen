@@ -12,6 +12,7 @@ include the starting item, buttons pressed, expected destination, and actual des
 | Check | Remote actions | Expected result | Result |
 | --- | --- | --- | --- |
 | Startup | Open HomeScreen after installation. | Dashboard appears; returning paired TVs keep their account and layout. | Observed on Sony VU1, October 22; five cold starts per build |
+| Exit and reopen | From the dashboard, press Back, select Exit app, then reopen HomeScreen without force-stopping it. | TV launcher appears on exit; reopening shows the dashboard without the old confirmation. Back can open a new confirmation. | Old build reproduced the retained modal; signed fix passed launcher/retained-task reopen on Sony VU1, October 24 |
 | Header | Inspect the main header. | Clock and Settings gear; TV controls are under Settings → Device. | Verified on Sony VU1, October 22 |
 | Details return | Select a widget, open its details, then Back. | Focus returns to the same widget. | Passed for Activity on Sony VU1, October 23; other domains/removal fallback untested |
 | Favorite return | Open a favorite app, then return with Back or reopen HomeScreen. | The same app tile is selected; the favorites row reveals it. | Two ARD-main-screen returns passed without mirroring, October 23; original freeze unresolved |
@@ -70,3 +71,22 @@ Startup/Header have October 22 device results; the table includes later October
 23 results and limitations. The dated baseline report owns current follow-up
 evidence. Input switching and the remaining lifecycle/accessibility checks are pending.
 Do not treat packaging checks as device results.
+
+## October 24 exit confirmation fix
+
+The root exit handler now clears the confirmation's visible state before calling
+`BackHandler.exitApp()`. Android can retain the React tree when moving the task
+to the background, so exit must not leave that state true.
+
+Before the change, captures 74–76 reproduced confirmation → TV launcher → retained
+confirmation, with Exit app still focused after reopening. The signed fix was
+installed in place, preserving pairing and settings. Captures 78–80 show
+confirmation → launcher → populated dashboard with Settings focused and no exit
+dialog; Android reported a HOT launch of the retained task, not a cold restart.
+The checks used ADB-injected D-pad/Back keys on the physical Sony. Raw captures
+and logs are in the ignored `artifacts/tv-baseline-2026-10-23/` directory.
+
+APK SHA-256: `16103d18b08e789b6f504dfb6ae2d6b2a198b8f9c13c6e67504d5b80e9bc5314`.
+TV TypeScript checking, signed release build and APK Signature Scheme v2
+verification passed. The preceding cache update's 113-test baseline is unchanged;
+the exit-state correction was verified through the native interaction above.

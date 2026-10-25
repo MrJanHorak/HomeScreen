@@ -40,6 +40,18 @@ test('cold start restores the entire successful summary only for its account', a
   assert.equal(await cache.loadDashboardCache('another-owner'), null);
   assert.equal(await cache.loadDashboardCache(''), null);
 });
+test('daily and weekend startups restore saved data without extending source freshness', async () => {
+  const {cache} = storageSetup();
+  for (const days of [1, 2, 6]) {
+    const data = {...summary(), updatedAt: new Date(Date.now() - days * 86400000).toISOString()};
+    await cache.saveDashboardCache('owner', data);
+    const restored = await cache.loadDashboardCache('owner');
+    assert.deepEqual(restored, data);
+    await cache.saveDashboardCache('owner', restored);
+    assert.equal((await cache.loadDashboardCache('owner')).updatedAt, data.updatedAt);
+  }
+  assert.equal(cache.DASHBOARD_CACHE_MAX_AGE_MS, 7 * 86400000);
+});
 test('expired, future-dated, incompatible and corrupted entries are ignored', async () => {
   const {cache, disk} = storageSetup();
   const key = `${cache.DASHBOARD_CACHE_KEY}:owner`;
@@ -391,7 +403,7 @@ test('preference hydration and city-list edits do not fetch the summary again; d
   assert.equal(render().tasks, previousTasks);
 });
 
-test('cached dashboard synchronization stays quiet, but failures still show saved-data context', () => {
+test('cached dashboard shows its age during refresh and clears the notice after live data arrives', () => {
   let data = {isCached: true, error: null, lastUpdated: '2026-10-13T10:00:00Z'};
   const {default: HomeScreen} = load('src/screens/HomeScreen.tsx', {
     react: {useCallback: (fn) => fn, useEffect: () => {}, useState: (value) => [value, () => {}]},
@@ -412,7 +424,10 @@ test('cached dashboard synchronization stays quiet, but failures still show save
     '../navigation/DashboardFocusFrame': 'focus-frame',
   });
   const footer = () => HomeScreen().props.children.type().props.children[1].props.children[3];
-  assert.equal(footer().props.children, null, 'restored data needs no routine sync banner');
+  const savedMessage = footer().props.children.props.text;
+  assert.match(savedMessage, /Showing saved data/);
+  assert.match(savedMessage, /Last updated/);
+  assert.match(savedMessage, /Updating/);
   assert.equal(footer().props.style.height, 24, 'footer space remains stable');
   data = {...data, error: 'Offline'};
   const message = footer().props.children.props.text;
@@ -422,6 +437,8 @@ test('cached dashboard synchronization stays quiet, but failures still show save
   data = {...data, isCached: false};
   assert.equal(footer().props.children.props.text, message);
   assert.doesNotMatch(message, /Offline/);
+  data = {...data, error: null};
+  assert.equal(footer().props.children, null, 'a successful refresh clears the saved-data notice');
 });
 
 test('a stuck token refresh releases after the deadline even if fetch ignores abort', async (t) => {

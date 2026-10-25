@@ -20,8 +20,13 @@ import {ScreenFocusProvider, ScreenFocusRestorer} from '../navigation/ScreenFocu
 import DashboardFocusFrame from '../navigation/DashboardFocusFrame';
 
 function HomeScreenContent() {
-  const { error, lastUpdated } = useDashboard();
+  const { error, lastUpdated, isCached } = useDashboard();
   const savedData = lastUpdated ? `Last updated ${new Date(lastUpdated).toLocaleString()}` : '';
+  const syncMessage = error
+    ? `Refresh delayed · Retrying automatically${savedData ? ` · ${savedData}` : ''}`
+    : isCached && lastUpdated
+      ? `Showing saved data · ${savedData} · Updating…`
+      : null;
   const { appearance, ambientPhotos } = useAppearance();
   const theme = useTheme();
   const compact = useCompactTVLayout();
@@ -53,8 +58,8 @@ function HomeScreenContent() {
 
         {/* Reserve a quiet footer so connection changes never move the cards. */}
         <View style={styles.syncStatus} pointerEvents="none">
-          {error && <TVText
-            text={`Refresh delayed · Retrying automatically${savedData ? ` · ${savedData}` : ''}`}
+          {syncMessage && <TVText
+            text={syncMessage}
             typography="caption"
             color="textSecondary"
             numberOfLines={1}

@@ -72,7 +72,10 @@ function ThemedScreen() {
         <ExitConfirmationModal
           visible={showExitConfirmation}
           onCancel={() => setShowExitConfirmation(false)}
-          onExit={() => BackHandler.exitApp()}
+          onExit={() => {
+            setShowExitConfirmation(false);
+            BackHandler.exitApp();
+          }}
         />
       )}
     </>
