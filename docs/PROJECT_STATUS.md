@@ -40,6 +40,12 @@ data; sampled decode CPU fell, but launch ranges overlap and JS/render/GC work
 remains. No overall speedup or minute-long-delay fix is established. See the
 [startup evidence](reviews/tv-startup-2026-10-25.md).
 
+October 25 focus follow-up: customized cards now retain their content theme during
+focus/blur, avoiding unnecessary context-driven renders. A failing/passing React
+regression and all eight experience browser checks passed; the signed update is
+installed on the Sony. See the [focus investigation](reviews/tv-card-focus-2026-10-25.md)
+for native measurements and limits. The original startup delay remains open.
+
 October 9–17 changes also implement cached startup and bounded resume retries,
 RSS/Atom widgets, grouped schedule details, beyond-goal activity visuals, pinned
 meal details, wider media queue previews, sticky Cards/live ambient previews,

@@ -46,7 +46,7 @@
     "test:settings": "node --test test/settings.test.cjs",
     "test:reading": "node --test test/reading.test.cjs",
     "test:experience": "node --test test/tvExperience.test.cjs test/benchmarkReport.test.cjs",
-    "test:experience:browser": "node --test test/tvExperience.browser.test.cjs",
+    "test:experience:browser": "node --test test/tvExperience.browser.test.cjs test/cardFocus.browser.test.cjs",
     "benchmark:tv": "node scripts/benchmark-tv.cjs",
     "benchmark:compare": "node scripts/compare-tv-benchmarks.cjs"
   },

@@ -1,6 +1,6 @@
 import Pressable from './NarratedPressable';
 import Text from './ReadingText';
-import { ReactNode, useState } from 'react';
+import { ReactNode, useMemo, useState } from 'react';
 import {StyleSheet, ViewStyle, TextStyle, Platform} from 'react-native';
 import {
   CardThemeProvider,
@@ -49,12 +49,13 @@ export default function TVCard({
   const readingScheme = readingColors(theme.reading);
   // A reading color mode takes precedence over translucent custom surfaces.
   const customSurface = custom && !custom.useThemeSurface && !readingScheme;
-  const ink =
-    customSurface
+  // Focus changes decorate the shell; only appearance changes affect content ink.
+  const cardTheme = useMemo(() => {
+    const ink = customSurface
       ? cardInk(custom, theme.colors.background, theme.colors.focusRing, theme.reading.textColor)
       : null;
-  const cardTheme = ink
-    ? {
+    return ink
+      ? {
         ...theme,
         colors: {
           ...theme.colors,
@@ -70,7 +71,8 @@ export default function TVCard({
           glassChip: ink.subtle,
         },
       }
-    : theme;
+      : theme;
+  }, [custom, customSurface, theme]);
 
   const containerStyle: ViewStyle = {
     backgroundColor:
