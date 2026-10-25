@@ -7,6 +7,12 @@ plan changed. All gates below remain open unless a dated result says otherwise.
 
 ## Start with one verifiable TV baseline
 
+October 25 follow-up: a [native startup trace and five-pass comparison](reviews/tv-startup-2026-10-25.md)
+led to a scoped background-readiness fix, now installed on the Sony. Cache
+restoration passed; decode work fell in the trace pair, while overall timings
+remain mixed. Continue the open hardware checks and a screenshot-free focus/
+layout trace; this does not complete the rendering or lifecycle gates below.
+
 The next work item should be a **current-build remote/lifecycle verification pass
 on the Sony TV**, followed by a controlled rendering trace. Existing source and
 unit coverage are substantial, but the October 22 measurements do not establish

@@ -46,3 +46,4 @@ Thumbs.db
 
 # Local TV baseline captures/diagnostics contain household data.
 /artifacts/tv-baseline-*/
+/artifacts/tv-startup-*/

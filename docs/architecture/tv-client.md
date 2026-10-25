@@ -100,6 +100,12 @@ screen without waiting for remote appearance or photo requests. Appearance sync
 continues in the background; a late response does not overwrite pending or saved
 local edits made after startup.
 
+Background selection waits for authentication initialization and, for a paired
+account, local appearance readiness. This avoids requesting the default photo
+while a saved solid/custom background is loading. Confirmed signed-out pairing
+retains its default background. The October 25 [startup trace](../reviews/tv-startup-2026-10-25.md)
+records this resource fix and mixed timings; no overall speedup is established.
+
 `DashboardProvider` then starts local
 snapshot hydration and a summary request independently. A valid local snapshot
 clears card loading immediately; a successful network response replaces it and

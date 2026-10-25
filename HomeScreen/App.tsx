@@ -47,7 +47,8 @@ function Root() {
 }
 
 function ThemedScreen() {
-  const { appearance, photoDataUrl } = useAppearance();
+  const { appearance, photoDataUrl, ready } = useAppearance();
+  const {user, initializing} = useAuth();
   const [showExitConfirmation, setShowExitConfirmation] = useState(false);
 
   useEffect(() => {
@@ -59,7 +60,9 @@ function ThemedScreen() {
     return () => subscription.remove();
   }, []);
 
-  const selectedBackground = appearance.background === 'google-photo' && photoDataUrl
+  // Avoid decoding the default photo while the account's saved background loads.
+  const backgroundReady = !initializing && (!user || ready);
+  const selectedBackground = !backgroundReady ? undefined : appearance.background === 'google-photo' && photoDataUrl
     ? { uri: photoDataUrl }
     : appearance.background === 'photo' ? backgroundImage : undefined;
   return (

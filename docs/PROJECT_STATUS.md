@@ -33,6 +33,13 @@ motion choice was restored. The original freeze is not proven fixed, and the
 hardware gate remains open; see the
 [dated baseline results](reviews/tv-baseline-2026-10-23.md).
 
+October 25 startup investigation: a signed update defers background selection
+until authentication/local appearance are ready, avoiding an unused default
+photo for saved solid backgrounds. Five cold launches per build restored cached
+data; sampled decode CPU fell, but launch ranges overlap and JS/render/GC work
+remains. No overall speedup or minute-long-delay fix is established. See the
+[startup evidence](reviews/tv-startup-2026-10-25.md).
+
 October 9–17 changes also implement cached startup and bounded resume retries,
 RSS/Atom widgets, grouped schedule details, beyond-goal activity visuals, pinned
 meal details, wider media queue previews, sticky Cards/live ambient previews,
