@@ -1,6 +1,18 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const {buildCalendarFeed} = require("../lib/services/googleCalendar");
+const {fetchCalendarEvents} = require("../lib/services/googleCalendar");
+const {google} = require('googleapis');
+
+test('calendar list and per-calendar failures reject instead of reporting an empty agenda', async (t) => {
+  for (const listFails of [true, false]) {
+    t.mock.method(google, 'calendar', () => ({calendarList: {list: async () => {
+      if (listFails) throw new Error('Calendar list unavailable');
+      return {data: {items: [{id: 'primary', primary: true, timeZone: 'UTC'}]}};
+    }}, events: {list: async () => {throw new Error('Calendar events unavailable');}}}));
+    await assert.rejects(fetchCalendarEvents({accessToken: 'fixture'}), /unavailable/);
+  }
+});
 
 const primary = {id: "primary", summary: "Personal", primary: true};
 const work = {id: "work", summary: "Work", primary: false};

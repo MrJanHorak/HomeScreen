@@ -1,5 +1,5 @@
 import { onRequest } from "firebase-functions/v2/https";
-import {getAuthorizationVersion, recordUserQuota, saveDashboardCache} from "./utils/db";
+import {getAuthorizationVersion, getDashboardCache, recordUserQuota, saveDashboardCache} from "./utils/db";
 import { authenticatedUserId } from "./utils/requestAuth";
 import {logSafeError} from "./utils/safeLog";
 import {DashboardSummaryResponse} from "./types";
@@ -10,7 +10,8 @@ import {fetchUserDashboard} from "./services/dashboardSummary";
  */
 export async function syncUserDashboard(userId: string, timeZone = "UTC"): Promise<DashboardSummaryResponse> {
   const authorizationVersion = await getAuthorizationVersion(userId);
-  const summary = await fetchUserDashboard(userId, timeZone);
+  const cached = await getDashboardCache(userId).catch(() => null);
+  const summary = await fetchUserDashboard(userId, timeZone, cached?.summary);
 
   await saveDashboardCache(userId, summary, authorizationVersion);
   return summary;

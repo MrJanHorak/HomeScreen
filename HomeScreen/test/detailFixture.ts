@@ -40,6 +40,12 @@ Object.assign(window, {updateScheduleFixture: (patch: typeof scheduleOverride) =
 }});
 export const useDashboard = () => {
   const override = useSyncExternalStore(listener => {scheduleListeners.add(listener); return () => {scheduleListeners.delete(listener);};}, () => scheduleOverride);
+  const outage = params.has('providerOutage') ? {
+    sources: {calendar: {status: 'unavailable' as const, ...(!params.has('emptyOutage') && {updatedAt: new Date(Date.now() - 3600000).toISOString()})},
+      tasks: {status: 'unavailable' as const, ...(!params.has('emptyOutage') && {updatedAt: new Date(Date.now() - 3600000).toISOString()})}},
+    canCompleteTasks: false,
+    ...(params.has('emptyOutage') && {schedule: [], upcomingEvents: [], tasks: []}),
+  } : {};
   return {isLoading: false, isLive: true, error: null, refresh: noop, locationError: null,
   activeLocation: locations[0], savedLocations: locations, getWeatherForLoc: () => weather, setActiveLocation: noop, setDefaultLocation: noop,
   addLocation: noop, removeLocation: noop, weather, health,
@@ -48,7 +54,7 @@ export const useDashboard = () => {
   upcomingEvents: Array.from({length: 6}, (_, i) => ({id: `next${i}`, title: 'Upcoming appointment', time: '11:00 AM', endTime: '12:00 PM', category: 'Home', color: '#38bdf8', date: date(i+1)})),
   tasks: Array.from({length: many ? 30 : 8}, (_, i) => ({id: String(i), title: ['Pick up household supplies', 'Water the garden', 'Call a friend', 'Organize the bookshelf'][i%4], due: 'Tomorrow', completed: false})),
   completeTask: async (id: string) => {Object.assign(window, {lastCompletedTask: id});},
-  ...override,
+  ...outage, ...override,
 };};
 export const usePeople = () => ({people: [], error: null});
 export const useFeeds = () => ({feeds: {}, loading: false, offline: false, refresh: noop});

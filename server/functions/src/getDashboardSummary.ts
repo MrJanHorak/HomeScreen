@@ -34,7 +34,8 @@ export async function handleGetDashboardSummary(req: Request, res: Response): Pr
     res.set("Cache-Control", "private, no-store");
 
     const cached = await getDashboardCache(userId);
-    if (cached && Date.now() - cached.cachedAtMs < 10 * 60 * 1000) {
+    const providerFailed = cached?.summary.sources && Object.values(cached.summary.sources).some((source) => source.status === "unavailable");
+    if (cached && !providerFailed && Date.now() - cached.cachedAtMs < 10 * 60 * 1000) {
       // Weather has its own TTL. Reusing the summary must not extend that TTL.
       const locations = cached.summary.savedLocations;
       const city = locations?.find((loc) => loc.isDefault)?.query || locations?.[0]?.query;
@@ -49,7 +50,7 @@ export async function handleGetDashboardSummary(req: Request, res: Response): Pr
       res.status(429).json({error: "Please wait before refreshing the dashboard again"}); return;
     }
     const authorizationVersion = await getAuthorizationVersion(userId);
-    const responsePayload = await fetchUserDashboard(userId, req.header("X-Time-Zone") || "UTC");
+    const responsePayload = await fetchUserDashboard(userId, req.header("X-Time-Zone") || "UTC", cached?.summary);
 
     // Finish the write before returning; post-response work can be terminated.
     try {

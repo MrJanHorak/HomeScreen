@@ -142,9 +142,22 @@ This covers returning TVs with a recoverable authentication session and a usable
 snapshot. First-ever launches and expired/missing caches still need a connection.
 Non-default-city weather, Polls, and consented People activity use separate feeds
 and are not persisted in this summary. People activity intentionally retains its
-existing memory-only expiry/revocation behavior. Provider-specific Calendar/Tasks
-failures still become empty arrays in a successful backend summary. Backend
-prefetch and broader content-image caching remain separate work; native app
+existing memory-only expiry/revocation behavior. The optional `sources.calendar`
+and `sources.tasks` metadata distinguishes successful empty results, disconnected
+accounts and unavailable providers. Backend and TV reconciliation preserve each
+failed feed's last successful items and timestamp for at most seven days. A
+partial response cannot renew that timestamp; successful empty results clear old
+items, and explicit disconnection removes them. Legacy snapshots and responses
+without metadata remain readable. A late disk read can fill a failed feed after
+a partial network response, but cannot overwrite a successfully refreshed feed.
+The reconciled response, rather than failed empty arrays, is persisted.
+
+Cards label saved data and avoid successful-empty messages during outages;
+details and the footer show provider-specific freshness. Task completion is
+disabled until a live successful Tasks response arrives. Full request failures
+also mark feeds unavailable while keeping displayed data. Outage responses bypass
+the backend's ten-minute success cache on the next request to permit recovery.
+No new storage scope is introduced. Backend prefetch and broader content-image caching remain separate work; native app
 artwork already has an in-process cache. Secondary-city weather now preloads and
 refreshes in the foreground, but is not persisted in the summary. The October 22
 Sony checks establish partial startup/UI evidence, not the offline and lifecycle

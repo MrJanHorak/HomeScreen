@@ -14,7 +14,8 @@ import type {WidgetLayout} from '../../server/functions/src/utils/widgets';
 
 export type FixtureDashboard = Pick<ReturnType<typeof useDashboardContract>,
   'isLoading' | 'activeLocation' | 'savedLocations' | 'getWeatherForLoc' | 'setActiveLocation' |
-  'meals' | 'schedule' | 'upcomingEvents' | 'tasks' | 'weather' | 'health'>;
+  'meals' | 'schedule' | 'upcomingEvents' | 'tasks' | 'weather' | 'health'> &
+  Partial<Pick<ReturnType<typeof useDashboardContract>, 'sources' | 'isCached'>>;
 export type FixtureWatch = Pick<ReturnType<typeof useWatchNextContract>, 'status' | 'items'>;
 
 interface FixtureState {

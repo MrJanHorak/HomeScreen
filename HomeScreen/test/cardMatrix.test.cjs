@@ -47,6 +47,29 @@ for (const mode of ['compact','full']) test(`Schedule account labels stay hidden
   }
 });
 let browser;
+for (const mode of ['compact', 'full']) test(`provider outages distinguish unavailable, saved and successfully empty cards in ${mode} mode`, async t => {
+  const page = await browser.newPage({viewport: {width: mode === 'compact' ? 960 : 1920, height: 1080}});
+  t.after(() => page.close());
+  await page.goto(`http://127.0.0.1:5174/?mode=${mode}`);
+  await page.locator('[data-card="schedule"]').first().waitFor();
+  await page.evaluate(() => window.updateFixture({schedule: [], upcomingEvents: [], tasks: [], sources: {
+    calendar: {status: 'unavailable'}, tasks: {status: 'unavailable'},
+  }}));
+  await page.locator('[data-card="todo"]').getByText('Tasks unavailable', {exact: true}).first().waitFor();
+  assert.equal(await page.locator('[data-card="todo"]').getByText('All caught up', {exact: true}).count(), 0);
+  await page.locator('[data-card="schedule"]').getByText('Calendar unavailable', {exact: true}).first().waitFor();
+  await page.evaluate(() => {
+    const updatedAt = new Date(Date.now() - 3600000).toISOString();
+    window.updateFixture({schedule: [{id: 'saved-event', title: 'Saved appointment', time: '10:00 AM', endTime: '11:00 AM', category: 'Home', color: '#38bdf8'}],
+      tasks: [{id: 'saved-task', title: 'Saved errand', due: null}],
+      sources: {calendar: {status: 'unavailable', updatedAt}, tasks: {status: 'unavailable', updatedAt}}});
+  });
+  await page.locator('[data-card="todo"]').getByText('Saved errand', {exact: true}).first().waitFor();
+  await page.locator('[data-card="todo"]').getByText('Saved', {exact: true}).first().waitFor();
+  await page.locator('[data-card="schedule"]').getByText('Saved', {exact: true}).first().waitFor();
+  await page.evaluate(() => window.updateFixture({tasks: [], sources: {calendar: {status: 'ok', updatedAt: new Date().toISOString()}, tasks: {status: 'ok', updatedAt: new Date().toISOString()}}}));
+  await page.locator('[data-card="todo"]').getByText('All caught up', {exact: true}).first().waitFor();
+});
 before(async () => {browser = await chromium.launch({headless:true, ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? {executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE} : {})});});
 after(async () => {await browser?.close();});
 for (const mode of ['compact', 'full']) test(`activity ring and straight bar preserve over-goal progress across ${mode} sizes`, async t => {

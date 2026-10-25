@@ -18,6 +18,8 @@ const deferred = () => {
   const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
   return {promise, resolve, reject};
 };
+const sourceContract = load('../server/functions/src/utils/dashboardSources.ts');
+const noticeContract = load('src/services/dashboardSourceNotice.ts');
 function summary(title = 'Dinner') {
   return {schedule: [], upcomingEvents: [], tasks: [{id: 'task', title, due: null}],
     meals: {status: 'not_connected', items: []}, weather: {temp: '72°', condition: 'Sunny'},
@@ -30,7 +32,8 @@ function storageSetup(overrides = {}) {
   const storage = {getItem: async (key) => disk.get(key) || null,
     setItem: async (key, value) => {disk.set(key, value);},
     removeItem: async (key) => {disk.delete(key);}, ...overrides};
-  return {disk, storage, cache: load('src/services/dashboardCache.ts', {'@react-native-async-storage/async-storage': storage})};
+  return {disk, storage, cache: load('src/services/dashboardCache.ts', {'@react-native-async-storage/async-storage': storage,
+    '../../../server/functions/src/utils/dashboardSources': sourceContract})};
 }
 test('cold start restores the entire successful summary only for its account', async () => {
   const {cache} = storageSetup();
@@ -99,7 +102,53 @@ test('local account cleanup includes the dashboard snapshot', async () => {
   await local.clearLocalUserData('owner');
   assert.deepEqual(events, ['owner', 'feeds:owner', 'preferences']);
 });
-const {createDashboardSession} = load('src/services/dashboardSession.ts');
+const {createDashboardSession} = load('src/services/dashboardSession.ts', {'../../../server/functions/src/utils/dashboardSources': sourceContract});
+test('failed provider responses preserve saved tasks on disk and recovery can clear them', async () => {
+  const {cache} = storageSetup();
+  const saved = summary('Saved task');
+  saved.sources = {calendar: {status: 'ok', updatedAt: saved.updatedAt}, tasks: {status: 'ok', updatedAt: saved.updatedAt}};
+  await cache.saveDashboardCache('owner', saved);
+  let response = {...summary(), tasks: [], sources: {calendar: {status: 'ok', updatedAt: new Date().toISOString()}, tasks: {status: 'unavailable'}}};
+  const applied = [];
+  const session = createDashboardSession({restore: () => cache.loadDashboardCache('owner'), fetch: async () => response,
+    save: (data) => cache.saveDashboardCache('owner', data), apply: data => applied.push(data), failed: () => {}, settled: () => {}});
+  await session.restore(); await session.refresh(); await flush();
+  const disk = await cache.loadDashboardCache('owner');
+  assert.equal(disk.tasks[0].title, 'Saved task');
+  assert.equal(disk.sources.tasks.updatedAt, saved.updatedAt);
+  assert.equal(disk.sources.tasks.status, 'unavailable');
+  response = {...response, sources: {...response.sources, tasks: {status: 'ok', updatedAt: new Date().toISOString()}}};
+  await session.refresh(); await flush();
+  assert.deepEqual(applied.at(-1).tasks, []);
+  assert.deepEqual((await cache.loadDashboardCache('owner')).tasks, []);
+  session.dispose();
+});
+
+test('late disk data fills only failed providers after a partial network response', async () => {
+  const s = sessionSetup();
+  const restore = s.session.restore(), refresh = s.session.refresh();
+  const fresh = {...summary('Fresh task'), sources: {calendar: {status: 'unavailable'}, tasks: {status: 'ok', updatedAt: new Date().toISOString()}}};
+  s.network.resolve(fresh); await refresh;
+  const saved = {...summary('Old task'), schedule: [{id: 'meeting', title: 'Saved event'}]};
+  s.disk.resolve(saved); await restore;
+  assert.equal(s.applied.at(-1).data.tasks[0].title, 'Fresh task');
+  assert.equal(s.applied.at(-1).data.schedule[0].title, 'Saved event');
+  assert.equal(s.applied.at(-1).data.sources.calendar.updatedAt, saved.updatedAt);
+  assert.equal(s.saved.at(-1).schedule[0].title, 'Saved event');
+  s.session.dispose();
+});
+
+test('repeated partial refreshes cannot renew an expired provider timestamp', () => {
+  const saved = summary('Old task');
+  const failed = {...summary(), tasks: [], sources: {calendar: {status: 'ok', updatedAt: saved.updatedAt}, tasks: {status: 'unavailable'}}};
+  const retained = sourceContract.mergeDashboardSources(saved, failed);
+  const expired = sourceContract.mergeDashboardSources(retained, {...failed, updatedAt: new Date().toISOString()}, Date.parse(saved.updatedAt) + 8 * 86400000);
+  assert.deepEqual(expired.tasks, []);
+  assert.equal(expired.sources.tasks.updatedAt, undefined);
+  const disconnected = sourceContract.mergeDashboardSources(saved, {...failed, sources: {...failed.sources, tasks: {status: 'not_connected'}}});
+  assert.deepEqual(disconnected.tasks, []);
+  assert.equal(disconnected.sources.tasks.updatedAt, undefined);
+});
 test('feed snapshots are account-scoped, reject damaged links, and serialize sign-out after pending writes', async () => {
   const disk = new Map(); const pending = deferred(); let delayed = false;
   const storage = {getItem: async (key) => disk.get(key) || null, removeItem: async (key) => disk.delete(key),
@@ -325,9 +374,18 @@ test('DashboardProvider clears card loading from disk, maps default-city weather
   const restored = render();
   assert.equal(restored.isLoading, false); assert.equal(restored.isCached, true); assert.equal(restored.isLive, false);
   assert.equal(restored.tasks[0].title, 'Saved task'); assert.equal(restored.lastUpdated, data.updatedAt);
+  assert.equal(restored.canCompleteTasks, false);
   assert.equal(restored.weather.temp, '72°'); assert.equal(restored.weather.location, 'Denver, US');
   network.reject(new Error('Offline')); await new Promise((resolve) => setImmediate(resolve));
   assert.equal(render().error, 'Offline'); assert.equal(render().tasks[0].title, 'Saved task');
+  assert.equal(render().sources.tasks.status, 'unavailable');
+  assert.equal(render().sources.tasks.updatedAt, data.updatedAt);
+});
+
+test('a provider without saved data never borrows the aggregate freshness timestamp', () => {
+  const notice = noticeContract.dashboardSourceNotice('Tasks', {status: 'unavailable'}, false, new Date().toISOString());
+  assert.match(notice, /Try refreshing later/);
+  assert.doesNotMatch(notice, /Saved/);
 });
 
 test('preference hydration and city-list edits do not fetch the summary again; default changes update only weather', async (t) => {
@@ -414,6 +472,7 @@ test('cached dashboard shows its age during refresh and clears the notice after 
     '../components/details/DashboardDetailModal': 'modal', '../components/ambient/AmbientScreen': 'ambient',
     '../components/ambient/AmbientWakeControl': 'ambient-wake',
     '../context/DashboardContext': {useDashboard: () => data},
+    '../services/dashboardSourceNotice': noticeContract,
     '../context/PollsContext': {usePollVisibility: () => () => {}},
     '../context/FeedsContext': {useFeedVisibility: () => () => {}},
     '../theme/ThemeContext': {useAppearance: () => ({appearance: {ambient: {}}}), useTheme: () => ({})},
@@ -439,6 +498,8 @@ test('cached dashboard shows its age during refresh and clears the notice after 
   assert.doesNotMatch(message, /Offline/);
   data = {...data, error: null};
   assert.equal(footer().props.children, null, 'a successful refresh clears the saved-data notice');
+  data = {...data, sources: {tasks: {status: 'unavailable', updatedAt: data.lastUpdated}, calendar: {status: 'ok', updatedAt: data.lastUpdated}}};
+  assert.match(footer().props.children.props.text, /Tasks refresh unavailable.*Saved/);
 });
 
 test('a stuck token refresh releases after the deadline even if fetch ignores abort', async (t) => {

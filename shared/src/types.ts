@@ -1,3 +1,6 @@
+import type {DashboardSources} from '../../server/functions/src/utils/dashboardSources';
+export type {DashboardSources, DashboardSourceState} from '../../server/functions/src/utils/dashboardSources';
+
 export interface SavedLocation {
   id: string;
   name: string;
@@ -116,6 +119,7 @@ export interface ActivityDay {
 }
 
 export interface DashboardSummaryResponse {
+  sources?: DashboardSources;
   schedule: CalendarEvent[];
   upcomingEvents: CalendarEvent[];
   meals: MealPlanSummary;

@@ -13,6 +13,7 @@ const {syncUserDashboard} = require('../lib/syncUserData');
 
 function setup(t, preferences = {}) {
   t.mock.method(db, 'getAuthorizationVersion', async () => 0);
+  t.mock.method(db, 'getDashboardCache', async () => null);
   t.mock.method(db, 'recordUserQuota', async () => true);
   const tokens = {google: {accessToken: 'fixture'}, ...preferences};
   t.mock.method(db, 'getStoredUserTokens', async () => tokens);
@@ -66,6 +67,51 @@ test('all upstream failures produce bounded, usable defaults', async (t) => {
   assert.equal(summary.health.distanceGoal, 8);
   assert.deepEqual(summary.weather, {temp: '--', condition: 'Unknown'});
   assert.equal(summary.meals.status, 'unavailable');
+  assert.equal(summary.sources.calendar.status, 'unavailable');
+  assert.equal(summary.sources.tasks.status, 'unavailable');
+});
+
+test('partial outages preserve last-success feeds and timestamps; a successful empty read clears them', async (t) => {
+  setup(t);
+  const updatedAt = new Date(Date.now() - 3600000).toISOString();
+  const previous = {schedule: [{id: 'event', title: 'Saved appointment'}], upcomingEvents: [],
+    tasks: [{id: 'task', title: 'Saved task', due: null}], updatedAt};
+  t.mock.method(calendar, 'fetchCalendarEvents', async () => {throw new Error('Calendar outage');});
+  t.mock.method(tasks, 'fetchActiveTasks', async () => {throw new Error('Tasks outage');});
+  const failed = await fetchUserDashboard('owner', 'UTC', previous);
+  assert.equal(failed.schedule[0].title, 'Saved appointment');
+  assert.equal(failed.tasks[0].title, 'Saved task');
+  assert.deepEqual(failed.sources.tasks, {status: 'unavailable', updatedAt});
+  assert.deepEqual(failed.sources.calendar, {status: 'unavailable', updatedAt});
+  t.mock.method(calendar, 'fetchCalendarEvents', async () => ({today: [], upcoming: []}));
+  t.mock.method(tasks, 'fetchActiveTasks', async () => []);
+  const recovered = await fetchUserDashboard('owner', 'UTC', failed);
+  assert.deepEqual(recovered.schedule, []); assert.deepEqual(recovered.tasks, []);
+  assert.equal(recovered.sources.calendar.status, 'ok');
+  assert.equal(recovered.sources.tasks.status, 'ok');
+});
+
+test('disconnected Google account does not retain old feeds', async (t) => {
+  setup(t, {google: {}});
+  const previous = {schedule: [], upcomingEvents: [], tasks: [{id: 'old', title: 'Old task', due: null}], updatedAt: new Date().toISOString()};
+  const result = await fetchUserDashboard('owner', 'UTC', previous);
+  assert.equal(result.sources.tasks.status, 'not_connected');
+  assert.deepEqual(result.tasks, []);
+});
+
+test('outage cache entries retry providers instead of hiding recovery for ten minutes', async (t) => {
+  setup(t);
+  t.mock.method(requestAuth, 'authenticatedUserId', async () => 'owner');
+  t.mock.method(db, 'getDashboardCache', async () => ({cachedAtMs: Date.now(), summary: {
+    schedule: [], upcomingEvents: [], tasks: [], updatedAt: new Date().toISOString(),
+    sources: {calendar: {status: 'unavailable'}, tasks: {status: 'unavailable'}},
+  }}));
+  t.mock.method(db, 'saveDashboardCache', async () => {});
+  const response = {set() {}, status(code) {this.code = code; return this;}, json(body) {this.body = body;}};
+  await handleGetDashboardSummary({method: 'GET', header: () => 'UTC'}, response);
+  assert.equal(response.code, 200);
+  assert.equal(calendar.fetchCalendarEvents.mock.calls.length, 1);
+  assert.equal(response.body.sources.calendar.status, 'ok');
 });
 
 test('dashboard reads return fresh data even if the cache write fails', async (t) => {
@@ -84,6 +130,14 @@ test('explicit synchronization requires a successful cache write', async (t) => 
   setup(t);
   t.mock.method(db, 'saveDashboardCache', async () => {throw new Error('cache unavailable');});
   await assert.rejects(syncUserDashboard('owner'), /cache unavailable/);
+});
+
+test('explicit synchronization still fetches fresh data when its optional previous cache cannot be read', async (t) => {
+  setup(t);
+  t.mock.method(db, 'getDashboardCache', async () => {throw new Error('Cache read unavailable');});
+  t.mock.method(db, 'saveDashboardCache', async () => {});
+  const result = await syncUserDashboard('owner');
+  assert.equal(result.sources.tasks.status, 'ok');
 });
 
 test('saved default query takes precedence over obsolete legacy coordinates', async (t) => {

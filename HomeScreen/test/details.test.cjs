@@ -21,6 +21,28 @@ async function open(t, topic, width, reading = false, busy = false) {
   return {page, errors};
 }
 
+for (const width of [960, 1920]) for (const empty of [false, true]) {
+  test(`provider outage details label saved or unavailable data at ${width}, empty ${empty}`, async t => {
+    const {page, errors} = await open(t, `todo&providerOutage${empty ? '&emptyOutage' : ''}`, width);
+    const notice = page.getByTestId('tasks-source-status');
+    await notice.waitFor();
+    assert.match(await notice.textContent(), empty ? /Try refreshing later/ : /Saved/);
+    assert.equal(await page.getByText('🎉 All tasks done!', {exact: true}).count(), 0);
+    assert.equal(await page.getByText('No pending tasks.', {exact: true}).count(), 0);
+    if (!empty) assert.equal(await page.getByRole('checkbox').first().getAttribute('aria-disabled'), 'true');
+    await page.goto(`http://127.0.0.1:5177/details.html?topic=schedule&providerOutage${empty ? '&emptyOutage' : ''}`);
+    await page.getByTestId('schedule-source-status').waitFor();
+    assert.match(await page.getByTestId('schedule-source-status').textContent(), empty ? /Try refreshing later/ : /Saved/);
+    assert.equal(await page.getByText('No events to show today', {exact: true}).count(), 0);
+    if (empty) await page.getByText('Calendar unavailable', {exact: true}).waitFor();
+    assert.deepEqual(errors, []);
+    if (width === 960 && !empty) {
+      await page.evaluate(async () => {await document.fonts.ready; await Promise.all(document.getAnimations().map(animation => animation.finished.catch(() => {})));});
+      await page.screenshot({path: '../artifacts/tv-baseline-2026-10-23/provider-saved-calendar.png'});
+    }
+  });
+}
+
 for (const width of [960, 1920]) for (const reading of [false, true]) {
   test(`meal menu scrolls independently of tonight at ${width}, reading ${reading}`, async t => {
     const {page, errors} = await open(t, 'meal', width, reading, true);

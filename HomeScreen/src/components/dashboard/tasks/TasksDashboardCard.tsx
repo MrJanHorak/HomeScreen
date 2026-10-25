@@ -13,7 +13,8 @@ import {pendingTasks, planTasksCard, taskDue, taskRowLines} from './tasksCardLay
 export default function TasksDashboardCard({width, height}: CardDimensions) {
   const theme = useTheme();
   const scale = useCompactTVLayout() ? 1 : 1.4;
-  const pending = pendingTasks(useDashboard().tasks);
+  const {tasks, sources, isCached} = useDashboard();
+  const pending = pendingTasks(tasks);
   const plan = planTasksCard({width, height, scale, tasks:pending});
   const visible = pending.slice(0, plan.count);
   const perColumn = Math.ceil(visible.length / plan.columns);
@@ -21,7 +22,7 @@ export default function TasksDashboardCard({width, height}: CardDimensions) {
   return <View testID='adaptive-todo' style={{width, height, minWidth:0}}>
     <View testID='tasks-content' style={{gap:plan.gap}}>
       <CardHeader id='todo' height={plan.header} scale={scale}
-        badge={pending.length ? `${pending.length} task${pending.length === 1 ? '' : 's'} to do` : undefined} />
+        badge={isCached || sources?.tasks.status === 'unavailable' ? 'Saved' : pending.length ? `${pending.length} task${pending.length === 1 ? '' : 's'} to do` : undefined} />
       {pending.length ? <View style={{flexDirection:'row', gap:24 * scale}}>
         {Array.from({length:plan.columns}, (_, col) => <View key={col} style={{width:plan.cellWidth, gap:row.gap * scale}}>
           {visible.slice(col * perColumn, (col + 1) * perColumn).map(task => <View
@@ -38,8 +39,8 @@ export default function TasksDashboardCard({width, height}: CardDimensions) {
         </View>)}
       </View> : <View testID='tasks-empty' style={{gap:8 * scale}}>
         {plan.emptyIcon > 0 && <MaterialCommunityIcons name='checkbox-marked-circle-outline' size={plan.emptyIcon} color={theme.colors.focusRing} />}
-        <Text style={{fontSize:20 * scale, lineHeight:24 * scale, fontWeight:'700', color:theme.colors.textPrimary}}>All caught up</Text>
-        {height / scale >= 110 && <Text style={{fontSize:11 * scale, lineHeight:14 * scale, color:theme.colors.textSecondary}}>Nothing pending</Text>}
+        <Text style={{fontSize:20 * scale, lineHeight:24 * scale, fontWeight:'700', color:theme.colors.textPrimary}}>{isCached ? 'No saved tasks' : 'All caught up'}</Text>
+        {height / scale >= 110 && <Text style={{fontSize:11 * scale, lineHeight:14 * scale, color:theme.colors.textSecondary}}>{isCached ? 'Updating your tasks…' : 'Nothing pending'}</Text>}
       </View>}
     </View>
     {plan.footer && <View testID='tasks-details-hint' style={{position:'absolute', bottom:0, left:0, right:0}}>

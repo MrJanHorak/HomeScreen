@@ -11,11 +11,13 @@ import {useDetailLayout} from '../../shared/DetailLayout';
 import {calendarDisplayName, scheduleDate, scheduleEnd, scheduleEventState, scheduleTime} from '../../dashboard/schedule/schedulePresentation';
 import {scheduleAgenda} from './scheduleAgenda';
 import ScheduleScrollView from './ScheduleScrollView';
+import {dashboardSourceNotice} from '../../../services/dashboardSourceNotice';
 
 export default function ScheduleDetailView() {
   const theme = useTheme();
   const {compact, width} = useDetailLayout();
-  const {schedule, upcomingEvents, isLoading} = useDashboard();
+  const {schedule, upcomingEvents, isLoading, sources, isCached, lastUpdated} = useDashboard();
+  const sourceNotice = dashboardSourceNotice('Calendar', sources?.calendar, isCached, lastUpdated);
   const now = useTVClock();
   const agenda = scheduleAgenda(schedule, upcomingEvents, now);
   const [activeTab, setActiveTab] = useState<'today' | 'upcoming'>('today');
@@ -61,6 +63,7 @@ export default function ScheduleDetailView() {
   };
 
   return <View style={styles.container}>
+    {sourceNotice && <Text testID='schedule-source-status' style={{color: secondary, fontSize: 16 * scale, marginBottom: 12 * scale}}>{sourceNotice}</Text>}
     <View accessibilityLabel='Schedule views' style={[styles.tabBar, {gap: 12 * scale}]}>
       {tabs.map(tab => {
         const selected = activeTab === tab.id;
@@ -82,9 +85,11 @@ export default function ScheduleDetailView() {
         {empty ? <View style={[styles.empty, {borderColor: theme.colors.glassBorder, backgroundColor: theme.colors.glassSurface}]}>
           <MaterialCommunityIcons name='calendar-blank-outline' size={36 * scale} color={secondary} />
           <Text style={{color: ink, fontSize: 22 * scale, fontWeight: '600'}}>
-            {isLoading ? 'Loading schedule…' : activeTab === 'today' ? 'No events to show today' : 'No upcoming events to show'}
+            {isLoading ? 'Loading schedule…' : sources?.calendar.status === 'unavailable' ? 'Calendar unavailable'
+              : sources?.calendar.status === 'not_connected' ? 'Calendar not connected' : isCached ? 'No saved events in this view'
+              : activeTab === 'today' ? 'No events to show today' : 'No upcoming events to show'}
           </Text>
-          {!isLoading && <Text style={{color: secondary, fontSize: 16 * scale}}>Events from your connected calendars appear here.</Text>}
+          {!isLoading && !sourceNotice && <Text style={{color: secondary, fontSize: 16 * scale}}>Events from your connected calendars appear here.</Text>}
         </View> : groups.map((group, index) => <View key={group.date || `undated-${index}`} testID='schedule-detail-day' style={{gap: 10 * scale}}>
           <View style={[styles.dayHeading, {gap: 12 * scale}]}>
             <Text accessibilityRole='header' style={{color: ink, fontSize: 20 * scale, fontWeight: '700'}}>

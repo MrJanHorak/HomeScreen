@@ -6,6 +6,7 @@ import {fetchActiveTasks} from "./googleTasks";
 import {fetchHealthData} from "./googleFit";
 import {fetchLocalWeather} from "./weatherService";
 import {fetchMealPlan} from "./mealSheet";
+import {mergeDashboardSources} from "../utils/dashboardSources";
 
 function unavailableHealth(tokens: StoredUserTokens): HealthSummary {
   return {
@@ -23,7 +24,7 @@ function unavailableHealth(tokens: StoredUserTokens): HealthSummary {
 }
 
 /** Fetch each data source independently so one failure leaves other cards usable. */
-export async function fetchUserDashboard(userId: string, timeZone = "UTC"): Promise<DashboardSummaryResponse> {
+export async function fetchUserDashboard(userId: string, timeZone = "UTC", previous?: DashboardSummaryResponse): Promise<DashboardSummaryResponse> {
   const tokens = await getStoredUserTokens(userId);
   const [calendar, tasks, health, weather, meals] = await Promise.allSettled([
     fetchCalendarEvents(tokens.google),
@@ -37,7 +38,15 @@ export async function fetchUserDashboard(userId: string, timeZone = "UTC"): Prom
     fetchMealPlan(tokens.mealSheet),
   ]);
 
-  return boundSummary({
+  const updatedAt = new Date().toISOString();
+  const connected = !!(tokens.google?.accessToken || tokens.google?.refreshToken);
+  return mergeDashboardSources(previous, boundSummary({
+    sources: {
+      calendar: !connected ? {status: "not_connected"} : calendar.status === "fulfilled" ?
+        {status: "ok", updatedAt} : {status: "unavailable"},
+      tasks: !connected ? {status: "not_connected"} : tasks.status === "fulfilled" ?
+        {status: "ok", updatedAt} : {status: "unavailable"},
+    },
     schedule: calendar.status === "fulfilled" ? calendar.value.today : [],
     upcomingEvents: calendar.status === "fulfilled" ? calendar.value.upcoming : [],
     tasks: tasks.status === "fulfilled" ? tasks.value : [],
@@ -47,6 +56,6 @@ export async function fetchUserDashboard(userId: string, timeZone = "UTC"): Prom
       status: "unavailable", items: [], message: "Meal plan is unavailable.",
     },
     savedLocations: tokens.savedLocations,
-    updatedAt: new Date().toISOString(),
-  });
+    updatedAt,
+  }));
 }

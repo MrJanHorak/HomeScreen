@@ -16,6 +16,7 @@ import type {
   DashboardSummaryResponse,
   SavedLocation,
   MealPlanSummary,
+  DashboardSources,
 } from '../../../shared/src/types';
 import type { UserPreferences } from '../../../shared/src/types';
 import {
@@ -37,6 +38,8 @@ import {
 } from '../services/weatherLocationService';
 
 interface DashboardContextValue {
+  sources?: DashboardSources;
+  canCompleteTasks: boolean;
   weather: ExtendedWeather | null;
   schedule: CalendarEvent[];
   upcomingEvents: CalendarEvent[];
@@ -88,6 +91,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const [isCached, setIsCached] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sources, setSources] = useState<DashboardSources | undefined>(undefined);
   const [locationError, setLocationError] = useState<string | null>(null);
 
   // Multi-location state
@@ -102,6 +106,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   const defaultWeatherKey = JSON.stringify([defaultLocation.id, defaultLocation.query]);
   const previousDefaultWeatherKey = useRef(defaultWeatherKey);
   const sessionRef = useRef<ReturnType<typeof createDashboardSession> | null>(null);
+  const summaryRef = useRef<DashboardSummaryResponse | null>(null);
   const mountedRef = useRef(false);
   const accountRef = useRef(uid);
   accountRef.current = uid;
@@ -241,6 +246,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   );
 
   const applySummary = useCallback((data: DashboardSummaryResponse, cached: boolean) => {
+    summaryRef.current = data;
+    setSources(data.sources);
     setSchedule((previous) => keepIfUnchanged(previous, data.schedule || []));
     setUpcomingEvents((previous) =>
       keepIfUnchanged(previous, data.upcomingEvents || []),
@@ -281,6 +288,15 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
       apply: applySummary,
       failed: (err) => {
         setIsLive(false);
+        const previous = summaryRef.current;
+        const failedSource = (name: keyof DashboardSources) => {
+          const source = previous?.sources?.[name];
+          return source?.status === 'not_connected' ? source : {
+            status: 'unavailable' as const,
+            updatedAt: source ? source.updatedAt : previous?.updatedAt,
+          };
+        };
+        setSources({calendar: failedSource('calendar'), tasks: failedSource('tasks')});
         setError(err instanceof Error ? err.message : 'Failed to fetch live data');
       },
       settled: () => setIsLoading(false),
@@ -297,8 +313,10 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
     };
   }, [uid, applySummary]);
 
+  const canCompleteTasks = isLive && !isCached && (!sources || sources.tasks.status === 'ok');
   const completeTask = useCallback(
     async (taskId: string) => {
+      if (!canCompleteTasks) return;
       // Optimistic UI update
       const task = tasks.find((item) => item.id === taskId);
       setTasks((prev) => prev.filter((item) => item.id !== taskId));
@@ -313,7 +331,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
         loadData();
       }
     },
-    [loadData, tasks],
+    [loadData, tasks, canCompleteTasks],
   );
 
   // Multi-location actions
@@ -457,6 +475,8 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   return (
     <DashboardContext.Provider
       value={{
+        sources,
+        canCompleteTasks,
         weather: currentActiveWeather,
         schedule,
         upcomingEvents,

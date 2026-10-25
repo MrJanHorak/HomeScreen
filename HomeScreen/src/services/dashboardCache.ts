@@ -1,10 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { DashboardSummaryResponse } from '../../../shared/src/types';
+import {DASHBOARD_SOURCE_MAX_AGE_MS, mergeDashboardSources} from '../../../server/functions/src/utils/dashboardSources';
 
 export const DASHBOARD_CACHE_KEY = '@tv_dashboard_summary_v1';
 // Keep a bounded fallback across daily use and weekends, measured from the
 // source timestamp. The dashboard labels restored data until refresh succeeds.
-export const DASHBOARD_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+export const DASHBOARD_CACHE_MAX_AGE_MS = DASHBOARD_SOURCE_MAX_AGE_MS;
 const MAX_CHARACTERS = 1024 * 1024;
 const object = (value: any) => value && typeof value === 'object' && !Array.isArray(value);
 const strings = (value: any, keys: string[]) => object(value) && keys.every((key) => typeof value[key] === 'string');
@@ -18,6 +19,12 @@ function validSummary(data: any): data is DashboardSummaryResponse {
   const day = (item: any) => strings(item, ['date']) && numbers(item, ['steps', 'distance', 'calories']) &&
     (item.activeMinutes === null || numbers(item, ['activeMinutes']));
   return object(data) && typeof data.updatedAt === 'string' && Number.isFinite(Date.parse(data.updatedAt)) &&
+    (data.sources === undefined || (object(data.sources) && ['calendar', 'tasks'].every((name) => {
+      const source = data.sources[name];
+      return object(source) && ['ok', 'unavailable', 'not_connected'].includes(source.status) &&
+        (source.updatedAt === undefined || typeof source.updatedAt === 'string' && Number.isFinite(Date.parse(source.updatedAt))) &&
+        (source.status !== 'ok' || typeof source.updatedAt === 'string');
+    }))) &&
     list(data.schedule, event) && list(data.upcomingEvents, event) &&
     list(data.tasks, (item) => strings(item, ['id', 'title']) && (item.due === null || typeof item.due === 'string')) &&
     object(data.meals) && ['ok', 'not_connected', 'unavailable'].includes(data.meals.status) &&
@@ -53,7 +60,7 @@ export async function loadDashboardCache(uid: string): Promise<DashboardSummaryR
       cacheStatus(age < 0 ? 'future-dated' : 'expired'); return null;
     }
     cacheStatus('restored');
-    return entry.summary;
+    return mergeDashboardSources(null, entry.summary);
   } catch {
     cacheStatus('read-failed');
     return null; // Storage failures must not prevent a network startup.
@@ -72,7 +79,7 @@ function queue(uid: string, action: () => Promise<void>): Promise<void> {
 export function saveDashboardCache(uid: string, summary: DashboardSummaryResponse): Promise<void> {
   if (!uid) return Promise.resolve();
   if (!validSummary(summary)) { cacheStatus('save-incompatible'); return Promise.resolve(); }
-  const raw = JSON.stringify({ version: 1, uid, summary });
+  const raw = JSON.stringify({ version: 1, uid, summary: mergeDashboardSources(null, summary) });
   if (raw.length > MAX_CHARACTERS) { cacheStatus('save-oversized'); return Promise.resolve(); }
   return queue(uid, () => AsyncStorage.setItem(`${DASHBOARD_CACHE_KEY}:${uid}`, raw));
 }

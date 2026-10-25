@@ -159,6 +159,17 @@ No public image URL is introduced.
 
 ## Additional implemented endpoints
 
+The dashboard summary includes optional `sources.calendar` and `sources.tasks`
+records with `status` (`ok`, `unavailable`, `not_connected`) and a last-success
+`updatedAt` when available. A failed provider retains its previous feed for at
+most seven days without renewing that timestamp. A successful empty response
+clears saved items; disconnected accounts do not reuse old feeds. Calendar list
+or per-calendar read failures propagate to this status instead of returning a
+successful empty agenda. Outage cache entries retry providers on the next request
+under the existing quota rather than delaying recovery for ten minutes.
+Deploy `getDashboardSummary` and `syncUserData` with the updated TV for the full
+failure/freshness UI; the additive contract remains compatible with older clients.
+
 The export manifest in [`src/index.ts`](src/index.ts) is authoritative. In addition to the endpoints above:
 
 - `appearanceStudio` manages owner drafts, named designs, history, and revision checks; TV sessions can read saved designs only.

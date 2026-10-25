@@ -18,15 +18,20 @@ import AmbientWakeControl from '../components/ambient/AmbientWakeControl';
 import {useNarration} from '../accessibility/NarrationContext';
 import {ScreenFocusProvider, ScreenFocusRestorer} from '../navigation/ScreenFocus';
 import DashboardFocusFrame from '../navigation/DashboardFocusFrame';
+import {dashboardSourceNotice} from '../services/dashboardSourceNotice';
 
 function HomeScreenContent() {
-  const { error, lastUpdated, isCached } = useDashboard();
+  const { error, lastUpdated, isCached, sources } = useDashboard();
   const savedData = lastUpdated ? `Last updated ${new Date(lastUpdated).toLocaleString()}` : '';
-  const syncMessage = error
+  const providerNotice = [
+    sources?.calendar.status === 'unavailable' ? dashboardSourceNotice('Calendar', sources.calendar) : null,
+    sources?.tasks.status === 'unavailable' ? dashboardSourceNotice('Tasks', sources.tasks) : null,
+  ].filter(Boolean).join(' · ');
+  const syncMessage = providerNotice || (error
     ? `Refresh delayed · Retrying automatically${savedData ? ` · ${savedData}` : ''}`
     : isCached && lastUpdated
       ? `Showing saved data · ${savedData} · Updating…`
-      : null;
+      : null);
   const { appearance, ambientPhotos } = useAppearance();
   const theme = useTheme();
   const compact = useCompactTVLayout();

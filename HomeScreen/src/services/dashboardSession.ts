@@ -1,4 +1,5 @@
 import type { DashboardSummaryResponse } from '../../../shared/src/types';
+import {mergeDashboardSources} from '../../../server/functions/src/utils/dashboardSources';
 
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 15000;
@@ -14,6 +15,7 @@ export function createDashboardSession(options: {
 }) {
   let active = true;
   let liveReceived = false;
+  let current: DashboardSummaryResponse | null = null;
   let pending: Promise<void> | null = null;
   let controller: AbortController | null = null;
   let polling = false;
@@ -32,7 +34,19 @@ export function createDashboardSession(options: {
   const restore = async () => {
     try {
       const cached = await options.restore();
-      if (active && !liveReceived && cached) options.apply(cached, true);
+      if (!active || !cached) return;
+      if (!liveReceived) {
+        current = cached;
+        options.apply(cached, true);
+      } else if (current) {
+        // A late disk read can fill a failed feed, but never replace a fresh one.
+        const merged = mergeDashboardSources(cached, current);
+        if (JSON.stringify(merged) !== JSON.stringify(current)) {
+          current = merged;
+          options.apply(merged, false);
+          void options.save(merged).catch(() => undefined);
+        }
+      }
     } catch { /* A cache read is optional. */ }
   };
   const refresh = (): Promise<void> => {
@@ -51,8 +65,10 @@ export function createDashboardSession(options: {
     const timer = setTimeout(() => { timedOut = true; request.abort(); }, REQUEST_TIMEOUT_MS);
     pending = (async () => {
       try {
-        const data = await Promise.race([options.fetch(request.signal), canceled]);
+        const response = await Promise.race([options.fetch(request.signal), canceled]);
         if (!active || controller !== request || request.signal.aborted) return;
+        const data = mergeDashboardSources(current, response);
+        current = data;
         failures = 0;
         liveReceived = true;
         options.apply(data, false);

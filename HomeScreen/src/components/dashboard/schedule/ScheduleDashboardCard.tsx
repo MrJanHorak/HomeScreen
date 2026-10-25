@@ -14,7 +14,7 @@ import { planScheduleCard } from './scheduleCardLayout';
 import ScheduleAgenda from './ScheduleAgenda';
 
 export default function ScheduleDashboardCard({width, height}: CardDimensions) {
-  const { schedule, upcomingEvents } = useDashboard();
+  const { schedule, upcomingEvents, sources, isCached } = useDashboard();
   const theme = useTheme();
   const scale = useCompactTVLayout() ? 1 : 1.4;
   const now = useTVClock();
@@ -24,7 +24,7 @@ export default function ScheduleDashboardCard({width, height}: CardDimensions) {
   const detail = first ? scheduleDetail(first) : 'Open details to review your calendar';
   const plan = planScheduleCard({width, height, scale, title, hasEvent: Boolean(first), hasDetail: Boolean(detail),
     today: preview.today, upcoming: preview.upcoming});
-  const badge = first ? scheduleEventState(first, now) === 'in-progress' ? 'Happening now'
+  const badge = isCached || sources?.calendar.status === 'unavailable' ? 'Saved' : first ? scheduleEventState(first, now) === 'in-progress' ? 'Happening now'
     : preview.firstIsToday ? `${preview.todayCount} today` : scheduleDate(first.date) : undefined;
   const time = first ? scheduleTime(first) : '';
   const agenda = <View style={{flexDirection: plan.parallelGroups ? 'row' : 'column', gap: (plan.parallelGroups ? 16 : 8) * scale}}>

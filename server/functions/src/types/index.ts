@@ -1,3 +1,5 @@
+import type {DashboardSources} from "../utils/dashboardSources";
+
 export interface GoogleTokens {
   accessToken?: string;
   refreshToken?: string;
@@ -134,6 +136,7 @@ export interface WeatherSummary {
 }
 
 export interface DashboardSummaryResponse {
+  sources?: DashboardSources;
   schedule: CalendarEventSummary[];
   upcomingEvents: CalendarEventSummary[];
   meals: MealPlanSummary;

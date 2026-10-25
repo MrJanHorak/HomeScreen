@@ -6,11 +6,14 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTheme } from '../../../theme/ThemeContext';
 import { useDashboard } from '../../../context/DashboardContext';
 import {useDetailLayout} from '../../shared/DetailLayout';
+import {dashboardSourceNotice} from '../../../services/dashboardSourceNotice';
 
 export default function ToDoDetailView() {
   const theme = useTheme();
   const {twoColumns, compact} = useDetailLayout();
-  const { tasks, isLoading, completeTask } = useDashboard();
+  const { tasks, isLoading, completeTask, sources, isCached, lastUpdated, canCompleteTasks } = useDashboard();
+  const sourceNotice = dashboardSourceNotice('Tasks', sources?.tasks, isCached, lastUpdated);
+  const uncertain = isCached || canCompleteTasks === false;
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
 
   const toggleTask = (id: string) => {
@@ -28,6 +31,7 @@ export default function ToDoDetailView() {
 
   return (
     <View style={styles.container}>
+      {sourceNotice && <Text testID='tasks-source-status' style={{color: theme.colors.textSecondary, fontSize: 16, marginBottom: 12}}>{sourceNotice}</Text>}
       {/* Top Filter & Count Bar */}
       <View style={styles.topBar}>
         <View style={styles.filterPills}>
@@ -82,7 +86,7 @@ export default function ToDoDetailView() {
 
         <View style={styles.statsBadge}>
           <Text style={[styles.statsBadgeText, { color: theme.colors.focusRing }]}>
-            {pendingCount === 0 ? '🎉 All tasks done!' : `${pendingCount} tasks remaining`}
+            {uncertain ? 'Tasks awaiting refresh' : pendingCount === 0 ? '🎉 All tasks done!' : `${pendingCount} tasks remaining`}
           </Text>
         </View>
       </View>
@@ -92,18 +96,18 @@ export default function ToDoDetailView() {
         <View style={[styles.taskWrapper, twoColumns && {flexDirection: 'row', flexWrap: 'wrap'}]}>
           {filteredTasks.length === 0 && (
             <Text style={[styles.dueText, { color: theme.colors.textSecondary }]}>
-              {isLoading ? 'Loading tasks…' : filter === 'completed'
+              {isLoading ? 'Loading tasks…' : sourceNotice || (filter === 'completed'
                 ? 'Completed tasks are not included in this feed yet.'
-                : 'No pending tasks.'}
+                : 'No pending tasks.')}
             </Text>
           )}
           {filteredTasks.map((task) => (
             <Pressable
               key={task.id}
-              accessibilityRole='checkbox' accessibilityState={{checked: !!task.completed}}
-              accessibilityLabel={[task.title, task.due, task.completed ? 'Completed' : 'Mark complete'].filter(Boolean).join('. ')}
+              accessibilityRole='checkbox' accessibilityState={{checked: !!task.completed, disabled: Boolean(task.completed) || uncertain}}
+              accessibilityLabel={[task.title, task.due, task.completed ? 'Completed' : uncertain ? 'Refresh before completing' : 'Mark complete'].filter(Boolean).join('. ')}
               onPress={() => toggleTask(task.id)}
-              disabled={Boolean(task.completed)}
+              disabled={Boolean(task.completed) || uncertain}
               style={({ pressed }) => [
                 styles.taskCard,
                 twoColumns && {width: '49%'},

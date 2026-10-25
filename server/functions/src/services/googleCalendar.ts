@@ -143,7 +143,7 @@ export async function fetchCalendarEvents(tokens: GoogleTokens): Promise<Calenda
         return events;
       } catch (err) {
         logSafeError("Failed to fetch calendar events", err);
-        return [];
+        throw err;
       }
     };
     const results: Array<{calendar: CalendarEntry; event: CalendarV3.Schema$Event}[]> = [];
@@ -153,6 +153,6 @@ export async function fetchCalendarEvents(tokens: GoogleTokens): Promise<Calenda
     return buildCalendarFeed(results.flat(), now, timeZone);
   } catch (error) {
     logSafeError("Error fetching Google Calendar events", error);
-    return empty;
+    throw error;
   }
 }
