@@ -24,6 +24,13 @@ account lookup, which would hold the startup screen. Collect an actual slow
 launch using the installed diagnostics before treating that distinct network
 gate as the reported loading-card cause or changing authentication policy.
 
+The next baseline subcheck, [package-change invalidation](reviews/tv-package-changes-2026-10-25.md),
+passed October 25 on the current Sony build: install, renamed/artwork update,
+disable, re-enable and removal all updated the Apps list without manual Refresh
+or a HomeScreen restart. The temporary fixture was removed and the original
+visible app grid/focus restored. This closes that device-specific inventory check;
+the other hardware, offline/account and release gates remain open.
+
 The next work item should be a **current-build remote/lifecycle verification pass
 on the Sony TV**, followed by a controlled rendering trace. Existing source and
 unit coverage are substantial, but the October 22 measurements do not establish

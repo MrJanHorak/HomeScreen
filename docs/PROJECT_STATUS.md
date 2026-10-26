@@ -54,6 +54,13 @@ hold the startup screen, and is not proof of the reported loading-card delay.
 Secure-user reads took 16–36 ms in refined device samples. See the
 [phase results and limits](reviews/tv-startup-milestones-2026-10-25.md).
 
+October 25 package-change verification: all five temporary-fixture operations
+(install, label/artwork update, disable, re-enable and removal) refreshed the Sony
+Apps list automatically in the same retained HomeScreen process. The fixture was
+removed and the original visible grid/focus restored. No product code change was
+needed; the broader hardware gate remains open. See the
+[device evidence](reviews/tv-package-changes-2026-10-25.md).
+
 October 9–17 changes also implement cached startup and bounded resume retries,
 RSS/Atom widgets, grouped schedule details, beyond-goal activity visuals, pinned
 meal details, wider media queue previews, sticky Cards/live ambient previews,

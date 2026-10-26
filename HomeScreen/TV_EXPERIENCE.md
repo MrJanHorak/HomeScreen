@@ -98,6 +98,14 @@ companion. Install/update/disable an app while another app is foregrounded, then
 return and confirm the app list is current. Check both motion choices, the OS's
 animation setting, input naming/switching, and devices without HDMI inputs.
 
+October 25 current-build Sony verification passed install, label/artwork update,
+disable, re-enable and removal with a temporary unselected fixture while Android
+Settings covered HomeScreen. The same dashboard process updated its Apps list
+without manual Refresh; the fixture was removed and the original visible grid
+and focus restored. See the [package-change report](../docs/reviews/tv-package-changes-2026-10-25.md).
+Other OEMs, selected-favorite unavailability and remaining baseline checks are
+still unverified.
+
 For a USB install, the [remote-only smoke test](TV_TEST_CHECKLIST.md) is the first
 step. It also records the checked APK identity and keeps actual TV results separate
 from local build verification.

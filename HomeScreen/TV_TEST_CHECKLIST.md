@@ -16,6 +16,7 @@ include the starting item, buttons pressed, expected destination, and actual des
 | Header | Inspect the main header. | Clock and Settings gear; TV controls are under Settings → Device. | Verified on Sony VU1, October 22 |
 | Details return | Select a widget, open its details, then Back. | Focus returns to the same widget. | Passed for Activity on Sony VU1, October 23; other domains/removal fallback untested |
 | Favorite return | Open a favorite app, then return with Back or reopen HomeScreen. | The same app tile is selected; the favorites row reveals it. | Two ARD-main-screen returns passed without mirroring, October 23; original freeze unresolved |
+| Installed-app changes | Cover HomeScreen, then install/update/disable/re-enable/remove a temporary app and return without Refresh. | Installed-app list updates automatically, including changed labels/artwork. | All five operations passed on the same Sony process, October 25; temporary fixture removed; see [package-change evidence](../docs/reviews/tv-package-changes-2026-10-25.md) |
 | Ambient wake | Open Settings → Ambient → Preview. Press an arrow to wake; also wait for automatic idle entry and wake. | Dashboard returns with the previous entry point selected and the layout intact. | Original build failed; native-handler update passed all four preview arrows, Select/Back and automatic-idle arrow return to Activity on Sony, October 23; see dated follow-up |
 | Reduced motion | Settings → Accessibility → Reduce motion. Navigate cards, then preview ambient. Close and reopen HomeScreen. | Focus border remains visible without zoom; photo/plasma movement stops; preference is retained. | Card scale, sampled static photo and restart persistence passed October 23; full plasma/OS checks pending; original preference restored |
 | TV controls | Open Settings → Device; try Network settings, then return. | Correct system panel opens; HomeScreen returns to its Device panel. | Network/Android panels and section return passed October 23 |
@@ -38,8 +39,9 @@ Optional follow-ups after the first pass:
 
 - Change/reorder/remove the focused widget through the companion while details are
   open; close details and verify a sensible visible focus target.
-- Install/update/disable an app while another app is foregrounded, then return.
-  Settings → Apps should reflect the installed apps; its Refresh remains available.
+- Repeat package-change checks on other supported devices. The Sony fixture pass
+  covers install/update/disable/re-enable/removal; selected-favorite retention
+  during temporary unavailability and manual Refresh fallback remain untested.
 - For a timed poll, verify the join QR closes at the deadline even between minute ticks.
 - Switch **Use device setting** back on and verify the TV's animation accessibility
   setting is respected.
