@@ -106,6 +106,13 @@ and focus restored. See the [package-change report](../docs/reviews/tv-package-c
 Other OEMs, selected-favorite unavailability and remaining baseline checks are
 still unverified.
 
+The [October 25 motion pass](../docs/reviews/tv-motion-2026-10-25.md) confirmed
+reduced card zoom, sampled static plasma for the explicit app preference and
+the Android transition-animation setting, and live stop/resume in the same
+process. The original My photos backdrop, Use device setting and Android values
+were restored. These samples do not establish frame smoothness, complete
+photo/detail rotation, TalkBack/audio or support on other OEMs.
+
 For a USB install, the [remote-only smoke test](TV_TEST_CHECKLIST.md) is the first
 step. It also records the checked APK identity and keeps actual TV results separate
 from local build verification.

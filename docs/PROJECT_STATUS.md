@@ -61,6 +61,12 @@ removed and the original visible grid/focus restored. No product code change was
 needed; the broader hardware gate remains open. See the
 [device evidence](reviews/tv-package-changes-2026-10-25.md).
 
+October 25 motion verification: the Sony passed reduced card zoom, sampled
+plasma stillness with both the app and OS preference, and live OS-driven
+stop/resume without an app restart. Original motion, ambient source and system
+values were restored. No product change was needed; full photo/detail rotation
+and TalkBack/audio remain open. See the [motion report](reviews/tv-motion-2026-10-25.md).
+
 October 9–17 changes also implement cached startup and bounded resume retries,
 RSS/Atom widgets, grouped schedule details, beyond-goal activity visuals, pinned
 meal details, wider media queue previews, sticky Cards/live ambient previews,

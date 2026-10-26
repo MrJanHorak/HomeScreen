@@ -31,6 +31,12 @@ or a HomeScreen restart. The temporary fixture was removed and the original
 visible app grid/focus restored. This closes that device-specific inventory check;
 the other hardware, offline/account and release gates remain open.
 
+The [October 25 motion check](reviews/tv-motion-2026-10-25.md) also passed on the
+current Sony: reduced card zoom, sampled plasma stillness through both the local
+preference and OS setting, and live plasma stop/resume after OS changes. Original
+My photos, Use device setting and Android animation values were restored. Full
+photo/detail rotation, TalkBack/audio and the other open baseline checks remain.
+
 The next work item should be a **current-build remote/lifecycle verification pass
 on the Sony TV**, followed by a controlled rendering trace. Existing source and
 unit coverage are substantial, but the October 22 measurements do not establish
