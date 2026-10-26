@@ -9,6 +9,7 @@ function load(path, imports = {}) {
   }).outputText;
   const module = {exports: {}};
   const requireMock = (name) => {
+    if (name === './startupTiming') return {markStartup: () => false};
     if (!(name in imports)) throw new Error(`Unexpected import: ${name}`);
     return imports[name];
   };

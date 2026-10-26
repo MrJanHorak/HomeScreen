@@ -21,6 +21,7 @@ import {
   disconnectCurrentDevice,
 } from '../services/api';
 import { clearLocalUserData } from '../services/localUserData';
+import {markStartup} from '../services/startupTiming';
 
 const POLL_INTERVAL_MS = 3000;
 
@@ -49,7 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Restore a persisted session (or learn there isn't one)
   useEffect(() => {
+    markStartup('auth-listener');
     return onAuthStateChanged(auth, (u) => {
+      markStartup('auth-ready');
       setUser(u);
       setInitializing(false);
     });

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {markStartup} from './startupTiming';
 import type { DashboardSummaryResponse } from '../../../shared/src/types';
 import {DASHBOARD_SOURCE_MAX_AGE_MS, mergeDashboardSources} from '../../../server/functions/src/utils/dashboardSources';
 
@@ -48,7 +49,9 @@ function validSummary(data: any): data is DashboardSummaryResponse {
 export async function loadDashboardCache(uid: string): Promise<DashboardSummaryResponse | null> {
   if (!uid) return null;
   try {
+    markStartup('cache-read');
     const raw = await AsyncStorage.getItem(`${DASHBOARD_CACHE_KEY}:${uid}`);
+    markStartup('cache-read-resolved');
     if (!raw) { cacheStatus('missing'); return null; }
     if (raw.length > MAX_CHARACTERS) { cacheStatus('oversized'); return null; }
     const entry = JSON.parse(raw);
@@ -60,6 +63,7 @@ export async function loadDashboardCache(uid: string): Promise<DashboardSummaryR
       cacheStatus(age < 0 ? 'future-dated' : 'expired'); return null;
     }
     cacheStatus('restored');
+    markStartup('cache-validated');
     return mergeDashboardSources(null, entry.summary);
   } catch {
     cacheStatus('read-failed');

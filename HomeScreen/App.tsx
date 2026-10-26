@@ -14,6 +14,7 @@ import {PeopleProvider} from './src/context/PeopleContext';
 import {FeedsProvider} from './src/context/FeedsContext';
 import {NarrationProvider} from './src/accessibility/NarrationContext';
 import {MotionProvider} from './src/accessibility/MotionContext';
+import {markStartup} from './src/services/startupTiming';
 
 import backgroundImage from './assets/media/wp8860764-nasa-4k-wallpapers.jpg';
 
@@ -86,6 +87,7 @@ function ThemedScreen() {
 }
 
 export default function App() {
+  useEffect(() => {markStartup('app-effect');}, []);
   return (
     <AuthProvider>
       <ThemeProvider>

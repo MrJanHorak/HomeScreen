@@ -10,6 +10,7 @@ import useReadingFonts from './useReadingFonts';
 import {normalizeReading} from '../../../server/functions/src/utils/reading';
 import type {ReadingPreference} from '../../../server/functions/src/utils/reading';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {markStartup} from '../services/startupTiming';
 import { AppState, Platform } from 'react-native';
 import {validWidgetLayout, legacyWidgetProjection, widgetsFromLegacy} from '../../../server/functions/src/utils/widgets';
 import type {WidgetLayout} from '../../../server/functions/src/utils/widgets';
@@ -94,6 +95,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       };
     void (async () => {
       let local = DEFAULT_APPEARANCE;
+      markStartup('appearance-read');
       try {
         const stored = await AsyncStorage.getItem(`@tv_appearance_v1:${uid}`);
         if (stored) local = normalizeAppearance(JSON.parse(stored));
@@ -101,6 +103,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         console.warn('Could not load local appearance settings:', error);
       }
       if (cancelled) return;
+      markStartup('appearance-ready');
       // Root can mount the cached dashboard as soon as local settings are ready.
       // Remote appearance and photos must not hold startup behind the network.
       const localJson = JSON.stringify(local);

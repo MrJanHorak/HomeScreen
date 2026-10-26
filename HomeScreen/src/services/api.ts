@@ -1,4 +1,5 @@
 import { auth } from './firebase';
+import {markStartup} from './startupTiming';
 import { signOut as firebaseSignOut } from 'firebase/auth';
 import {clearLocalUserData} from './localUserData';
 import type { DashboardSummaryResponse, DevicePairingResponse, Weather } from '../../../shared/src/types';
@@ -74,15 +75,22 @@ const DEFAULT_API_URL = validatedApiUrl(
 
 /** Apply authentication and revoked-session cleanup consistently to JSON endpoints. */
 async function authenticatedRequest<T>(path: string, errorMessage: string, options: Omit<RequestInit, 'headers'> & {headers?: Record<string, string>} = {}): Promise<T> {
+  const startupRequest = path === 'getDashboardSummary' && markStartup('summary-request');
   const requestingUser = auth.currentUser;
-  const response = await fetch(`${DEFAULT_API_URL}/${path}`, {
-    ...options,
-    redirect: 'error',
-    headers: {...await authHeaders(), ...options.headers},
-  });
-  if (auth.currentUser !== requestingUser) throw new Error('The signed-in account changed.');
-  await handleRevokedSession(response);
-  return readJsonResponse<T>(response, errorMessage);
+  try {
+    const headers = {...await authHeaders(), ...options.headers};
+    if (startupRequest) markStartup('summary-token-ready');
+    const response = await fetch(`${DEFAULT_API_URL}/${path}`, {...options, redirect: 'error', headers});
+    if (startupRequest) markStartup('summary-http-ready');
+    if (auth.currentUser !== requestingUser) throw new Error('The signed-in account changed.');
+    await handleRevokedSession(response);
+    const data = await readJsonResponse<T>(response, errorMessage);
+    if (startupRequest) markStartup('summary-json-ready');
+    return data;
+  } catch (error) {
+    if (startupRequest) markStartup('summary-failed');
+    throw error;
+  }
 }
 
 export async function getUserPreferences(): Promise<{preferences: UserPreferences; updatedAtMs: number; hasSavedLocations: boolean}> {

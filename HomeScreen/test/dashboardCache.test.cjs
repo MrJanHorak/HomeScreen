@@ -8,6 +8,7 @@ function load(path, imports = {}) {
   }).outputText;
   const module = {exports: {}};
   new Function('module', 'exports', 'require', code)(module, module.exports, (name) => {
+    if (name.endsWith('/startupTiming')) return {markStartup: () => false};
     if (!(name in imports)) throw new Error(`Unexpected import: ${name}`);
     return imports[name];
   });

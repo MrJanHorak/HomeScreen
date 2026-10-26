@@ -46,6 +46,14 @@ regression and all eight experience browser checks passed; the signed update is
 installed on the Sony. See the [focus investigation](reviews/tv-card-focus-2026-10-25.md)
 for native measurements and limits. The original startup delay remains open.
 
+Startup phase follow-up: bounded timing diagnostics are installed on the Sony.
+Every measured cold launch restored the cache; untraced populated-card commits
+took 3.0–6.8 seconds after JS entry. The real Firebase SDK's network-gated auth
+initialization can wait 60 seconds in a local stalled-request probe; that would
+hold the startup screen, and is not proof of the reported loading-card delay.
+Secure-user reads took 16–36 ms in refined device samples. See the
+[phase results and limits](reviews/tv-startup-milestones-2026-10-25.md).
+
 October 9–17 changes also implement cached startup and bounded resume retries,
 RSS/Atom widgets, grouped schedule details, beyond-goal activity visuals, pinned
 meal details, wider media queue previews, sticky Cards/live ambient previews,

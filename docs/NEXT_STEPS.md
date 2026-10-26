@@ -15,6 +15,15 @@ removed unnecessary content renders for customized card surfaces and installed a
 signed update. Startup presentation/allocation work and the open hardware checks
 remain; these scoped fixes do not complete the rendering or lifecycle gates below.
 
+The subsequent [startup milestones](reviews/tv-startup-milestones-2026-10-25.md)
+separate authentication, local appearance, cache restoration and content commits.
+Four untraced launches committed cached content 3.0–6.8 seconds after JS entry;
+the minute-long loading-card state was not reproduced. A local probe of the real
+Firebase SDK confirmed a possible 60-second auth-initialization wait on a stalled
+account lookup, which would hold the startup screen. Collect an actual slow
+launch using the installed diagnostics before treating that distinct network
+gate as the reported loading-card cause or changing authentication policy.
+
 The next work item should be a **current-build remote/lifecycle verification pass
 on the Sony TV**, followed by a controlled rendering trace. Existing source and
 unit coverage are substantial, but the October 22 measurements do not establish

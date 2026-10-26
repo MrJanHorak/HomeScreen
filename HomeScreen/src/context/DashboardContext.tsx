@@ -28,6 +28,7 @@ import { getUserPreferences, saveUserPreferences } from '../services/api';
 import { useAuth } from './AuthContext';
 import { loadDashboardCache, saveDashboardCache } from '../services/dashboardCache';
 import { createDashboardSession } from '../services/dashboardSession';
+import {markStartup} from '../services/startupTiming';
 import {preferWeather, weatherLocationKey, weatherRefreshInterval} from '../services/weatherState';
 import {
   DEFAULT_LOCATIONS,
@@ -246,6 +247,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
   );
 
   const applySummary = useCallback((data: DashboardSummaryResponse, cached: boolean) => {
+    markStartup(cached ? 'cache-applied' : 'live-applied');
     summaryRef.current = data;
     setSources(data.sources);
     setSchedule((previous) => keepIfUnchanged(previous, data.schedule || []));
@@ -281,6 +283,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     mountedRef.current = true;
+    markStartup('dashboard-effect');
     const session = createDashboardSession({
       restore: () => loadDashboardCache(uid),
       fetch: fetchDashboardSummary,

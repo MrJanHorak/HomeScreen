@@ -9,6 +9,8 @@ import MealsDashboardCard from './meals/MealsDashboardCard';
 import TasksDashboardCard from './tasks/TasksDashboardCard';
 import type {CardDimensions} from './shared/types';
 import {dashboardSourceNotice} from '../../services/dashboardSourceNotice';
+import {useEffect} from 'react';
+import {markStartup} from '../../services/startupTiming';
 
 interface AdaptiveDashboardCardProps extends CardDimensions {
   id: CardId;
@@ -17,7 +19,15 @@ interface AdaptiveDashboardCardProps extends CardDimensions {
 
 /** The canvas and automatic rows select the same domain components. */
 export default function AdaptiveDashboardCard({id, width, height, personId}: AdaptiveDashboardCardProps) {
-  const {isLoading, sources, schedule, upcomingEvents, tasks} = useDashboard();
+  const {isLoading, isCached, lastUpdated, sources, schedule, upcomingEvents, tasks} = useDashboard();
+  // The measured inner card has mounted with data. A JS frame callback is not
+  // proof of pixel presentation; it bounds scheduler delay after this commit.
+  useEffect(() => {
+    if (isLoading || !lastUpdated || id === 'media' || personId) return;
+    if (!markStartup(isCached ? 'cached-content-effect' : 'live-content-effect')) return;
+    const frame = requestAnimationFrame(() => markStartup(isCached ? 'cached-frame-callback' : 'live-frame-callback'));
+    return () => cancelAnimationFrame(frame);
+  }, [id, personId, isLoading, isCached, lastUpdated]);
   const dimensions = {width, height};
   if (id === 'activity' && personId) return <ActivityDashboardCard {...dimensions} personId={personId} />;
   // Play Next loads independently of the remote dashboard summary.

@@ -3,6 +3,7 @@ import * as FirebaseAuth from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import {markStartup} from './startupTiming';
 
 // Web-app config from Firebase console > Project settings > Your apps.
 // These values are identifiers, not secrets; security comes from Auth + rules.
@@ -17,22 +18,34 @@ const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
 // Firebase stores a refresh token in its persistence record. Migrate an existing
 // AsyncStorage session once, then remove the unencrypted copy.
+let restoredUserReads = 0;
 const secureAuthStorage = {
   async getItem(key: string): Promise<string | null> {
-    const secureKey = `auth_${key.replace(/[^A-Za-z0-9._-]/g, '_')}`;
-    const saved = await SecureStore.getItemAsync(secureKey);
-    if (saved !== null) return saved;
-    const legacy = await AsyncStorage.getItem(key);
-    if (legacy !== null) {
-      await SecureStore.setItemAsync(secureKey, legacy);
-      await AsyncStorage.removeItem(key);
+    // Firebase reads the saved user while selecting persistence, then again
+    // before validating the session. Identify the operation, never log its key.
+    const read = key.startsWith('firebase:authUser:') ? ++restoredUserReads : 0;
+    if (read === 1 || read === 2) markStartup(read === 1 ? 'auth-user-read-1' : 'auth-user-read-2');
+    try {
+      const secureKey = `auth_${key.replace(/[^A-Za-z0-9._-]/g, '_')}`;
+      const saved = await SecureStore.getItemAsync(secureKey);
+      if (saved !== null) return saved;
+      const legacy = await AsyncStorage.getItem(key);
+      if (legacy !== null) {
+        await SecureStore.setItemAsync(secureKey, legacy);
+        await AsyncStorage.removeItem(key);
+      }
+      return legacy;
+    } finally {
+      if (read === 1 || read === 2) markStartup(read === 1 ? 'auth-user-ready-1' : 'auth-user-ready-2');
     }
-    return legacy;
   },
   async setItem(key: string, value: string): Promise<void> {
+    const userWrite = key.startsWith('firebase:authUser:');
+    if (userWrite) markStartup('auth-user-write');
     const secureKey = `auth_${key.replace(/[^A-Za-z0-9._-]/g, '_')}`;
     await SecureStore.setItemAsync(secureKey, value);
     await AsyncStorage.removeItem(key);
+    if (userWrite) markStartup('auth-user-written');
   },
   async removeItem(key: string): Promise<void> {
     const secureKey = `auth_${key.replace(/[^A-Za-z0-9._-]/g, '_')}`;
@@ -44,6 +57,7 @@ const secureAuthStorage = {
 };
 
 let _auth: FirebaseAuth.Auth;
+markStartup('auth-init');
 try {
   // Persists the session across TV app restarts
   if (Platform.OS === 'web') {
