@@ -73,6 +73,13 @@ and bounds on the Sony. An initial Activity Select did not open details; its
 cause is undetermined. Hidden widgets and removal/reorder fallback remain open.
 See the [detail-return report](reviews/tv-details-2026-10-26.md).
 
+October 26 ambient rotation: the selected three-photo loop, all five enabled
+information types and four screen positions passed under standard and OS-reduced
+motion at a temporary one-minute photo interval. Reduced motion preserved
+rotation while sampled backgrounds stayed still between changes. Original
+preferences were restored; other photo sources/cadences and audio accessibility
+remain unverified. See the [rotation evidence](reviews/tv-ambient-rotation-2026-10-26.md).
+
 October 9–17 changes also implement cached startup and bounded resume retries,
 RSS/Atom widgets, grouped schedule details, beyond-goal activity visuals, pinned
 meal details, wider media queue previews, sticky Cards/live ambient previews,

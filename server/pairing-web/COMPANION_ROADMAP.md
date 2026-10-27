@@ -49,6 +49,11 @@ The sequence below follows the [completion gates](../../docs/NEXT_STEPS.md); sta
   passed for the five visible Weather/Schedule/Meals/Activity/Media cards, matching
   original labels and bounds after Back. An initial Select anomaly, hidden
   widgets and removal/reorder fallback remain open.
+  The [October 26 ambient-rotation pass](../../docs/reviews/tv-ambient-rotation-2026-10-26.md)
+  covered the selected three-photo loop, five information types and four screen
+  positions under standard/OS-reduced motion at a temporary one-minute interval.
+  Original preferences were restored. Other sources/cadences, continuous fade
+  timing, audio accessibility and offline/account recovery remain open.
 - [ ] Prove activity replacement access/metric coverage, select and implement a migration before Fit support ends. Current vendor guidance and the server-versus-phone decision are in the next-step plan.
 - [ ] Verify deployed revisions and real consent, vote cookie forwarding, TV poll creation/retry, activity expiry/revocation and settings sync; follow feature release guides and [security setup](../SECURITY.md).
 - [x] October 24 Calendar/Tasks recovery is deployed to the two dashboard Functions and installed on the Sony: provider failure/freshness states, bounded last-success feeds and stale-task action guards. Local fault-injection/browser checks and healthy native/production requests passed; real outages remain unverified. See [provider recovery results](../../docs/reviews/provider-recovery-2026-10-24.md). Remaining offline feeds need explicit expiry/privacy choices.

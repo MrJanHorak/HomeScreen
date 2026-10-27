@@ -35,7 +35,7 @@ The [October 25 motion check](reviews/tv-motion-2026-10-25.md) also passed on th
 current Sony: reduced card zoom, sampled plasma stillness through both the local
 preference and OS setting, and live plasma stop/resume after OS changes. Original
 My photos, Use device setting and Android animation values were restored. Full
-photo/detail rotation, TalkBack/audio and the other open baseline checks remain.
+photo/detail rotation and TalkBack/audio were outside that pass.
 
 The [October 26 detail-return pass](reviews/tv-details-2026-10-26.md) verified
 Weather, Schedule, Meals, Activity and Media on the same Sony build: each opened
@@ -43,6 +43,14 @@ its expected panel and Back restored the original card label and bounds. An
 initial Activity Select left the dashboard visible and remains an unexplained
 input observation. Hidden widgets and removal/reorder fallback remain untested;
 this scoped pass does not close the broader baseline gate.
+
+The [October 26 ambient-rotation pass](reviews/tv-ambient-rotation-2026-10-26.md)
+covers the three selected photos and all five enabled information types, plus
+the four-position loop under standard and OS-reduced motion. At the temporary
+one-minute photo interval, reduced motion retained rotation with a sampled
+still backdrop between changes. The original three-minute interval was restored.
+Other photo sources/cadences, continuous fade timing and TalkBack/audio remain
+outside this evidence; recoverable offline/account checks are still a priority.
 
 The next work item should be a **current-build remote/lifecycle verification pass
 on the Sony TV**, followed by a controlled rendering trace. Existing source and
