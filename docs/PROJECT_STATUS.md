@@ -67,6 +67,12 @@ stop/resume without an app restart. Original motion, ambient source and system
 values were restored. No product change was needed; full photo/detail rotation
 and TalkBack/audio remain open. See the [motion report](reviews/tv-motion-2026-10-25.md).
 
+October 26 detail-return verification: Weather, Schedule, Meals, Activity and
+Media each opened the expected detail panel and returned to the same card label
+and bounds on the Sony. An initial Activity Select did not open details; its
+cause is undetermined. Hidden widgets and removal/reorder fallback remain open.
+See the [detail-return report](reviews/tv-details-2026-10-26.md).
+
 October 9–17 changes also implement cached startup and bounded resume retries,
 RSS/Atom widgets, grouped schedule details, beyond-goal activity visuals, pinned
 meal details, wider media queue previews, sticky Cards/live ambient previews,

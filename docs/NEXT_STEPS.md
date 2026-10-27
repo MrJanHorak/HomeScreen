@@ -37,6 +37,13 @@ preference and OS setting, and live plasma stop/resume after OS changes. Origina
 My photos, Use device setting and Android animation values were restored. Full
 photo/detail rotation, TalkBack/audio and the other open baseline checks remain.
 
+The [October 26 detail-return pass](reviews/tv-details-2026-10-26.md) verified
+Weather, Schedule, Meals, Activity and Media on the same Sony build: each opened
+its expected panel and Back restored the original card label and bounds. An
+initial Activity Select left the dashboard visible and remains an unexplained
+input observation. Hidden widgets and removal/reorder fallback remain untested;
+this scoped pass does not close the broader baseline gate.
+
 The next work item should be a **current-build remote/lifecycle verification pass
 on the Sony TV**, followed by a controlled rendering trace. Existing source and
 unit coverage are substantial, but the October 22 measurements do not establish
