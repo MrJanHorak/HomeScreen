@@ -176,6 +176,12 @@ samples for the rest of the location's day; they are not observed daily extrema.
 See [Functions weather behavior](../../server/functions/README.md) for timestamps,
 secondary-city request cadence and rollout dependencies.
 
+The [October 27 Sony transport-failure pass](../reviews/tv-connection-recovery-2026-10-27.md)
+verified saved cold-start cards, retained timestamps, a failed retry and automatic
+recovery in the same process after removing a temporary refused-HTTP proxy.
+It preserves network ADB and does not establish physical network-loss handling,
+stalled requests, account isolation or expired/missing-cache behavior.
+
 `npm test` includes cache and session regression checks for offline restoration,
 refresh recovery, account isolation/cleanup, disk failure, invalid/expired entries,
 deduplicated requests, late disk/network responses, and appearance readiness while

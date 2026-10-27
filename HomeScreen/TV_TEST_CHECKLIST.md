@@ -23,6 +23,7 @@ include the starting item, buttons pressed, expected destination, and actual des
 | TV controls | Open Settings → Device; try Network settings, then return. | Correct system panel opens; HomeScreen returns to its Device panel. | Network/Android panels and section return passed October 23 |
 | Inputs | In TV controls, inspect names/states. If available, select a known input. | Custom names are used and the input opens, or a clear unsupported-control message appears. Devices with no inputs show no input list. | Presence checked; switching/no-input devices untested |
 | Standby | Put the TV in standby, wake it, then reopen HomeScreen if needed. | Clock catches up, current data refreshes, and focus/navigation still work. | Physical wake, retained process/section, clock and eventual data recovery passed October 23; network ADB dropped during sleep |
+| Connection failure/recovery | With a recoverable control route, cold-start while HTTP requests fail, then restore connectivity. | Saved cards and source timestamps remain visible; retry runs and live data returns. | Sony refused-HTTP proxy pass, October 27: saved cold start, failed retry and automatic recovery in the same process; original settings restored. Physical network loss, stalled requests and account/expiry cases remain open. See [recovery evidence](../docs/reviews/tv-connection-recovery-2026-10-27.md) |
 
 October 23 follow-up: installed APK identity and Activity-detail return passed;
 system Network/Android shortcuts opened and returned to the Device section.

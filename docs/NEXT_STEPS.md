@@ -52,6 +52,16 @@ still backdrop between changes. The original three-minute interval was restored.
 Other photo sources/cadences, continuous fade timing and TalkBack/audio remain
 outside this evidence; recoverable offline/account checks are still a priority.
 
+The [October 27 HTTP-failure recovery pass](reviews/tv-connection-recovery-2026-10-27.md)
+verified cold-start cache restoration, saved-provider warnings, a failed automatic
+retry and subsequent automatic recovery in the same Sony process. The temporary
+failure proxy was removed and all original settings restored. Physical network
+loss, stalled connections, expired/missing caches and account isolation remain
+open; this controlled refusal test does not close those gates. An online launch
+probe ended on the TV launcher and a first Settings Select left the dashboard
+visible; both remain unexplained observations. Device status and manual refresh
+control activation were checked, then the populated dashboard was restored.
+
 The next work item should be a **current-build remote/lifecycle verification pass
 on the Sony TV**, followed by a controlled rendering trace. Existing source and
 unit coverage are substantial, but the October 22 measurements do not establish

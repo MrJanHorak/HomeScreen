@@ -43,6 +43,7 @@ Reorganized October 9; reconciled with history through `55ef529` on October 23, 
 - [Code quality review](reviews/code-quality.md): maintainability findings and historical checks.
 - [October 22 TV benchmark](reviews/tv-benchmark-2026-10-22.md): Sony measurements, header cleanup and on-device verification.
 - [October 23 TV baseline](reviews/tv-baseline-2026-10-23.md): installed identity, remote/lifecycle observations, ambient wake failure and freeze diagnostics.
+- [October 27 Sony connection recovery](reviews/tv-connection-recovery-2026-10-27.md): cached cold start under refused HTTP, automatic retry/recovery and restored settings; physical disconnection and account/expiry limits.
 - [October 23 history/documentation audit](reviews/history-documentation-audit-2026-10-23.md): coverage of all 17 commits since the October 9 documentation baseline, corrections and local validation.
 - [Companion UX review](../server/pairing-web/UX_REVIEW.md): dated assessments and settings coverage.
 - [October 5 security review](../server/SECURITY_REVIEW.md) and its [evidence directory](../server/security-review/2026-10-05): dated findings; later release evidence is recorded separately.

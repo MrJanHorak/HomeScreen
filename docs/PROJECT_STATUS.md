@@ -80,6 +80,15 @@ rotation while sampled backgrounds stayed still between changes. Original
 preferences were restored; other photo sources/cadences and audio accessibility
 remain unverified. See the [rotation evidence](reviews/tv-ambient-rotation-2026-10-26.md).
 
+October 27 connection recovery: cold startup under a temporary refused-HTTP
+proxy restored populated saved cards and preserved source timestamps. The first
+automatic retry failed as expected; after restoring the original settings, the
+same process recovered automatically and cleared saved-provider warnings. This
+is transport-failure evidence; physical disconnection, stalled requests and
+account/expiry checks remain open. An earlier online launch ended on the TV
+launcher and a first Settings Select left the dashboard visible, with causes
+undetermined. See the [recovery report](reviews/tv-connection-recovery-2026-10-27.md).
+
 October 9–17 changes also implement cached startup and bounded resume retries,
 RSS/Atom widgets, grouped schedule details, beyond-goal activity visuals, pinned
 meal details, wider media queue previews, sticky Cards/live ambient previews,

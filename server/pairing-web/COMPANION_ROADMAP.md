@@ -54,6 +54,12 @@ The sequence below follows the [completion gates](../../docs/NEXT_STEPS.md); sta
   positions under standard/OS-reduced motion at a temporary one-minute interval.
   Original preferences were restored. Other sources/cadences, continuous fade
   timing, audio accessibility and offline/account recovery remain open.
+  The [October 27 HTTP-failure pass](../../docs/reviews/tv-connection-recovery-2026-10-27.md)
+  verified saved cold-start cards, failed retry and automatic live recovery in
+  the same Sony process; the temporary proxy and all original settings were
+  restored. Physical network loss, stalled requests and account/expiry checks
+  remain open. An earlier online launch ended on the launcher and a first Settings
+  Select left the dashboard visible; causes undetermined.
 - [ ] Prove activity replacement access/metric coverage, select and implement a migration before Fit support ends. Current vendor guidance and the server-versus-phone decision are in the next-step plan.
 - [ ] Verify deployed revisions and real consent, vote cookie forwarding, TV poll creation/retry, activity expiry/revocation and settings sync; follow feature release guides and [security setup](../SECURITY.md).
 - [x] October 24 Calendar/Tasks recovery is deployed to the two dashboard Functions and installed on the Sony: provider failure/freshness states, bounded last-success feeds and stale-task action guards. Local fault-injection/browser checks and healthy native/production requests passed; real outages remain unverified. See [provider recovery results](../../docs/reviews/provider-recovery-2026-10-24.md). Remaining offline feeds need explicit expiry/privacy choices.
