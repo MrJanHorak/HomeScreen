@@ -15,6 +15,19 @@ function load(file, imports = {}, globals = {}) {
 const {FocusMemory} = load('src/navigation/focusMemory.ts');
 const {parseLaunch, parseFrames, parseMemory, options} = require('../scripts/benchmark-tv.cjs');
 
+test('default focus is used only until the user selects a registered target', () => {
+  const memory = new FocusMemory(), focused = [];
+  memory.register('header:settings', () => focused.push('settings'));
+  memory.register('weather', () => focused.push('weather'));
+  memory.blocked = true;
+  assert.equal(memory.focusDefault('header:settings'), false);
+  memory.blocked = false;
+  assert.equal(memory.focusDefault('missing'), false);
+  assert.equal(memory.focusDefault('header:settings'), true);
+  memory.remember('weather');
+  assert.equal(memory.focusDefault('header:settings'), false);
+  assert.deepEqual(focused, ['settings']);
+});
 test('focus follows stable identity after tiles remount in another order', () => {
   const memory = new FocusMemory(), selected = [];
   const remove = ['weather', 'tasks', 'media'].map((id) => memory.register(id, () => selected.push(id)));

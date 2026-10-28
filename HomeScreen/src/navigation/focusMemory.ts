@@ -22,6 +22,15 @@ export class FocusMemory {
     this.order = [...this.targets.keys()];
   }
 
+  /** Give a new TV dashboard an initial target without overriding user focus. */
+  focusDefault(id: string): boolean {
+    if (this.blocked || this.selected) return false;
+    const target = this.targets.get(id);
+    if (!target) return false;
+    target();
+    return true;
+  }
+
   restore(): string | null {
     this.blocked = false;
     if (!this.selected) return null;

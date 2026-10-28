@@ -22,7 +22,15 @@ export function ScreenFocusRestorer({active}: {active: boolean}) {
       cancel();
       memory.blocked = true;
       if (active && foreground) {
-        if (!memory.hasSelection) {memory.blocked = false; return;}
+        if (!memory.hasSelection) {
+          memory.blocked = false;
+          // A freshly launched TV can have no native focus until an arrow is pressed.
+          // Allow any intervening user focus to win before choosing Settings.
+          if (Platform.isTV) first = requestAnimationFrame(() => {
+            second = requestAnimationFrame(() => memory.focusDefault('header:settings'));
+          });
+          return;
+        }
         first = requestAnimationFrame(() => {second = requestAnimationFrame(() => memory.restore());});
       }
     };

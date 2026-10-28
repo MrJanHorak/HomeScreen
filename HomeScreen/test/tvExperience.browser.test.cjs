@@ -25,13 +25,13 @@ for (const [name, file] of Object.entries({focusMemory: 'navigation/focusMemory.
   }).outputText;
 }
 
-async function fixture(t, platform = 'web', saved = 'system', ambientFixture = false) {
+async function fixture(t, platform = 'web', saved = 'system', ambientFixture = false, defaultHeader = false) {
   const page = await browser.newPage({viewport: {width: 960, height: 540}});
   t.after(() => page.close());
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.setContent('<div id="root"></div>');
-  await page.evaluate(({modules, platform, saved, ambientFixture}) => {
+  await page.evaluate(({modules, platform, saved, ambientFixture, defaultHeader}) => {
     const loaded = {};
     const aliases = {'./focusMemory': 'focusMemory', '../../navigation/ScreenFocus': 'ScreenFocus',
       '../../accessibility/MotionContext': 'MotionContext'};
@@ -106,7 +106,10 @@ async function fixture(t, platform = 'web', saved = 'system', ambientFixture = f
       window.experience = {setView, setItems, motion};
       return React.createElement(React.Fragment, null,
         React.createElement(ScreenFocusRestorer, {active: view === 'dashboard'}),
-        React.createElement(Frame, {hidden: view !== 'dashboard', style: {}}, items.map((id) => React.createElement(Tile, {key: id, id}))),
+        React.createElement(Frame, {hidden: view !== 'dashboard', style: {}}, [
+          ...(defaultHeader ? [React.createElement(Tile, {key: 'header:settings', id: 'header:settings'})] : []),
+          ...items.map((id) => React.createElement(Tile, {key: id, id})),
+        ]),
         view !== 'dashboard' && React.createElement('button', {id: 'cover'}, view),
         React.createElement('output', {id: 'motion'}, JSON.stringify({reduced: motion.reduced, ready: motion.ready, foreground: motion.foreground})));
     }
@@ -126,10 +129,18 @@ async function fixture(t, platform = 'web', saved = 'system', ambientFixture = f
       React.createElement(ScreenFocusProvider, null, React.createElement(ambientFixture ? AmbientDashboard : Dashboard))));
     window.unmountExperience = () => root.render(null);
     window.mountExperience();
-  }, {modules, platform, saved, ambientFixture});
+  }, {modules, platform, saved, ambientFixture, defaultHeader});
   await page.waitForFunction(() => window.experience?.motion.ready);
   return {page, errors};
 }
+
+test('Android TV starts with a focused dashboard control without changing browser focus', async (t) => {
+  const native = await fixture(t, 'android', 'system', false, true);
+  await native.page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'header:settings', null, {timeout: 3000});
+  const web = await fixture(t, 'web', 'system', false, true);
+  assert.equal(await web.page.evaluate(() => document.activeElement === document.body), true);
+  assert.deepEqual([...native.errors, ...web.errors], []);
+});
 
 test('native ambient owns focus, ignores focus/release noise, and restores the dashboard on all arrows', async (t) => {
   const {page, errors} = await fixture(t, 'android', 'system', true);

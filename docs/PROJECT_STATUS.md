@@ -89,6 +89,14 @@ account/expiry checks remain open. An earlier online launch ended on the TV
 launcher and a first Settings Select left the dashboard visible, with causes
 undetermined. See the [recovery report](reviews/tv-connection-recovery-2026-10-27.md).
 
+October 27 startup focus: the Sony reproduced a cold dashboard without a focused
+control, where the first Select did nothing. A signed update now focuses Settings
+when no target has been selected; post-install and three cold-launch checks
+passed, including first Select and Back. Six earlier focused Select/Back cycles
+also passed, but the previously missed Select and launcher-return causes remain
+unresolved. The attempted emulator offline test was inconclusive. See the
+[startup-focus report](reviews/tv-startup-focus-2026-10-27.md).
+
 October 9–17 changes also implement cached startup and bounded resume retries,
 RSS/Atom widgets, grouped schedule details, beyond-goal activity visuals, pinned
 meal details, wider media queue previews, sticky Cards/live ambient previews,

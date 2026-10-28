@@ -60,6 +60,14 @@ The sequence below follows the [completion gates](../../docs/NEXT_STEPS.md); sta
   restored. Physical network loss, stalled requests and account/expiry checks
   remain open. An earlier online launch ended on the launcher and a first Settings
   Select left the dashboard visible; causes undetermined.
+  The [startup-focus follow-up](../../docs/reviews/tv-startup-focus-2026-10-27.md)
+  reproduced an unfocused dashboard after cold launch. A signed update now
+  focuses Settings when no target was selected and passed three cold-launch,
+  first-Select and Back cycles on the Sony. Earlier focused-Select and launcher
+  observations remain unexplained; an isolated offline-emulator attempt was
+  inconclusive because Ethernet stayed active and the app did not stay foregrounded.
+  Its Ethernet shell interface was unavailable, so physical disconnection still
+  needs another recoverable control route.
 - [ ] Prove activity replacement access/metric coverage, select and implement a migration before Fit support ends. Current vendor guidance and the server-versus-phone decision are in the next-step plan.
 - [ ] Verify deployed revisions and real consent, vote cookie forwarding, TV poll creation/retry, activity expiry/revocation and settings sync; follow feature release guides and [security setup](../SECURITY.md).
 - [x] October 24 Calendar/Tasks recovery is deployed to the two dashboard Functions and installed on the Sony: provider failure/freshness states, bounded last-success feeds and stale-task action guards. Local fault-injection/browser checks and healthy native/production requests passed; real outages remain unverified. See [provider recovery results](../../docs/reviews/provider-recovery-2026-10-24.md). Remaining offline feeds need explicit expiry/privacy choices.

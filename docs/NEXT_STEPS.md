@@ -62,6 +62,17 @@ probe ended on the TV launcher and a first Settings Select left the dashboard
 visible; both remain unexplained observations. Device status and manual refresh
 control activation were checked, then the populated dashboard was restored.
 
+The [October 27 startup-focus follow-up](reviews/tv-startup-focus-2026-10-27.md)
+reproduced an unfocused dashboard and ignored first Select after cold launch.
+The signed fix is installed on the Sony: the post-install launch and three
+additional cold launches had Settings focused, and each tested first Select and
+Back passed. Six baseline Select/Back repetitions passed; the earlier missed
+Select with a focused control and online launcher-return observation remain
+unexplained. An isolated emulator offline attempt was inconclusive because its
+Ethernet network remained active and the app did not stay foregrounded.
+The same isolated emulator also lacks an Ethernet shell-command implementation,
+so a physical network-loss check still needs a different recoverable control route.
+
 The next work item should be a **current-build remote/lifecycle verification pass
 on the Sony TV**, followed by a controlled rendering trace. Existing source and
 unit coverage are substantial, but the October 22 measurements do not establish

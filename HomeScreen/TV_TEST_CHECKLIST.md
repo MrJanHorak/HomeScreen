@@ -11,7 +11,7 @@ include the starting item, buttons pressed, expected destination, and actual des
 
 | Check | Remote actions | Expected result | Result |
 | --- | --- | --- | --- |
-| Startup | Open HomeScreen after installation. | Dashboard appears; returning paired TVs keep their account and layout. | Observed on Sony VU1, October 22; five cold starts per build |
+| Startup | Open HomeScreen after installation. | Dashboard appears with a usable focused control; returning paired TVs keep their account and layout. | October 27: Sony baseline had no focused control and ignored first Select. Signed fix passed post-install focus and three cold-start/first-Select/Back checks. Earlier launcher-return cause remains unresolved; see [startup-focus evidence](../docs/reviews/tv-startup-focus-2026-10-27.md) |
 | Exit and reopen | From the dashboard, press Back, select Exit app, then reopen HomeScreen without force-stopping it. | TV launcher appears on exit; reopening shows the dashboard without the old confirmation. Back can open a new confirmation. | Old build reproduced the retained modal; signed fix passed launcher/retained-task reopen on Sony VU1, October 24 |
 | Header | Inspect the main header. | Clock and Settings gear; TV controls are under Settings → Device. | Verified on Sony VU1, October 22 |
 | Details return | Select a widget, open its details, then Back. | Focus returns to the same widget. | Weather, Schedule, Meals, Activity and Media passed matching labels/bounds on Sony, October 26; initial Select anomaly, hidden widgets and removal fallback remain open. See [detail-return evidence](../docs/reviews/tv-details-2026-10-26.md) |
