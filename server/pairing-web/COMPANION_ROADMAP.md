@@ -68,6 +68,14 @@ The sequence below follows the [completion gates](../../docs/NEXT_STEPS.md); sta
   inconclusive because Ethernet stayed active and the app did not stay foregrounded.
   Its Ethernet shell interface was unavailable, so physical disconnection still
   needs another recoverable control route.
+  The later [offline-pairing follow-up](../../docs/reviews/tv-offline-pairing-2026-10-27.md)
+  disconnected a fresh emulator's virtual Ethernet link, reproduced a stuck
+  first-time pairing error and verified automatic and manual recovery in the
+  updated signed build, not installed on the Sony. A subsequent manual paired
+  Sony launch while physically offline restored cache and eventually refreshed
+  after reconnection; the user saw ambient information without a photo. No offline
+  screenshot was captured. The Wi-Fi watchdog failed and Wi-Fi was restored
+  directly afterward; account/expiry checks remain open.
 - [ ] Prove activity replacement access/metric coverage, select and implement a migration before Fit support ends. Current vendor guidance and the server-versus-phone decision are in the next-step plan.
 - [ ] Verify deployed revisions and real consent, vote cookie forwarding, TV poll creation/retry, activity expiry/revocation and settings sync; follow feature release guides and [security setup](../SECURITY.md).
 - [x] October 24 Calendar/Tasks recovery is deployed to the two dashboard Functions and installed on the Sony: provider failure/freshness states, bounded last-success feeds and stale-task action guards. Local fault-injection/browser checks and healthy native/production requests passed; real outages remain unverified. See [provider recovery results](../../docs/reviews/provider-recovery-2026-10-24.md). Remaining offline feeds need explicit expiry/privacy choices.

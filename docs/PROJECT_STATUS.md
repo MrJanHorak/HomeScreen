@@ -97,6 +97,17 @@ also passed, but the previously missed Select and launcher-return causes remain
 unresolved. The attempted emulator offline test was inconclusive. See the
 [startup-focus report](reviews/tv-startup-focus-2026-10-27.md).
 
+October 27 offline pairing: a fresh Android TV emulator with its virtual Ethernet
+link disconnected reproduced a pairing error that remained after reconnection.
+The updated app retries failed code requests with bounded backoff and provides a
+manual retry; signed-build emulator checks passed both paths without pairing an
+account. The updated pairing build is not installed on the Sony. A later physical
+Sony test confirmed cache restoration after a manual offline launch and eventual
+recovery in the same process. The user saw ambient information without a photo;
+the photo returned online. The automatic Wi-Fi restoration watchdog failed, and
+Wi-Fi was restored directly after reconnection. No offline screenshot was captured;
+account and expiry checks remain open. See the [offline-pairing report](reviews/tv-offline-pairing-2026-10-27.md).
+
 October 9–17 changes also implement cached startup and bounded resume retries,
 RSS/Atom widgets, grouped schedule details, beyond-goal activity visuals, pinned
 meal details, wider media queue previews, sticky Cards/live ambient previews,

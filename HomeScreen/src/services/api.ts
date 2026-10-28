@@ -233,11 +233,12 @@ export async function executeTVAction(
 /**
  * Request a 6-character TV pairing code for the user to authenticate on mobile/web
  */
-export async function requestDevicePairing(): Promise<DevicePairingResponse> {
+export async function requestDevicePairing(signal?: AbortSignal): Promise<DevicePairingResponse> {
   const url = `${DEFAULT_API_URL}/authDevice?action=request-code`;
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    signal,
   });
 
   if (!response.ok) {

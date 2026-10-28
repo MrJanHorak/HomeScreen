@@ -1,13 +1,15 @@
 import Text from '../components/shared/ReadingText';
-import React from 'react';
+import Pressable from '../components/shared/NarratedPressable';
+import React, {useState} from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../theme/ThemeContext';
 
 export default function PairingScreen() {
-  const { pairing, pairingError } = useAuth();
+  const { pairing, pairingError, startPairing } = useAuth();
   const theme = useTheme();
+  const [retryFocused, setRetryFocused] = useState(false);
   const { height } = useWindowDimensions();
   const compact = height < 700;
   const qrSize = Math.min(compact ? 150 : 200, Math.floor(height * 0.27));
@@ -36,7 +38,7 @@ export default function PairingScreen() {
       >
         {pairing
           ? 'Scan with your phone, or visit the address below.'
-          : 'Getting a pairing code...'}
+          : pairingError ? pairingError : 'Getting a pairing code...'}
       </Text>
       {pairing && (
         <View style={styles.pairingContent}>
@@ -73,15 +75,21 @@ export default function PairingScreen() {
           </Text>
         </View>
       )}
-      <Text
+      {pairing && <Text
         style={[styles.instructions, { color: theme.colors.textSecondary }]}
       >
         Confirm the code on your phone, then approve Google access.
-      </Text>
+      </Text>}
       {pairingError && (
-        <Text style={[styles.error, { color: theme.colors.accent }]}>
-          {pairingError}
-        </Text>
+        <View style={styles.retryArea}>
+          <Text style={[styles.error, { color: theme.colors.textSecondary }]}>Trying again automatically.</Text>
+          <Pressable accessibilityRole='button' accessibilityLabel='Retry pairing' hasTVPreferredFocus
+            onPress={() => {void startPairing();}} onFocus={() => setRetryFocused(true)} onBlur={() => setRetryFocused(false)}
+            style={[styles.retryButton, {borderColor: theme.colors.focusRing, backgroundColor: theme.colors.glassSurface},
+              retryFocused && styles.retryFocused]}>
+            <Text style={[styles.retryLabel, {color: theme.colors.textPrimary}]}>Retry now</Text>
+          </Pressable>
+        </View>
       )}
     </View>
   );
@@ -120,6 +128,10 @@ const styles = StyleSheet.create({
   },
   instructions: { fontSize: 16, textAlign: 'center', marginTop: 16 },
   error: { fontSize: 16, textAlign: 'center', marginTop: 10 },
+  retryArea: {alignItems: 'center'},
+  retryButton: {marginTop: 18, paddingHorizontal: 28, paddingVertical: 14, borderWidth: 2, borderRadius: 12},
+  retryFocused: {transform: [{scale: 1.06}]},
+  retryLabel: {fontSize: 20, fontWeight: '700'},
   compactTitle: { fontSize: 28 },
   compactDescription: { fontSize: 17, marginTop: 6, marginBottom: 10 },
   compactQrBox: { padding: 7, borderRadius: 12 },

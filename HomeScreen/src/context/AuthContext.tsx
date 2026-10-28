@@ -7,6 +7,7 @@ import React, {
   useState,
   ReactNode,
 } from 'react';
+import { AppState } from 'react-native';
 import {
   onAuthStateChanged,
   signInWithCustomToken,
@@ -24,6 +25,9 @@ import { clearLocalUserData } from '../services/localUserData';
 import {markStartup} from '../services/startupTiming';
 
 const POLL_INTERVAL_MS = 3000;
+const PAIRING_RETRY_MS = 30_000;
+const PAIRING_RETRY_MAX_MS = 300_000;
+const PAIRING_REQUEST_TIMEOUT_MS = 15_000;
 
 interface AuthContextValue {
   user: User | null;
@@ -41,7 +45,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [initializing, setInitializing] = useState(true);
   const [pairing, setPairing] = useState<DevicePairingResponse | null>(null);
   const [pairingError, setPairingError] = useState<string | null>(null);
+  const [pairingFailures, setPairingFailures] = useState(0);
+  const [foreground, setForeground] = useState(AppState.currentState !== 'background' && AppState.currentState !== 'inactive');
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const requesting = useRef(false);
+  const requestController = useRef<AbortController | null>(null);
+  const mounted = useRef(true);
 
   const stopPolling = useCallback(() => {
     if (timer.current) clearInterval(timer.current);
@@ -59,19 +68,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const startPairing = useCallback(async () => {
+    if (requesting.current || !mounted.current || auth.currentUser) return;
+    requesting.current = true;
+    const controller = new AbortController();
+    requestController.current = controller;
+    const canceled = new Promise<never>((_resolve, reject) => {
+      controller.signal.addEventListener('abort', () => reject(new Error('Pairing request canceled')), {once: true});
+    });
+    const timeout = setTimeout(() => controller.abort(), PAIRING_REQUEST_TIMEOUT_MS);
     stopPolling();
     setPairingError(null);
     try {
-      const p = await requestDevicePairing();
+      const p = await Promise.race([requestDevicePairing(controller.signal), canceled]);
+      if (!mounted.current || auth.currentUser) return;
+      setPairingFailures(0);
       setPairing(p);
 
       timer.current = setInterval(async () => {
         try {
           const result = await pollDevicePairing(p);
+          if (!mounted.current) return;
           if (result.status === 'authorized' && result.customToken) {
             stopPolling();
             await signInWithCustomToken(auth, result.customToken);
-            setPairing(null);
+            if (mounted.current) setPairing(null);
           } else if (result.status === 'expired') {
             stopPolling();
             setPairing(null);
@@ -82,11 +102,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // Transient network error: keep polling
         }
       }, POLL_INTERVAL_MS);
-    } catch (err) {
+    } catch {
+      if (!mounted.current) return;
       setPairing(null);
-      setPairingError(
-        err instanceof Error ? err.message : 'Could not reach the server',
-      );
+      setPairingFailures(count => count + 1);
+      setPairingError('Could not get a pairing code. Check the network connection.');
+    } finally {
+      clearTimeout(timeout);
+      if (requestController.current === controller) requestController.current = null;
+      requesting.current = false;
     }
   }, [stopPolling]);
 
@@ -95,7 +119,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!initializing && !user && !pairing && !pairingError) startPairing();
   }, [initializing, user, pairing, pairingError, startPairing]);
 
-  useEffect(() => stopPolling, [stopPolling]);
+  useEffect(() => {
+    if (initializing || user || pairing || !pairingError || !foreground) return;
+    const delay = Math.min(PAIRING_RETRY_MS * 2 ** Math.min(Math.max(0, pairingFailures - 1), 4), PAIRING_RETRY_MAX_MS);
+    const retry = setTimeout(() => {void startPairing();}, delay);
+    return () => clearTimeout(retry);
+  }, [initializing, user, pairing, pairingError, pairingFailures, foreground, startPairing]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', state => setForeground(state === 'active'));
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {mounted.current = false; requestController.current?.abort(); stopPolling();};
+  }, [stopPolling]);
 
   const signOut = useCallback(async () => {
     const uid = auth.currentUser?.uid;

@@ -73,6 +73,18 @@ Ethernet network remained active and the app did not stay foregrounded.
 The same isolated emulator also lacks an Ethernet shell-command implementation,
 so a physical network-loss check still needs a different recoverable control route.
 
+The [October 27 offline-pairing follow-up](reviews/tv-offline-pairing-2026-10-27.md)
+used a separate virtual-machine link control to establish a real no-default-network
+state on a fresh Android TV emulator. The baseline got stuck on an error after
+reconnection; a restart obtained a code. A signed fix passed automatic and
+manual retry checks after virtual reconnection, without pairing an account.
+The pairing fix was not installed on the Sony. A later physical cable test with
+Wi-Fi disabled confirmed a manually initiated paired Sony offline start and cache
+restoration in startup logs; the user observed ambient information without a
+photo. The same process eventually refreshed after reconnection. The automatic
+Wi-Fi restoration watchdog failed, and Wi-Fi was restored directly afterward.
+No offline UI screenshot was captured; account/expiry cases remain open.
+
 The next work item should be a **current-build remote/lifecycle verification pass
 on the Sony TV**, followed by a controlled rendering trace. Existing source and
 unit coverage are substantial, but the October 22 measurements do not establish
@@ -94,7 +106,7 @@ the original failure; the report distinguishes observed passes and open work.
 | 1. TV baseline | Identify the installed APK by source/build record and hash; run the remaining [TV smoke checks](../HomeScreen/TV_TEST_CHECKLIST.md) and [cached-start checks](architecture/tv-client.md#cached-cold-start). Recent commits changed background cancellation, return focus, app discovery and ambient mounting together. | A dated device/build record with actual results for detail/favorite return, ambient wake, both motion modes, standby, offline restart/reconnect, account isolation, app install/update/disable, system settings and input behavior. Record unsupported OEM controls and reproducible failures. Fix failures and rerun affected checks. |
 | 2. Rendering investigation | Capture a native trace for one repeatable focus transition. October 22 frame p95 worsened while weighted jank fell; both compared builds already contained the app cache. | Trace and scenario identify whether JS, layout, drawing, GPU/shadows, or other device work causes the stall. Make one targeted change, then repeat the same scenario and five-pass benchmark with controlled warm-up, mirroring, layout, content and motion. Report mixed/null results honestly; keep remote behavior and readability intact. |
 | 3. Integration/release gate | Verify Functions, Hosting, indexes/TTL and TV compatibility in a test environment. Local tests do not exercise real Google consent, Hosting cookies or multi-account revocation. | Record deployed revisions/configuration and successful pairing/re-pairing; RSS preset/custom-source outage recovery; TV poll creation/retry without duplicate rounds; phone vote-cookie round trip; two-account activity expiry/revocation; companion publish/conflict/weather/favorites/photo sync. Use the feature guides below for exact rollout requirements. |
-| 4. Data trust and recovery | October 24 provider status/freshness, bounded last-success reconciliation and stale-task action guards are deployed to the dashboard Functions and installed on the Sony. Local fault-injection/browser checks and a healthy request on the new revision passed; see the [provider report](reviews/provider-recovery-2026-10-24.md). Startup labels restored data and retains it for seven days; the originally reported minute-long opening remains unconfirmed. | Verify live provider outage/recovery with test accounts and physical offline startup with a recoverable connection. Keep deployed build/revision evidence alongside successful-empty, late-disk, timestamp-expiry, legacy-cache and account-cleanup checks. Define privacy/expiry rules before adding any new disk caches. |
+| 4. Data trust and recovery | October 24 provider status/freshness, bounded last-success reconciliation and stale-task action guards are deployed to the dashboard Functions and installed on the Sony. Local fault-injection/browser checks and a healthy request on the new revision passed; see the [provider report](reviews/provider-recovery-2026-10-24.md). A manual physical offline startup restored the Sony cache and eventually recovered; see the [offline report](reviews/tv-offline-pairing-2026-10-27.md). | Verify live provider outage/recovery with test accounts. Keep deployed build/revision evidence alongside successful-empty, late-disk, timestamp-expiry, legacy-cache and account-cleanup checks. Define privacy/expiry rules before adding any new disk caches. |
 | 5. One core-use feature | Once the baseline and data trust gates pass, choose one household workflow. Recommended first: calendar source selection, then week navigation, because an existing 14-day feed provides a starting point. | Agree the expected remote actions, source/date window and empty/error behavior first. Add coverage for timezones, all-day/overnight events and source access. Month navigation needs a deliberate fetch-window change; fuller task editing/history or a persistent watchlist can replace this choice if household usage warrants it. |
 
 Steps 1 and 2 can use the existing private TV installation. Step 3 is required

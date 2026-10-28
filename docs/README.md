@@ -45,6 +45,7 @@ Reorganized October 9; reconciled with history through `55ef529` on October 23, 
 - [October 23 TV baseline](reviews/tv-baseline-2026-10-23.md): installed identity, remote/lifecycle observations, ambient wake failure and freeze diagnostics.
 - [October 27 Sony connection recovery](reviews/tv-connection-recovery-2026-10-27.md): cached cold start under refused HTTP, automatic retry/recovery and restored settings; physical disconnection and account/expiry limits.
 - [October 27 Sony startup focus](reviews/tv-startup-focus-2026-10-27.md): Select/cold-start observations, focus fix and signed device verification; offline emulator limits.
+- [October 27 offline pairing](reviews/tv-offline-pairing-2026-10-27.md): first-launch virtual network loss, pairing recovery fix and isolated emulator verification.
 - [October 23 history/documentation audit](reviews/history-documentation-audit-2026-10-23.md): coverage of all 17 commits since the October 9 documentation baseline, corrections and local validation.
 - [Companion UX review](../server/pairing-web/UX_REVIEW.md): dated assessments and settings coverage.
 - [October 5 security review](../server/SECURITY_REVIEW.md) and its [evidence directory](../server/security-review/2026-10-05): dated findings; later release evidence is recorded separately.

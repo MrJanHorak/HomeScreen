@@ -98,6 +98,17 @@ test('public pairing expiry does not clear a signed-in TV session', async (t) =>
   assert.deepEqual(events, []);
 });
 
+test('pairing code requests forward the cancellation signal', async (t) => {
+  const {api} = setup(t);
+  const controller = new AbortController();
+  t.mock.method(global, 'fetch', async (url, options) => {
+    assert.ok(url.endsWith('/authDevice?action=request-code'));
+    assert.equal(options.signal, controller.signal);
+    return Response.json({code: 'ABC234'});
+  });
+  assert.equal((await api.requestDevicePairing(controller.signal)).code, 'ABC234');
+});
+
 test('production API URLs reject cleartext, embedded credentials and non-HTTPS schemes', () => {
   for (const url of ['http://api.example.test', 'http://localhost:5001', 'https://user:pass@api.example.test',
     'ftp://api.example.test', 'https://api.example.test?token=x', 'https://api.example.test#x']) {
