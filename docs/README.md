@@ -38,6 +38,7 @@ Reorganized October 9; reconciled with history through `55ef529` on October 23, 
 
 ## Vision and dated reviews
 
+- [October 28 activity migration](reviews/activity-migration-2026-10-28.md): current Fit contract, candidate Health API mappings, project enablement observation and live-read gates.
 - [Historical README snapshot](vision/original-readme.md): pre-audit accumulated intent and notes.
 - [TV design specification](vision/tv-ui-design.md): original design and checked MVP phases; proposed screens are not shipped behavior.
 - [Code quality review](reviews/code-quality.md): maintainability findings and historical checks.

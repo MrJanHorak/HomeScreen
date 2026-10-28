@@ -119,6 +119,12 @@ does not complete public distribution.
 
 ## Start activity migration alongside the TV work
 
+October 28 feasibility follow-up: the [activity migration record](reviews/activity-migration-2026-10-28.md)
+maps the current contract to candidate Health API data types. A read-only query
+found `health.googleapis.com` was not listed as enabled in the configured project.
+Account consent, actual data coverage and metric equivalence remain unproven;
+the existing numeric contract needs a way to distinguish missing metrics from zero.
+
 This work has an external deadline and should start during step 1, rather than
 waiting for all release validation. Google's [Fit migration guide](https://developer.android.com/health-and-fitness/health-connect/migration/fit)
 still gives the end of 2026 as the Fit API support limit. It recommends Google
