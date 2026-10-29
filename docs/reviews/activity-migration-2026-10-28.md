@@ -92,6 +92,26 @@ account match or the transaction and revocation checks in a future consent flow.
 The existing Fit summary uses the viewer's time zone, whereas Health civil rollups
 use offsets recorded with the data; equivalence during travel remains unproven.
 
+The staged [Health summary mapping](../../server/functions/src/services/googleHealthSummary.ts)
+retains the per-day availability states and activity levels, and calculates goal
+progress only when today's steps are measured. Its `fetchedAt` is the request time,
+not the time through which a device recorded data. It does not yet replace the
+numeric Fit contract or drive a UI; the activity-level mapping, consent and live
+consumer handling remain release work. It adds no resting-calorie estimate.
+
+The staged [consent completion service](../../server/functions/src/services/googleHealthConsent.ts)
+requires the Health activity scope and refresh token, verifies the Google ID
+token against the OAuth client and the signed-in Firebase user, and checks the
+Health account link before writing separately encrypted credentials. Its write
+checks the authorization version in the same transaction, so a disconnect or
+account deletion can cancel an in-flight consent. Existing activity disconnect
+and account deletion remove the activity collection, including this record.
+The service is not exposed by an OAuth endpoint or UI yet; tests use mocks and
+do not establish a live consent or exercise Firestore transaction races. A future
+caller must supply a single-use, expiring PKCE state and the correct client
+configuration, and must not enable a provider switch before UI and sharing
+semantics are ready.
+
 ## Current contract and candidate mapping
 
 The owner dashboard and separately consented People feed both call
