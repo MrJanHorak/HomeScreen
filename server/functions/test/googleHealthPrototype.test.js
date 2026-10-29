@@ -1,6 +1,6 @@
 const {test} = require('node:test');
 const assert = require('node:assert/strict');
-const {readHealthPrototype, healthRollupTransport} = require('../lib/services/googleHealthPrototype');
+const {readHealthPrototype, readHealthPrototypeThroughNow, healthRollupTransport} = require('../lib/services/googleHealthPrototype');
 
 const point = (day, field, value) => ({civilStartTime: {date: {year: 2026, month: 11, day}}, [field]: value});
 
@@ -51,4 +51,28 @@ test('transport sends a bounded POST to the Health daily rollup endpoint', async
   assert.equal(requests[0].url, 'https://health.googleapis.com/v4/users/me/dataTypes/steps/dataPoints:dailyRollUp');
   assert.equal(requests[0].method, 'POST');
   assert.equal(requests[0].timeout, 15000);
+});
+
+test('requests through current local civil time across a daylight-saving transition', async () => {
+  const calls = [];
+  const days = await readHealthPrototypeThroughNow(new Date('2026-11-01T18:35:10Z'), 'America/New_York', async (metric, body) => {
+    calls.push(body);
+    return {rollupDataPoints: metric === 'steps' ? [point(1, 'steps', {countSum: '20'})] : []};
+  });
+  assert.equal(days[0].date, '2026-10-26');
+  assert.equal(days[6].date, '2026-11-01');
+  assert.deepEqual(days[6].steps, {status: 'ok', value: 20});
+  assert.deepEqual(calls[0].range.end, {date: {year: 2026, month: 11, day: 1}, time: {hours: 13, minutes: 35, seconds: 10}});
+});
+
+test('midnight has six completed days and a missing current day', async () => {
+  const calls = [];
+  const days = await readHealthPrototypeThroughNow(new Date('2026-11-03T05:00:00Z'), 'America/New_York', async (_, body) => {
+    calls.push(body); return {rollupDataPoints: []};
+  });
+  assert.equal(days[6].date, '2026-11-03');
+  assert.equal(days[6].steps.status, 'missing');
+  assert.deepEqual(calls[0].range.start.date, {year: 2026, month: 10, day: 28});
+  assert.deepEqual(calls[0].range.end, {date: {year: 2026, month: 11, day: 3}, time: {}});
+  await assert.rejects(readHealthPrototypeThroughNow(new Date(), 'Not/AZone', async () => ({})), RangeError);
 });

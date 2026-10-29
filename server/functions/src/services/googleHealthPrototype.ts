@@ -66,12 +66,10 @@ function valueFor(metric: HealthMetric, point: Json): number | Record<string, nu
   return result;
 }
 
-/** Seven completed civil days; caller supplies an authorized, isolated transport. */
-export async function readHealthPrototype(endDateExclusive: string, request: RollupRequest): Promise<PrototypeDay[]> {
-  dateParts(endDateExclusive);
-  const dates = Array.from({length: 7}, (_, i) => nextDate(endDateExclusive, i - 7));
+async function readDates(dates: string[], endDateExclusive: string, endTime: Record<string, number>,
+  request: RollupRequest): Promise<PrototypeDay[]> {
   const body = {range: {start: {date: dateParts(dates[0]), time: {}},
-    end: {date: dateParts(endDateExclusive), time: {}}}, windowSizeDays: 1};
+    end: {date: dateParts(endDateExclusive), time: endTime}}, windowSizeDays: 1};
   const results = await Promise.allSettled(metrics.map((metric) => request(metric, body)));
   const perMetric = results.map((result, index) => {
     const values = new Map<string, number | Record<string, number> | undefined>();
@@ -97,4 +95,31 @@ export async function readHealthPrototype(endDateExclusive: string, request: Rol
   };
   return dates.map((date) => ({date, steps: get(0, date), distanceKm: get(1, date),
     activeMinutesByLevel: get(2, date), calories: get(3, date)}));
+}
+
+/** Seven completed civil days; caller supplies an authorized, isolated transport. */
+export async function readHealthPrototype(endDateExclusive: string, request: RollupRequest): Promise<PrototypeDay[]> {
+  dateParts(endDateExclusive);
+  const dates = Array.from({length: 7}, (_, i) => nextDate(endDateExclusive, i - 7));
+  return readDates(dates, endDateExclusive, {}, request);
+}
+
+/** Six completed days and today through now in the requested viewer time zone. */
+export async function readHealthPrototypeThroughNow(now: Date, timeZone: string,
+  request: RollupRequest): Promise<PrototypeDay[]> {
+  if (!Number.isFinite(now.getTime())) throw new Error("Invalid current time");
+  const formatter = new Intl.DateTimeFormat("en-CA", {timeZone, year: "numeric", month: "2-digit",
+    day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23"});
+  const parts = Object.fromEntries(formatter.formatToParts(now).map((part) => [part.type, part.value]));
+  const today = `${parts.year}-${parts.month}-${parts.day}`;
+  dateParts(today);
+  const dates = Array.from({length: 7}, (_, i) => nextDate(today, i - 6));
+  const hours = Number(parts.hour); const minutes = Number(parts.minute); const seconds = Number(parts.second);
+  // At exact midnight, there is no positive interval for today's bucket.
+  if (hours === 0 && minutes === 0 && seconds === 0) {
+    const prior = await readDates(dates.slice(0, 6), today, {}, request);
+    return [...prior, {date: today, steps: {status: "missing"}, distanceKm: {status: "missing"},
+      calories: {status: "missing"}, activeMinutesByLevel: {status: "missing"}}];
+  }
+  return readDates(dates, today, {hours, minutes, seconds}, request);
 }

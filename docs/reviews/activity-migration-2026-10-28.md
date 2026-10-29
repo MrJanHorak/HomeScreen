@@ -43,13 +43,52 @@ MODERATE and VIGOROUS entries and said the results seem correct. The precise
 comparison method and calorie response content were not captured. Whether and
 how those levels match Fit Move Minutes remains an explicit mapping decision.
 
+In a later seven-day Playground check, the user reported data from all four
+rollup endpoints and supplied excerpts showing multiple days of distance and
+active minutes, plus a total-calories result with `kcalSum`. These shapes match
+the prototype's parsing assumptions. The excerpts do not establish complete
+seven-day coverage for every metric or numerical parity with Fit, and the
+prototype itself was not used for these live requests. No health values were
+copied into this record.
+
+Later the Sony TV's Activity detail screen was checked with the user's
+authorization. For October 27, the displayed Fit step count was approximately
+1.2% lower than the previously supplied Health daily rollup. This is one day's
+display comparison, not proof of equivalent sources or complete seven-day
+parity. The TV screen did not show per-day historical distance, calories or
+Move Minutes, so those comparisons remain open. The temporary accessibility
+capture on the TV was removed after returning to the dashboard.
+
 An isolated [server prototype](../../server/functions/src/services/googleHealthPrototype.ts)
-now requests seven completed civil days through an injected authorized client.
+can request seven completed civil days or six completed days plus a partial
+current day through an injected authorized client.
 It preserves activity levels, measured zeros, missing values and per-metric
 request failures; distance is converted from millimeters to kilometers. It is
 not connected to production OAuth, dashboard summaries or the TV. Mocked tests
-cover request construction, DST-spanning calendar dates, conversions, missing
-values and failures; the prototype itself has not been run against a live account.
+cover request construction, partial-day and midnight boundaries, DST-spanning
+calendar dates, conversions, missing values and failures. The current-day cutoff is expressed in
+the viewer's civil time, while Health uses offsets recorded with data; repeated
+clock hours and travel require live verification before enabling it.
+
+To run the prototype privately against the test account, build the Functions
+package, then run `node scripts/health-prototype-check.cjs America/New_York`
+from `server/functions` in an interactive terminal. Authorize the Health read
+scope in OAuth Playground and paste its short-lived access token only at the
+hidden terminal prompt. The command displays only counts of available, missing
+and failed days and whether today's values are present; it does not print or
+save values or credentials. An HTTP 401 means a fresh token may be needed. It
+does not compare Fit values, write data, store refresh tokens or exercise
+production consent. Ensure the computer clock is correct. Never share a token,
+client secret, or Playground request headers in chat or commit them to the repo.
+The user subsequently ran this command with a fresh token and reported seven
+days with data and today's value present for all four metrics, with no missing
+or unavailable days. This is a user-reported live prototype result; it does not
+establish numerical parity, participant consent or production readiness.
+The local check now first calls Health's `users/me/identity` endpoint to detect
+an unlinked Health account or failed authorization without printing identifiers.
+That addition has mocked coverage but has not yet been run against the live test
+account. It is not a substitute for the existing Google ID-token-to-Firebase
+account match or the transaction and revocation checks in a future consent flow.
 The existing Fit summary uses the viewer's time zone, whereas Health civil rollups
 use offsets recorded with the data; equivalence during travel remains unproven.
 
