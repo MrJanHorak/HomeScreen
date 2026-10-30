@@ -17,6 +17,7 @@ async function setup(t, invite = false) {
     if (url.pathname.endsWith('/beginGoogleActivity')) {writes.push(body); return route.fulfill({json: {authorizationUrl: 'https://untrusted.example/steal'}});}
     if (url.pathname.endsWith('/beginGoogleHealth')) {writes.push(body); return route.fulfill({json: {authorizationUrl: 'https://untrusted.example/steal'}});}
     if (url.pathname.endsWith('/googleHealthTest')) {writes.push(body); return route.fulfill({json: {status: 'ok', ...(body.forceRefresh ? {refreshVerified: true} : {}), coverage: Object.fromEntries(['steps', 'distanceKm', 'calories', 'activeMinutesByLevel'].map((key) => [key, {available: 7, missing: 0, unavailable: 0, today: 'ok'}]))}});}
+    if (url.pathname.endsWith('/googleHealthComparison')) {writes.push(body); return route.fulfill({json: {status: 'ok', days: [{date: '2026-10-27', steps: {status: 'compared', percent: 1.2}, distance: {status: 'fit_zero_or_missing'}, calories: {status: 'health_missing'}}]}});}
     if (body) {
       writes.push(body);
       if (body.action === 'invite') return route.fulfill({json: {id: 'c'.repeat(64), url: `${baseUrl}/people?invite=${'s'.repeat(43)}`, expiresAtMs: Date.now() + 1800000}});
@@ -66,6 +67,8 @@ test('Health test control requires consent and removes only its staged connectio
   await page.getByRole('button', {name: 'Check token refresh'}).click();
   await page.getByText('Token refresh succeeded.').waitFor();
   assert.equal(writes.at(-1).forceRefresh, true);
+  await page.getByRole('button', {name: 'Compare completed days with Fit'}).click();
+  await page.getByText('2026-10-27: Steps +1.2%; distance Fit zero or missing; calories Health missing.').waitFor();
   await page.getByRole('button', {name: 'Remove Google Health test connection'}).click();
   assert.equal(writes.some((item) => item.action === 'disconnectHealthTest'), false);
   await page.getByRole('button', {name: 'Confirm remove Google Health test'}).click();

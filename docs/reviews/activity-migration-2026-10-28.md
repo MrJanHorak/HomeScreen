@@ -165,6 +165,70 @@ successfully, providing live evidence that the saved test refresh token obtained
 a new access token. This does not establish behavior after the seven-day testing
 grant expires, production OAuth verification, or automatic recovery after revocation.
 
+An owner-only, rate-limited comparison test is deployed in the People panel.
+It reads the owner's existing Fit and Health connections, compares matching
+completed dates for steps, distance and calories, and returns percentages rather
+than raw values. Fit's zero values are ambiguous because its adapter also fills
+missing buckets with zero, so those are not compared. Fit distance is rounded,
+and calorie semantics, source timing and civil-day boundaries may differ. Activity
+levels are intentionally not compared to Fit Move Minutes. Authorization and
+connection revisions are rechecked before returning results. Mocked tests and
+unauthenticated live smoke checks passed; no live comparison result from this
+new endpoint had yet been recorded at deployment.
+
+The user subsequently ran the deployed comparison for the six completed dates
+October 23–28. Google Health steps were 0.1%–2.4% lower than Fit, distance was
+0.1%–2.2% lower, and total calories were 2.3%–10.0% lower on those dates.
+These are user-reported relative differences for one account and time zone, not
+proof of source equivalence or of the cause of the calorie gap. They do not test
+today's partial day, zero/missing states, travel, repeated DST hours, a second
+account, or the meaning of Health activity levels versus Fit Move Minutes.
+
+### Sync timing and calorie interpretation
+
+Sync timing is a plausible explanation for some differences, especially for
+recent activity. Google says its Health API data becomes available after the
+tracker syncs with the Health app, and describes automatic sync behavior for
+supported Fitbit devices ([Health data availability](https://developers.google.com/health/data-types)).
+Google also describes temporary differences in Fit caused by syncing delays
+([Fit FAQ](https://developers.google.com/fit/faq)). These descriptions do not
+establish the precise sync schedule of this household's particular devices or
+prove that sync caused the observed gaps. A consistent gap across six completed
+days could also reflect different sources, reconciliation, day boundaries or
+calorie estimates.
+
+Both candidate calorie metrics intend to include resting energy: Health's
+[`total-calories`](https://developers.google.com/health/data-types/calories)
+is derived from activity and basal metabolism; Fit's
+[`com.google.calories.expended`](https://developers.google.com/fit/datatypes/activity)
+includes resting calories. That shared definition does not establish identical
+inputs or algorithms. The dashboard's Fit adapter adds its separate resting
+estimate only to **today's** total, so it did not add that estimate to the six
+completed-day values in this comparison. Do not apply that estimate to Health.
+
+To test the sync hypothesis, leave the two apps and tracker connected long
+enough for their normal sync, then rerun **Compare completed days with Fit** in
+the same browser time zone. Compare only overlapping completed dates against the
+October 23–28 baseline and record the time and percentage differences, not
+personal values. Changes on the same date would demonstrate that at least one
+side's comparison changed; they would not identify which side changed or prove
+the cause. Stable gaps across repeated checks would make an ordinary short sync
+delay less likely, but would not rule out later corrections or other causes.
+The earlier October 27 comparison used a TV display and a separate Health read;
+its approximately +1.2% difference cannot be directly equated with the later
+endpoint's approximately -1.1% result without controlling source and timing.
+
+The user subsequently shared a repeat comparison with identical displayed
+percentages for all three metrics on all six October 23–28 dates. The elapsed
+time between checks and the devices' sync states were not supplied. This shows
+the rounded relative differences stayed the same at the two observations, not
+that underlying totals were unchanged or that sync delay has been ruled out.
+
+For the eventual Health UI, keep LIGHT, MODERATE and VIGOROUS as separately
+labeled levels until product semantics and device coverage are verified.
+Google's [active-minutes reference](https://developers.google.com/health/reference/rest/v4/users.dataTypes.dataPoints)
+defines those levels; it does not establish their equivalence to Fit Move Minutes.
+
 The isolated [Health read service](../../server/functions/src/services/googleHealthRead.ts)
 now loads the separate encrypted grant, uses the Health OAuth client to refresh
 access on demand, and stores a refreshed access token encrypted for reuse. It

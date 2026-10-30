@@ -29,6 +29,7 @@ import {peopleHandler, peopleActivityHandler} from "./people";
 import {feedsHandler} from "./feeds";
 import {beginGoogleHealthHandler, googleHealthOAuthCallbackHandler} from "./googleHealthOAuth";
 import {googleHealthTestHandler} from "./googleHealthTest";
+import {googleHealthComparisonHandler} from "./googleHealthComparison";
 
 
 // import {onRequest} from "firebase-functions/https";
@@ -82,3 +83,4 @@ export const feeds = feedsHandler;
 export const beginGoogleHealth = beginGoogleHealthHandler;
 export const googleHealthOAuthCallback = googleHealthOAuthCallbackHandler;
 export const googleHealthTest = googleHealthTestHandler;
+export const googleHealthComparison = googleHealthComparisonHandler;
