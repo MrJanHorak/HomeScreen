@@ -260,6 +260,29 @@ not establish which source caused the all-sources difference. No raw calorie
 values or device identifiers were recorded. Confirm filtered semantics, test
 other accounts and missing-data behavior before considering a provider mapping.
 
+The deployed Fit comparison was subsequently extended to read all-source,
+Google-source and wearable Health calories alongside the same Fit read, using
+one request time and completed-day matching. Each group is compared directly
+with Fit; a missing or failed group remains missing or unavailable. These are
+concurrent requests rather than an atomic provider snapshot. Mocked backend and
+browser tests passed, and live unauthenticated checks confirmed the endpoint
+requires sign-in. The live simultaneous comparison remains to be run by the
+account owner, and filtered totals have not been established as a safe default
+for users without wearable data.
+
+The user subsequently reported the concurrent comparison for October 24–29.
+On October 24–27 the Google-source and wearable calorie results were 0.7%–1.1%
+below Fit, versus 8.0%–10.0% below for all sources. On October 28 the filtered
+results were 2.1% above Fit and all sources were 2.3% below. On October 29 the
+filtered results were 23.3% above Fit while all sources were 3.1% above. Both
+filtered groups displayed the same percentage on every date. These observations
+confirm that the earlier cross-run estimate held for the overlapping dates, but
+also show that filtered results can diverge more from Fit on a different day.
+Matching displayed percentages do not prove matching records, and neither Fit
+nor Health is established as ground truth. Retain the all-sources default while
+investigating the October 29 source and reconciliation difference, and test a
+non-wearable account before making any source-family or fallback decision.
+
 The isolated [Health read service](../../server/functions/src/services/googleHealthRead.ts)
 now loads the separate encrypted grant, uses the Health OAuth client to refresh
 access on demand, and stores a refreshed access token encrypted for reuse. It

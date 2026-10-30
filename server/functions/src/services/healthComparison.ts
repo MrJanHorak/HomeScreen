@@ -1,11 +1,11 @@
 import {HealthDay} from "../types";
 import {PrototypeDay, MetricResult} from "./googleHealthPrototype";
 
-type Difference = {status: "compared"; percent: number} |
+export type Difference = {status: "compared"; percent: number} |
   {status: "health_missing" | "health_unavailable" | "fit_zero_or_missing" | "fit_missing"};
 export interface ComparisonDay {date: string; steps: Difference; distance: Difference; calories: Difference}
 
-function compareMetric(health: MetricResult<number>, fit: number | undefined): Difference {
+export function compareMetric(health: MetricResult<number>, fit: number | undefined): Difference {
   if (health.status === "missing") return {status: "health_missing"};
   if (health.status === "unavailable") return {status: "health_unavailable"};
   if (fit === undefined || !Number.isFinite(fit) || fit < 0) return {status: "fit_missing"};

@@ -6,7 +6,8 @@ import {validTimeZone} from "./utils/zonedTime";
 import {decryptToken} from "./utils/crypto";
 import {fetchHealthData} from "./services/googleFit";
 import {fetchGoogleHealthSummary} from "./services/googleHealthRead";
-import {compareCompletedHealthDays} from "./services/healthComparison";
+import {compareCompletedHealthDays, compareMetric} from "./services/healthComparison";
+import type {PrototypeDay} from "./services/googleHealthPrototype";
 
 /** Compare only the caller's accounts; do not save or log metric values. */
 export const googleHealthComparisonHandler = onRequest({cors: true, maxInstances: 5,
@@ -50,11 +51,14 @@ export async function handleGoogleHealthComparison(req: Request, res: Response):
       res.status(200).json({status: "health_not_connected"}); return;
     }
     const now = new Date();
-    const [fit, health] = await Promise.all([
+    const goals = {stepGoal: 10000, distanceGoal: 8};
+    const [fit, health, googleSources, wearables] = await Promise.all([
       fetchHealthData({refreshToken: decryptToken(google.refreshToken),
         accessToken: google.accessToken ? decryptToken(google.accessToken) : undefined,
         expiryDate: google.expiryDate, scope: google.scope}, {}, req.body.timeZone, now),
-      fetchGoogleHealthSummary(uid, req.body.timeZone, {stepGoal: 10000, distanceGoal: 8}, now),
+      fetchGoogleHealthSummary(uid, req.body.timeZone, goals, now),
+      fetchGoogleHealthSummary(uid, req.body.timeZone, goals, now, {caloriesOnly: true, sourceFamily: "google-sources"}),
+      fetchGoogleHealthSummary(uid, req.body.timeZone, goals, now, {caloriesOnly: true, sourceFamily: "google-wearables"}),
     ]);
     await db.runTransaction(async (tx) => {
       await assertAuthorizationVersion(tx, uid, version);
@@ -70,8 +74,17 @@ export async function handleGoogleHealthComparison(req: Request, res: Response):
     if (health.status !== "ok") {
       res.status(200).json({status: health.status === "reconnect" ? "health_reconnect" : "health_unavailable"}); return;
     }
-    res.status(200).json({status: "ok", days: compareCompletedHealthDays(health.summary.weekly,
-      fit.weekly, health.summary.today.date)});
+    const results = compareCompletedHealthDays(health.summary.weekly, fit.weekly, health.summary.today.date);
+    const fitByDate = new Map(fit.weekly.map((day) => [day.date, day.calories]));
+    const metricByDate = (result: typeof googleSources): Map<string, PrototypeDay["calories"]> =>
+      new Map(result.status === "ok" ? result.summary.weekly.map((day) => [day.date, day.calories]) : []);
+    const googleByDate = metricByDate(googleSources);
+    const wearableByDate = metricByDate(wearables);
+    const metricFor = (result: typeof googleSources, map: Map<string, PrototypeDay["calories"]>, date: string): PrototypeDay["calories"] =>
+      result.status !== "ok" ? {status: "unavailable"} : map.get(date) || {status: "missing"};
+    res.status(200).json({status: "ok", days: results.map((day) => ({...day,
+      googleCalories: compareMetric(metricFor(googleSources, googleByDate, day.date), fitByDate.get(day.date)),
+      wearableCalories: compareMetric(metricFor(wearables, wearableByDate, day.date), fitByDate.get(day.date))}))});
   } catch {
     res.status(503).json({error: "Activity comparison is unavailable. Try again later."});
   }

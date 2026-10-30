@@ -9,7 +9,7 @@ type Request = ReturnType<typeof createApiClient>;
 type HealthTestResult = {status: 'ok'; refreshVerified?: boolean; coverage: Record<string, {available: number; missing: number; unavailable: number; today: string}>} |
   {status: 'not_connected' | 'reconnect' | 'unavailable'};
 type Difference = {status: 'compared'; percent: number} | {status: 'health_missing' | 'health_unavailable' | 'fit_zero_or_missing' | 'fit_missing'};
-type HealthComparison = {status: 'ok'; days: {date: string; steps: Difference; distance: Difference; calories: Difference}[]} |
+type HealthComparison = {status: 'ok'; days: {date: string; steps: Difference; distance: Difference; calories: Difference; googleCalories: Difference; wearableCalories: Difference}[]} |
   {status: 'fit_not_connected' | 'health_not_connected' | 'fit_unavailable' | 'health_reconnect' | 'health_unavailable'};
 type SourceDifference = {status: 'compared'; percent: number} | {status: 'missing' | 'unavailable' | 'baseline_missing' | 'baseline_unavailable' | 'baseline_zero'};
 type CalorieSources = {status: 'ok'; days: {date: string; google: SourceDifference; wearables: SourceDifference}[]} |
@@ -129,7 +129,9 @@ function PeopleManager({request, invite}: {request: Request; invite: string | nu
         })}>Compare completed days with Fit</button>}
         {comparison?.status === 'ok' && <div role="status"><p>Health compared with Fit for completed days: positive means Health is higher. Percentages are shown without raw activity values.</p>
           <p className="field-hint">Fit can report zero when data is missing. Distance is rounded in Fit; calories and activity sources can differ. Travel and time-zone changes may affect day boundaries.</p>
-          {comparison.days.map((day) => <p key={day.date}>{day.date}: Steps {differenceText(day.steps)}; distance {differenceText(day.distance)}; calories {differenceText(day.calories)}.</p>)}
+          {comparison.days.map((day) => <div key={day.date}><p>{day.date}: Steps {differenceText(day.steps)}; distance {differenceText(day.distance)}; all-source calories {differenceText(day.calories)}.</p>
+            <p>Google-source calories {differenceText(day.googleCalories)}; wearable calories {differenceText(day.wearableCalories)}.</p></div>)}
+          <p className="field-hint">Each Health source group is reconciled separately and compared with the same Fit total. Matching percentages don’t prove matching records.</p>
           <p className="field-hint">Activity levels are not compared with Fit Move Minutes because their meanings are not yet established.</p></div>}
         {comparison && comparison.status !== 'ok' && <p role="status">The comparison could not run ({comparison.status.replaceAll('_', ' ')}). Check both account connections and try again.</p>}
         {data.healthTest.available && data.healthTest.connected && <button className="button button-secondary" disabled={busy} onClick={() => void run(async () => {

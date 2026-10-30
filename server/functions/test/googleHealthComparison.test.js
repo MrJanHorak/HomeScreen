@@ -27,16 +27,32 @@ function fixture(t) {
   t.mock.method(auth, 'authenticatedIdentity', async () => ({userId: 'owner', owner: true}));
   const d = '2026-10-27'; const metric = (value) => ({status: 'ok', value});
   t.mock.method(fit, 'fetchHealthData', async () => ({status: 'ok', weekly: [{date: d, steps: 100, distance: 1, calories: 200}]}));
-  t.mock.method(health, 'fetchGoogleHealthSummary', async () => ({status: 'ok', summary: {today: {date: '2026-10-28'},
-    weekly: [{date: d, steps: metric(110), distanceKm: metric(2), calories: metric(300)}]}}));
+  t.mock.method(health, 'fetchGoogleHealthSummary', async (...args) => ({status: 'ok', summary: {today: {date: '2026-10-28'},
+    weekly: [{date: d, steps: metric(110), distanceKm: metric(2), calories: metric(args[4]?.sourceFamily === 'google-sources' ? 220 : args[4]?.sourceFamily === 'google-wearables' ? 180 : 300)}]}}));
   return data;
 }
 
 test('returns only per-day percentages for the authenticated owner', async (t) => {
   fixture(t); const response = res(); await handleGoogleHealthComparison(req(), response);
   assert.equal(response.code, 200); assert.equal(response.body.days[0].steps.percent, 10);
+  assert.deepEqual(response.body.days[0].googleCalories, {status: 'compared', percent: 10});
+  assert.deepEqual(response.body.days[0].wearableCalories, {status: 'compared', percent: -10});
   assert.equal(JSON.stringify(response.body).includes('fit-private'), false);
   assert.equal(JSON.stringify(response.body).includes('110'), false);
+});
+
+test('failed and missing source filters stay distinct from an all-source total', async (t) => {
+  fixture(t);
+  t.mock.method(health, 'fetchGoogleHealthSummary', async (...args) => {
+    if (args[4]?.sourceFamily === 'google-sources') return {status: 'unavailable'};
+    if (args[4]?.sourceFamily === 'google-wearables') return {status: 'ok', summary: {weekly: []}};
+    const metric = (value) => ({status: 'ok', value});
+    return {status: 'ok', summary: {today: {date: '2026-10-28'}, weekly: [{date: '2026-10-27', steps: metric(110), distanceKm: metric(2), calories: metric(300)}]}};
+  });
+  const response = res(); await handleGoogleHealthComparison(req(), response);
+  assert.deepEqual(response.body.days[0].googleCalories, {status: 'health_unavailable'});
+  assert.deepEqual(response.body.days[0].wearableCalories, {status: 'health_missing'});
+  assert.deepEqual(response.body.days[0].calories, {status: 'compared', percent: 50});
 });
 
 test('rejects TV sessions and discards results if consent changes during the read', async (t) => {
