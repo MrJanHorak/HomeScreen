@@ -229,6 +229,37 @@ labeled levels until product semantics and device coverage are verified.
 Google's [active-minutes reference](https://developers.google.com/health/reference/rest/v4/users.dataTypes.dataPoints)
 defines those levels; it does not establish their equivalence to Fit Move Minutes.
 
+### Source-family diagnostic
+
+Google documents that Health daily rollups reconcile overlapping data, and can
+filter by source family ([aggregation guide](https://developers.google.com/health/aggregate-data),
+[source families](https://developers.google.com/health/filters)). A staged,
+owner-only diagnostic, deployed October 30, compares each completed day's `total-calories` rollup for
+Google sources and Google wearables against the all-sources rollup. It returns
+only percentage differences and availability, not raw calorie values or device
+identities, and does not modify dashboard data. A missing or failed filter is not
+interpreted as zero. The source groups are reconciled separately; their results
+are not additive and do not establish the cause of any difference with Fit.
+Filtered `total-calories` behavior and the account's source coverage need a live
+check. Mocked tests cover request family selection, zero/missing/failure handling,
+authorization and connection changes. The deployed endpoint rejected an
+unauthenticated request and the hosted page included the control; live filtered
+data has not yet been verified.
+
+On October 30 the user reported successful filtered source results for October
+24–29. Google-source and wearable totals had the same displayed percentage on
+each date and were 4.5%–19.6% above the all-sources Health baseline. In five
+overlapping dates from the prior Fit comparison (October 24–28), combining the
+separately observed, rounded percentages implies that Health's filtered calorie
+totals were approximately 0.7%–1.1% below Fit on October 24–27 and 2.1% above
+Fit on October 28. These calculations combine separate reads at different times,
+so they are exploratory, not a simultaneous direct comparison or proof that
+either filtered source matches Fit. The equal displayed group percentages do not
+prove the same underlying records, and separately reconciled source filters do
+not establish which source caused the all-sources difference. No raw calorie
+values or device identifiers were recorded. Confirm filtered semantics, test
+other accounts and missing-data behavior before considering a provider mapping.
+
 The isolated [Health read service](../../server/functions/src/services/googleHealthRead.ts)
 now loads the separate encrypted grant, uses the Health OAuth client to refresh
 access on demand, and stores a refreshed access token encrypted for reuse. It

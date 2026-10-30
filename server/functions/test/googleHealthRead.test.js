@@ -86,6 +86,15 @@ test('failed forced refresh is not reported as verified', async (t) => {
   assert.equal(result.status, 'ok'); assert.equal(result.refreshVerified, false);
 });
 
+test('calorie source check restricts requests to one metric and a fixed family', async (t) => {
+  fixture(t); const calls = [];
+  t.mock.method(google.auth.OAuth2.prototype, 'request', async (options) => {calls.push(options); return {data: {rollupDataPoints: []}};});
+  const result = await fetchGoogleHealthSummary('user', 'America/New_York', goals, now, {caloriesOnly: true, sourceFamily: 'google-sources'});
+  assert.equal(result.status, 'ok'); assert.equal(calls.length, 1);
+  assert.match(calls[0].url, /total-calories/);
+  assert.equal(calls[0].data.dataSourceFamily, 'users/me/dataSourceFamilies/google-sources');
+});
+
 test('expired grants ask for reconnection; transient failures do not', async (t) => {
   fixture(t);
   let failure = {response: {status: 400, data: {error: 'invalid_grant'}}};

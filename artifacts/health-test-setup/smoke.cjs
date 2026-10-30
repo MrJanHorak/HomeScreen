@@ -5,20 +5,21 @@ async function main() {
     ['beginGoogleHealth', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{"consent":true}'}, 401],
     ['googleHealthTest', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{"timeZone":"UTC"}'}, 401],
     ['googleHealthComparison', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{"timeZone":"UTC"}'}, 401],
+    ['googleHealthCalorieSources', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{"timeZone":"UTC"}'}, 401],
     ['googleHealthOAuthCallback', {}, 400],
     ['people', {}, 401],
   ]) {
-    const response = await fetch(`${root}/${name}`, init);
+    const response = await fetch(`${root}/${name}`, {...init, signal: AbortSignal.timeout(15000)});
     console.log(`${name}: HTTP ${response.status} (expected ${expected})`);
     if (response.status !== expected) process.exitCode = 1;
   }
-  const page = await fetch('https://tv-homescreen-backend.web.app/people');
+  const page = await fetch('https://tv-homescreen-backend.web.app/people', {signal: AbortSignal.timeout(15000)});
   const html = await page.text();
   const entry = html.match(/src="([^"]+\.js)"/);
   if (!page.ok || !entry) throw new Error('Hosted companion bundle was not found');
-  const bundle = await fetch(new URL(entry[1], page.url));
+  const bundle = await fetch(new URL(entry[1], page.url), {signal: AbortSignal.timeout(15000)});
   const source = await bundle.text();
-  const present = bundle.ok && source.includes('Check test data') && source.includes('Google Health test connection') && source.includes('Check token refresh') && source.includes('Compare completed days with Fit');
+  const present = bundle.ok && source.includes('Check test data') && source.includes('Google Health test connection') && source.includes('Check token refresh') && source.includes('Compare completed days with Fit') && source.includes('Compare Health calorie sources');
   console.log(`Hosted Health test controls present: ${present}`);
   if (!present) process.exitCode = 1;
 }

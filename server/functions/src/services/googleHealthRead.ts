@@ -29,7 +29,8 @@ function isExpiredGrant(error: unknown): boolean {
 /** Isolated read: no client endpoint, cache, sharing or dashboard provider switch. */
 export async function fetchGoogleHealthSummary(uid: string, timeZone: string,
   goals: {stepGoal: number; distanceGoal: number}, now = new Date(),
-  options: {forceRefresh?: boolean} = {}): Promise<HealthReadResult> {
+  options: {forceRefresh?: boolean; caloriesOnly?: boolean;
+    sourceFamily?: "all-sources" | "google-sources" | "google-wearables"} = {}): Promise<HealthReadResult> {
   try {
     const version = await getAuthorizationVersion(uid);
     const ref = db.collection("users").doc(uid).collection("activity").doc("googleHealth");
@@ -44,9 +45,11 @@ export async function fetchGoogleHealthSummary(uid: string, timeZone: string,
     let attempts = 0;
     let expired = 0;
     const days = await readHealthPrototypeThroughNow(now, timeZone, async (metric, body) => {
+      if (options.caloriesOnly && metric !== "total-calories") throw new Error("Metric not requested");
       attempts++;
       try {
-        return await request(metric, body);
+        return await request(metric, options.sourceFamily ?
+          {...body, dataSourceFamily: `users/me/dataSourceFamilies/${options.sourceFamily}`} : body);
       } catch (error) {
         if (isExpiredGrant(error)) expired++;
         throw error;

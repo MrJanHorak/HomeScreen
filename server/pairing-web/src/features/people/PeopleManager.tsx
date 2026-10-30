@@ -11,6 +11,13 @@ type HealthTestResult = {status: 'ok'; refreshVerified?: boolean; coverage: Reco
 type Difference = {status: 'compared'; percent: number} | {status: 'health_missing' | 'health_unavailable' | 'fit_zero_or_missing' | 'fit_missing'};
 type HealthComparison = {status: 'ok'; days: {date: string; steps: Difference; distance: Difference; calories: Difference}[]} |
   {status: 'fit_not_connected' | 'health_not_connected' | 'fit_unavailable' | 'health_reconnect' | 'health_unavailable'};
+type SourceDifference = {status: 'compared'; percent: number} | {status: 'missing' | 'unavailable' | 'baseline_missing' | 'baseline_unavailable' | 'baseline_zero'};
+type CalorieSources = {status: 'ok'; days: {date: string; google: SourceDifference; wearables: SourceDifference}[]} |
+  {status: 'not_connected' | 'reconnect' | 'unavailable'};
+function sourceDifferenceText(value: SourceDifference): string {
+  if (value.status === 'compared') return `${value.percent > 0 ? '+' : ''}${value.percent}%`;
+  return value.status.replaceAll('_', ' ');
+}
 function differenceText(value: Difference): string {
   if (value.status === 'compared') return `${value.percent > 0 ? '+' : ''}${value.percent}%`;
   if (value.status === 'fit_zero_or_missing') return 'Fit zero or missing';
@@ -26,6 +33,7 @@ function PeopleManager({request, invite}: {request: Request; invite: string | nu
   const [healthConsent, setHealthConsent] = useState(false);
   const [healthResult, setHealthResult] = useState<HealthTestResult | null>(null);
   const [comparison, setComparison] = useState<HealthComparison | null>(null);
+  const [calorieSources, setCalorieSources] = useState<CalorieSources | null>(null);
   const [confirm, setConfirm] = useState('');
   const mounted = useRef(true);
   async function load() {
@@ -124,9 +132,19 @@ function PeopleManager({request, invite}: {request: Request; invite: string | nu
           {comparison.days.map((day) => <p key={day.date}>{day.date}: Steps {differenceText(day.steps)}; distance {differenceText(day.distance)}; calories {differenceText(day.calories)}.</p>)}
           <p className="field-hint">Activity levels are not compared with Fit Move Minutes because their meanings are not yet established.</p></div>}
         {comparison && comparison.status !== 'ok' && <p role="status">The comparison could not run ({comparison.status.replaceAll('_', ' ')}). Check both account connections and try again.</p>}
+        {data.healthTest.available && data.healthTest.connected && <button className="button button-secondary" disabled={busy} onClick={() => void run(async () => {
+          setCalorieSources(null);
+          const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+          const result = await request<CalorieSources>('googleHealthCalorieSources', 'POST', {timeZone});
+          if (mounted.current) setCalorieSources(result);
+        })}>Compare Health calorie sources</button>}
+        {calorieSources?.status === 'ok' && <div role="status"><p>Health calorie source groups compared with Health’s all-sources total for completed days. A negative percentage means the filtered group is lower.</p>
+          <p className="field-hint">Google sources can include wearables, Health Connect and manual entries. Wearables excludes phone and manual data. Empty or unavailable results do not prove the cause of the Fit difference; source groups are reconciled separately and should not be added together.</p>
+          {calorieSources.days.map((day) => <p key={day.date}>{day.date}: Google sources {sourceDifferenceText(day.google)}; wearables {sourceDifferenceText(day.wearables)}.</p>)}</div>}
+        {calorieSources && calorieSources.status !== 'ok' && <p role="status">The source comparison could not run ({calorieSources.status.replaceAll('_', ' ')}). Check the test connection and try again.</p>}
         {data.healthTest.connected && <button className="button button-text" disabled={busy} onClick={() => {
           if (confirm !== 'disconnect-health') {setConfirm('disconnect-health'); return;}
-          void run(async () => {await request('people', 'POST', {action: 'disconnectHealthTest'}); await load(); setConfirm(''); setHealthConsent(false); setHealthResult(null); setComparison(null); setMessage('Google Health test connection removed.');});
+          void run(async () => {await request('people', 'POST', {action: 'disconnectHealthTest'}); await load(); setConfirm(''); setHealthConsent(false); setHealthResult(null); setComparison(null); setCalorieSources(null); setMessage('Google Health test connection removed.');});
         }}>{confirm === 'disconnect-health' ? 'Confirm remove Google Health test' : 'Remove Google Health test connection'}</button>}
       </section>}
       <section className="people-panel"><h2>People on your dashboard</h2><p>Add a roommate, partner, or family member. Each person connects their own account. Joining makes their activity widget available in Dashboard Studio.</p>
