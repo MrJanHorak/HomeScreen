@@ -6,6 +6,7 @@ async function main() {
     ['googleHealthTest', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{"timeZone":"UTC"}'}, 401],
     ['googleHealthComparison', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{"timeZone":"UTC"}'}, 401],
     ['googleHealthCalorieSources', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{"timeZone":"UTC"}'}, 401],
+    ['googleHealthCalorieWindows', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{"timeZone":"UTC","date":"2026-10-29"}'}, 401],
     ['googleHealthOAuthCallback', {}, 400],
     ['people', {}, 401],
   ]) {
@@ -19,7 +20,7 @@ async function main() {
   if (!page.ok || !entry) throw new Error('Hosted companion bundle was not found');
   const bundle = await fetch(new URL(entry[1], page.url), {signal: AbortSignal.timeout(15000)});
   const source = await bundle.text();
-  const present = bundle.ok && source.includes('Check test data') && source.includes('Google Health test connection') && source.includes('Check token refresh') && source.includes('Compare completed days with Fit') && source.includes('Compare Health calorie sources') && source.includes('Google-source calories');
+  const present = bundle.ok && source.includes('Check test data') && source.includes('Google Health test connection') && source.includes('Check token refresh') && source.includes('Compare completed days with Fit') && source.includes('Compare Health calorie sources') && source.includes('Google-source calories') && source.includes('Check hourly calorie sources');
   console.log(`Hosted Health test controls present: ${present}`);
   if (!present) process.exitCode = 1;
 }

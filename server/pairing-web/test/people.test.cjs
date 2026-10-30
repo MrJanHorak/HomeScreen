@@ -19,6 +19,7 @@ async function setup(t, invite = false) {
     if (url.pathname.endsWith('/googleHealthTest')) {writes.push(body); return route.fulfill({json: {status: 'ok', ...(body.forceRefresh ? {refreshVerified: true} : {}), coverage: Object.fromEntries(['steps', 'distanceKm', 'calories', 'activeMinutesByLevel'].map((key) => [key, {available: 7, missing: 0, unavailable: 0, today: 'ok'}]))}});}
     if (url.pathname.endsWith('/googleHealthComparison')) {writes.push(body); return route.fulfill({json: {status: 'ok', days: [{date: '2026-10-27', steps: {status: 'compared', percent: 1.2}, distance: {status: 'fit_zero_or_missing'}, calories: {status: 'health_missing'}, googleCalories: {status: 'compared', percent: -1}, wearableCalories: {status: 'health_unavailable'}}]}});}
     if (url.pathname.endsWith('/googleHealthCalorieSources')) {writes.push(body); return route.fulfill({json: {status: 'ok', days: [{date: '2026-10-27', google: {status: 'compared', percent: 0}, wearables: {status: 'missing'}}]}});}
+    if (url.pathname.endsWith('/googleHealthCalorieWindows')) {writes.push(body); const counts = {status: 'ok', higher: 2, lower: 0, similar: 22, missing: 0, baselineZero: 0}; return route.fulfill({json: {status: 'ok', date: body.date, hours: 24, google: counts, wearables: counts}});}
     if (body) {
       writes.push(body);
       if (body.action === 'invite') return route.fulfill({json: {id: 'c'.repeat(64), url: `${baseUrl}/people?invite=${'s'.repeat(43)}`, expiresAtMs: Date.now() + 1800000}});
@@ -73,6 +74,9 @@ test('Health test control requires consent and removes only its staged connectio
   await page.getByText('Google-source calories -1%; wearable calories Health unavailable.').waitFor();
   await page.getByRole('button', {name: 'Compare Health calorie sources'}).click();
   await page.getByText('2026-10-27: Google sources 0%; wearables missing.').waitFor();
+  await page.getByLabel('Completed day for hourly source check').fill('2026-10-29');
+  await page.getByRole('button', {name: 'Check hourly calorie sources'}).click();
+  await page.getByText('2026-10-29: 24 hourly windows in your browser time zone.').waitFor();
   await page.getByRole('button', {name: 'Remove Google Health test connection'}).click();
   assert.equal(writes.some((item) => item.action === 'disconnectHealthTest'), false);
   await page.getByRole('button', {name: 'Confirm remove Google Health test'}).click();

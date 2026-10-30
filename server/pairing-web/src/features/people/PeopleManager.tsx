@@ -14,6 +14,16 @@ type HealthComparison = {status: 'ok'; days: {date: string; steps: Difference; d
 type SourceDifference = {status: 'compared'; percent: number} | {status: 'missing' | 'unavailable' | 'baseline_missing' | 'baseline_unavailable' | 'baseline_zero'};
 type CalorieSources = {status: 'ok'; days: {date: string; google: SourceDifference; wearables: SourceDifference}[]} |
   {status: 'not_connected' | 'reconnect' | 'unavailable'};
+type WindowCounts = {status: 'ok' | 'unavailable'; higher: number; lower: number; similar: number; missing: number; baselineZero: number};
+type CalorieWindows = {status: 'ok'; date: string; hours: number; google: WindowCounts; wearables: WindowCounts} | {status: 'not_connected'};
+function windowText(label: string, value: WindowCounts): string {
+  if (value.status !== 'ok') return `${label}: unavailable.`;
+  return `${label}: ${value.higher} higher, ${value.lower} lower, ${value.similar} similar, ${value.missing} missing, ${value.baselineZero} baseline zero.`;
+}
+function previousLocalDate(): string {
+  const date = new Date(); date.setDate(date.getDate() - 1);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
 function sourceDifferenceText(value: SourceDifference): string {
   if (value.status === 'compared') return `${value.percent > 0 ? '+' : ''}${value.percent}%`;
   return value.status.replaceAll('_', ' ');
@@ -34,6 +44,8 @@ function PeopleManager({request, invite}: {request: Request; invite: string | nu
   const [healthResult, setHealthResult] = useState<HealthTestResult | null>(null);
   const [comparison, setComparison] = useState<HealthComparison | null>(null);
   const [calorieSources, setCalorieSources] = useState<CalorieSources | null>(null);
+  const [windowDate, setWindowDate] = useState(previousLocalDate);
+  const [calorieWindows, setCalorieWindows] = useState<CalorieWindows | null>(null);
   const [confirm, setConfirm] = useState('');
   const mounted = useRef(true);
   async function load() {
@@ -144,9 +156,22 @@ function PeopleManager({request, invite}: {request: Request; invite: string | nu
           <p className="field-hint">Google sources can include wearables, Health Connect and manual entries. Wearables excludes phone and manual data. Empty or unavailable results do not prove the cause of the Fit difference; source groups are reconciled separately and should not be added together.</p>
           {calorieSources.days.map((day) => <p key={day.date}>{day.date}: Google sources {sourceDifferenceText(day.google)}; wearables {sourceDifferenceText(day.wearables)}.</p>)}</div>}
         {calorieSources && calorieSources.status !== 'ok' && <p role="status">The source comparison could not run ({calorieSources.status.replaceAll('_', ' ')}). Check the test connection and try again.</p>}
+        {data.healthTest.available && data.healthTest.connected && <div>
+          <label>Completed day for hourly source check<input type="date" value={windowDate} onChange={(event) => setWindowDate(event.target.value)}/></label>
+          <button className="button button-secondary" disabled={busy || !windowDate} onClick={() => void run(async () => {
+            setCalorieWindows(null);
+            const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+            const result = await request<CalorieWindows>('googleHealthCalorieWindows', 'POST', {timeZone, date: windowDate});
+            if (mounted.current) setCalorieWindows(result);
+          })}>Check hourly calorie sources</button>
+        </div>}
+        {calorieWindows?.status === 'ok' && <div role="status"><p>{calorieWindows.date}: {calorieWindows.hours} hourly windows in your browser time zone.</p>
+          <p>{windowText('Google sources', calorieWindows.google)}</p><p>{windowText('Wearables', calorieWindows.wearables)}</p>
+          <p className="field-hint">Each window compares a filtered Health total with the all-sources total. “Similar” means within 0.1%. Missing or failed windows are not zero. This uses physical time and may not match a civil-day rollup during travel.</p></div>}
+        {calorieWindows?.status === 'not_connected' && <p role="status">No Google Health test connection is saved.</p>}
         {data.healthTest.connected && <button className="button button-text" disabled={busy} onClick={() => {
           if (confirm !== 'disconnect-health') {setConfirm('disconnect-health'); return;}
-          void run(async () => {await request('people', 'POST', {action: 'disconnectHealthTest'}); await load(); setConfirm(''); setHealthConsent(false); setHealthResult(null); setComparison(null); setCalorieSources(null); setMessage('Google Health test connection removed.');});
+          void run(async () => {await request('people', 'POST', {action: 'disconnectHealthTest'}); await load(); setConfirm(''); setHealthConsent(false); setHealthResult(null); setComparison(null); setCalorieSources(null); setCalorieWindows(null); setMessage('Google Health test connection removed.');});
         }}>{confirm === 'disconnect-health' ? 'Confirm remove Google Health test' : 'Remove Google Health test connection'}</button>}
       </section>}
       <section className="people-panel"><h2>People on your dashboard</h2><p>Add a roommate, partner, or family member. Each person connects their own account. Joining makes their activity widget available in Dashboard Studio.</p>

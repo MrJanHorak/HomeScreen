@@ -283,6 +283,27 @@ nor Health is established as ground truth. Retain the all-sources default while
 investigating the October 29 source and reconciliation difference, and test a
 non-wearable account before making any source-family or fallback decision.
 
+A separate owner-only hourly source diagnostic was deployed to investigate the
+October 29 outlier. It compares all-source, Google-source and wearable Health
+`total-calories` physical-time rollups in one-hour windows for a selected recent
+completed date and returns only counts of higher, lower, similar, missing and
+zero-baseline windows. It uses browser-zone midnight boundaries and cannot prove
+matching Health civil-day coverage during travel. Rollups may place an interval
+in its start-time window rather than slicing it, so counts indicate where the
+results differ, not the cause. No hour-level calories, source identities or
+timing are returned or stored. Mocked backend and browser tests passed; the live
+endpoint rejects unauthenticated requests. Live source-window results remain to
+be checked by the account owner at deployment.
+
+The user subsequently reported the October 29 hourly check: for both Google
+sources and wearables, 11 of 24 windows were higher than all-sources, none were
+lower, and 13 were similar within 0.1%; none were missing or had a zero baseline.
+The result shows a difference in multiple physical-time windows, not its size,
+the hours involved, the underlying source identities, or why reconciliation
+differs. Equal counts do not establish that the same individual windows or
+records differ. Travel and recorded offsets can also make physical-time windows
+different from the Health civil-day grouping. No hourly values were recorded.
+
 The isolated [Health read service](../../server/functions/src/services/googleHealthRead.ts)
 now loads the separate encrypted grant, uses the Health OAuth client to refresh
 access on demand, and stores a refreshed access token encrypted for reuse. It

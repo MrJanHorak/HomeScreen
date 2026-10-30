@@ -31,6 +31,7 @@ import {beginGoogleHealthHandler, googleHealthOAuthCallbackHandler} from "./goog
 import {googleHealthTestHandler} from "./googleHealthTest";
 import {googleHealthComparisonHandler} from "./googleHealthComparison";
 import {googleHealthCalorieSourcesHandler} from "./googleHealthCalorieSources";
+import {googleHealthCalorieWindowsHandler} from "./googleHealthCalorieWindows";
 
 
 // import {onRequest} from "firebase-functions/https";
@@ -86,3 +87,4 @@ export const googleHealthOAuthCallback = googleHealthOAuthCallbackHandler;
 export const googleHealthTest = googleHealthTestHandler;
 export const googleHealthComparison = googleHealthComparisonHandler;
 export const googleHealthCalorieSources = googleHealthCalorieSourcesHandler;
+export const googleHealthCalorieWindows = googleHealthCalorieWindowsHandler;
