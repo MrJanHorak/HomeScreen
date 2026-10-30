@@ -44,3 +44,14 @@ test('reports a revoked grant without returning provider error details', async (
   const res = response(); await handleGoogleHealthTest(req(), res);
   assert.deepEqual(res.body, {status: 'reconnect'});
 });
+
+test('explicit refresh check passes the request to the reader and reports its result', async (t) => {
+  fixture(t); let options;
+  t.mock.method(reader, 'fetchGoogleHealthSummary', async (...args) => {
+    options = args[4]; return {status: 'ok', refreshVerified: true, summary: {weekly: Array.from({length: 7}, (_, i) => day(i))}};
+  });
+  const res = response(); await handleGoogleHealthTest(req({timeZone: 'UTC', forceRefresh: true}), res);
+  assert.deepEqual(options, {forceRefresh: true}); assert.equal(res.body.refreshVerified, true);
+  const invalid = response(); await handleGoogleHealthTest(req({timeZone: 'UTC', forceRefresh: 'true'}), invalid);
+  assert.equal(invalid.code, 400);
+});

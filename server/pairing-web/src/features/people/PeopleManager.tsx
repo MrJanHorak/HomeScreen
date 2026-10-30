@@ -6,7 +6,7 @@ import type {PeopleSettings, PeopleInvitation} from '../../../../../shared/src/p
 import './people.css';
 
 type Request = ReturnType<typeof createApiClient>;
-type HealthTestResult = {status: 'ok'; coverage: Record<string, {available: number; missing: number; unavailable: number; today: string}>} |
+type HealthTestResult = {status: 'ok'; refreshVerified?: boolean; coverage: Record<string, {available: number; missing: number; unavailable: number; today: string}>} |
   {status: 'not_connected' | 'reconnect' | 'unavailable'};
 function PeopleManager({request, invite}: {request: Request; invite: string | null}) {
   const [data, setData] = useState<PeopleSettings | null>(null);
@@ -88,13 +88,14 @@ function PeopleManager({request, invite}: {request: Request; invite: string | nu
             I agree to connect my Google Health activity data for testing.</label>
           <button className="button button-primary" type="submit" disabled={busy || !healthConsent}>{data.healthTest.connected ? 'Reconnect Google Health test' : 'Connect Google Health test'}</button>
         </form>}
-        {data.healthTest.available && data.healthTest.connected && <button className="button button-secondary" disabled={busy} onClick={() => void run(async () => {
+        {data.healthTest.available && data.healthTest.connected && <div className="people-actions">{[false, true].map((forceRefresh) => <button key={String(forceRefresh)} className="button button-secondary" disabled={busy} onClick={() => void run(async () => {
           setHealthResult(null);
           const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-          const result = await request<HealthTestResult>('googleHealthTest', 'POST', {timeZone});
+          const result = await request<HealthTestResult>('googleHealthTest', 'POST', {timeZone, forceRefresh});
           if (mounted.current) setHealthResult(result);
-        })}>Check test data</button>}
+        })}>{forceRefresh ? 'Check token refresh' : 'Check test data'}</button>)}</div>}
         {healthResult?.status === 'ok' && <div role="status"><p>Coverage for seven days, including today. No activity values are shown.</p>
+          {healthResult.refreshVerified !== undefined && <p>{healthResult.refreshVerified ? 'Token refresh succeeded.' : 'Token refresh could not be verified. Try again later.'}</p>}
           {([['steps', 'Steps'], ['distanceKm', 'Distance'], ['calories', 'Calories'], ['activeMinutesByLevel', 'Activity levels']] as const).map(([key, label]) => {
             const value = healthResult.coverage[key];
             return <p key={key}>{label}: {value.available} days with data, {value.missing} missing, {value.unavailable} unavailable. Today: {value.today}.</p>;

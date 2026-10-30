@@ -64,6 +64,28 @@ test('returns availability and stores a refreshed access token encrypted', async
   assert.equal(JSON.stringify(stored).includes('new-private-access'), false);
 });
 
+test('forced refresh starts without the cached access token and records verification', async (t) => {
+  const records = fixture(t);
+  records.get('users/user/activity/googleHealth').google.accessToken = encryptToken('old-access');
+  records.get('users/user/activity/googleHealth').google.expiryDate = Date.now() + 3600000;
+  let first = true;
+  t.mock.method(google.auth.OAuth2.prototype, 'request', async function() {
+    if (first) {assert.equal(this.credentials.access_token, undefined); first = false;}
+    this.credentials.access_token = 'refreshed-access'; this.credentials.expiry_date = Date.now() + 3600000;
+    return {data: {rollupDataPoints: []}};
+  });
+  const result = await fetchGoogleHealthSummary('user', 'America/New_York', goals, now, {forceRefresh: true});
+  assert.equal(result.status, 'ok'); assert.equal(result.refreshVerified, true);
+  assert.equal(decryptToken(records.get('users/user/activity/googleHealth').google.accessToken), 'refreshed-access');
+});
+
+test('failed forced refresh is not reported as verified', async (t) => {
+  fixture(t);
+  t.mock.method(google.auth.OAuth2.prototype, 'request', async () => {throw {response: {status: 503}};});
+  const result = await fetchGoogleHealthSummary('user', 'America/New_York', goals, now, {forceRefresh: true});
+  assert.equal(result.status, 'ok'); assert.equal(result.refreshVerified, false);
+});
+
 test('expired grants ask for reconnection; transient failures do not', async (t) => {
   fixture(t);
   let failure = {response: {status: 400, data: {error: 'invalid_grant'}}};

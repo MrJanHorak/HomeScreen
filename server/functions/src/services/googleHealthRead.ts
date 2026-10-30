@@ -4,7 +4,7 @@ import {decryptToken, encryptToken} from "../utils/crypto";
 import {healthRollupTransport, readHealthPrototypeThroughNow} from "./googleHealthPrototype";
 import {GoogleHealthSummary, makeGoogleHealthSummary} from "./googleHealthSummary";
 
-type HealthReadResult = {status: "ok"; summary: GoogleHealthSummary} |
+type HealthReadResult = {status: "ok"; summary: GoogleHealthSummary; refreshVerified?: boolean} |
   {status: "not_connected" | "reconnect" | "unavailable"};
 
 /** Each request uses the Health OAuth client, never the existing Fit client. */
@@ -28,7 +28,8 @@ function isExpiredGrant(error: unknown): boolean {
 
 /** Isolated read: no client endpoint, cache, sharing or dashboard provider switch. */
 export async function fetchGoogleHealthSummary(uid: string, timeZone: string,
-  goals: {stepGoal: number; distanceGoal: number}, now = new Date()): Promise<HealthReadResult> {
+  goals: {stepGoal: number; distanceGoal: number}, now = new Date(),
+  options: {forceRefresh?: boolean} = {}): Promise<HealthReadResult> {
   try {
     const version = await getAuthorizationVersion(uid);
     const ref = db.collection("users").doc(uid).collection("activity").doc("googleHealth");
@@ -37,7 +38,8 @@ export async function fetchGoogleHealthSummary(uid: string, timeZone: string,
         stored.provider !== "google-health") return {status: "not_connected"};
     const revision = stored.revision;
     const accessToken = stored.google.accessToken ? decryptToken(stored.google.accessToken) : undefined;
-    const client = makeHealthOAuthClient(decryptToken(stored.google.refreshToken), accessToken, stored.google.expiryDate);
+    const client = makeHealthOAuthClient(decryptToken(stored.google.refreshToken),
+      options.forceRefresh ? undefined : accessToken, stored.google.expiryDate);
     const request = healthRollupTransport(client);
     let attempts = 0;
     let expired = 0;
@@ -56,14 +58,16 @@ export async function fetchGoogleHealthSummary(uid: string, timeZone: string,
       await assertAuthorizationVersion(tx, uid, version);
       if ((await tx.get(ref)).data()?.revision !== revision) throw new Error("Health connection changed");
       const credentials = client.credentials;
-      if (credentials.access_token && credentials.access_token !== accessToken &&
+      if (credentials.access_token && (credentials.access_token !== accessToken ||
+          credentials.expiry_date !== stored.google.expiryDate) &&
           typeof credentials.expiry_date === "number" && Number.isFinite(credentials.expiry_date)) {
         tx.update(ref, {"google.accessToken": encryptToken(credentials.access_token),
           "google.expiryDate": credentials.expiry_date});
       }
     });
     if (attempts > 0 && expired === attempts) return {status: "reconnect"};
-    return {status: "ok", summary};
+    return {status: "ok", summary, ...(options.forceRefresh ?
+      {refreshVerified: Boolean(client.credentials.access_token)} : {})};
   } catch {
     // Never expose credential, provider, or encryption errors to callers.
     return {status: "unavailable"};

@@ -16,7 +16,7 @@ async function setup(t, invite = false) {
     const url = new URL(route.request().url()); const body = route.request().postDataJSON();
     if (url.pathname.endsWith('/beginGoogleActivity')) {writes.push(body); return route.fulfill({json: {authorizationUrl: 'https://untrusted.example/steal'}});}
     if (url.pathname.endsWith('/beginGoogleHealth')) {writes.push(body); return route.fulfill({json: {authorizationUrl: 'https://untrusted.example/steal'}});}
-    if (url.pathname.endsWith('/googleHealthTest')) {writes.push(body); return route.fulfill({json: {status: 'ok', coverage: Object.fromEntries(['steps', 'distanceKm', 'calories', 'activeMinutesByLevel'].map((key) => [key, {available: 7, missing: 0, unavailable: 0, today: 'ok'}]))}});}
+    if (url.pathname.endsWith('/googleHealthTest')) {writes.push(body); return route.fulfill({json: {status: 'ok', ...(body.forceRefresh ? {refreshVerified: true} : {}), coverage: Object.fromEntries(['steps', 'distanceKm', 'calories', 'activeMinutesByLevel'].map((key) => [key, {available: 7, missing: 0, unavailable: 0, today: 'ok'}]))}});}
     if (body) {
       writes.push(body);
       if (body.action === 'invite') return route.fulfill({json: {id: 'c'.repeat(64), url: `${baseUrl}/people?invite=${'s'.repeat(43)}`, expiresAtMs: Date.now() + 1800000}});
@@ -63,6 +63,9 @@ test('Health test control requires consent and removes only its staged connectio
   await page.getByRole('button', {name: 'Check test data'}).click();
   await page.getByText('Steps: 7 days with data, 0 missing, 0 unavailable. Today: ok.').waitFor();
   assert.equal(typeof writes.at(-1).timeZone, 'string');
+  await page.getByRole('button', {name: 'Check token refresh'}).click();
+  await page.getByText('Token refresh succeeded.').waitFor();
+  assert.equal(writes.at(-1).forceRefresh, true);
   await page.getByRole('button', {name: 'Remove Google Health test connection'}).click();
   assert.equal(writes.some((item) => item.action === 'disconnectHealthTest'), false);
   await page.getByRole('button', {name: 'Confirm remove Google Health test'}).click();

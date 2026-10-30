@@ -156,6 +156,15 @@ does not establish numerical parity with Fit, behavior across travel or repeated
 clock hours, shared-person support, or a successful refresh after access-token
 expiry. The dashboard continues to use Fit.
 
+A separate, owner-initiated token-refresh check was subsequently added and
+deployed to the People test panel. It omits the cached access token and reports
+whether the OAuth client obtained one, without displaying credentials or health
+values. Mocked success and failure tests and live unauthenticated smoke checks
+passed. The user subsequently reported that the deployed check refreshed
+successfully, providing live evidence that the saved test refresh token obtained
+a new access token. This does not establish behavior after the seven-day testing
+grant expires, production OAuth verification, or automatic recovery after revocation.
+
 The isolated [Health read service](../../server/functions/src/services/googleHealthRead.ts)
 now loads the separate encrypted grant, uses the Health OAuth client to refresh
 access on demand, and stores a refreshed access token encrypted for reuse. It

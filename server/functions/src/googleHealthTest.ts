@@ -43,15 +43,20 @@ export async function handleGoogleHealthTest(req: Request, res: Response): Promi
   if (!validTimeZone(req.body?.timeZone)) {
     res.status(400).json({error: "A valid time zone is required."}); return;
   }
+  if (req.body?.forceRefresh !== undefined && typeof req.body.forceRefresh !== "boolean") {
+    res.status(400).json({error: "Invalid refresh check."}); return;
+  }
   try {
     if (!await recordUserQuota(identity.userId, "health_test_read", 5, 10 * 60 * 1000)) {
       res.status(429).json({error: "Please wait before checking Google Health again."}); return;
     }
-    const result = await fetchGoogleHealthSummary(identity.userId, req.body.timeZone, {stepGoal: 10000, distanceGoal: 8});
+    const result = await fetchGoogleHealthSummary(identity.userId, req.body.timeZone,
+      {stepGoal: 10000, distanceGoal: 8}, new Date(), {forceRefresh: req.body.forceRefresh === true});
     if (result.status !== "ok") {
       res.status(200).json({status: result.status}); return;
     }
-    res.status(200).json({status: "ok", coverage: coverage(result.summary.weekly)});
+    res.status(200).json({status: "ok", coverage: coverage(result.summary.weekly),
+      ...(req.body.forceRefresh === true ? {refreshVerified: result.refreshVerified === true} : {})});
   } catch {
     res.status(503).json({error: "Google Health test is unavailable. Try again later."});
   }
