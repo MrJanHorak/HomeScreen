@@ -106,11 +106,69 @@ Health account link before writing separately encrypted credentials. Its write
 checks the authorization version in the same transaction, so a disconnect or
 account deletion can cancel an in-flight consent. Existing activity disconnect
 and account deletion remove the activity collection, including this record.
-The service is not exposed by an OAuth endpoint or UI yet; tests use mocks and
-do not establish a live consent or exercise Firestore transaction races. A future
-caller must supply a single-use, expiring PKCE state and the correct client
-configuration, and must not enable a provider switch before UI and sharing
-semantics are ready.
+An isolated, disabled-by-default [OAuth start and callback](../../server/functions/src/googleHealthOAuth.ts)
+now supplies a single-use, expiring PKCE state and a separate OAuth client. It
+requires an explicit consent flag and a signed-in owner session, and only stages
+credentials; it does not create a share or switch the provider. The People page
+offers an explicitly labeled test connection when the feature flag is enabled,
+and lets the owner remove a saved test grant even if the flag is later disabled.
+Removing the grant invalidates in-flight authorization and leaves Fit credentials
+and shares intact. Mocked handler and storage tests cover
+replay, scope, account matching, encryption, and a cancelled transaction, but
+do not establish a live consent or reproduce Firestore concurrency.
+
+To prepare a future isolated deployment, register the exact Health callback URI
+with the Health test project's web OAuth client, enable the Health API and add
+test users in that project, and set the documented `GOOGLE_HEALTH_*` configuration
+and `GOOGLE_HEALTH_CLIENT_SECRET` secret for the separate callback. Both new
+functions and the `googleHealthTest` function must be deployed together, with the
+existing encryption secret available to the callback and test reader. The People
+function and companion Hosting also need updating. Leave the flag disabled until that setup and an intentional test
+client are ready. Deploying all functions also requires provisioning the new secret,
+even if the feature flag is off. This was the status before the authorized deployment below.
+The Health OAuth state collection also needs its `deleteAt` TTL policy deployed
+from `firestore.indexes.json`; expiry is enforced by the callback independently
+of eventual TTL cleanup. On October 29, a read-only check confirmed the Health
+API remained enabled in the separate test project. The configured dashboard
+Firebase project has `TOKEN_ENCRYPTION_KEY` but did not list a
+`GOOGLE_HEALTH_CLIENT_SECRET`; Health client settings were absent from the local
+Functions environment files. The Health test project was not in the Firebase
+project list, so the current companion flow would deploy to the live dashboard
+project while using the separate test OAuth client.
+
+On October 29, after the user approved deployment and reported registering the
+callback, the test client secret and Health settings were configured for the
+dashboard project. The `beginGoogleHealth`, `googleHealthOAuthCallback`, and
+`googleHealthTest` functions were created, `people` and `accountSecurity` were
+updated, and companion Hosting was deployed. The `health_oauth_states.deleteAt`
+TTL policy became active. Unauthenticated smoke checks returned the expected
+401s for protected endpoints and 400 for an invalid callback, and the hosted
+bundle contains the test controls. These checks do not verify live consent,
+account linkage, data reads, or token refresh. The TV still uses Fit.
+
+Subsequently the user shared a screenshot of the deployed People test showing
+a saved Health connection and a successful coverage check: steps, distance,
+calories and activity levels each had data for all seven days, including today,
+with no missing or unavailable days. This provides user-reported evidence that
+the deployed consent, encrypted credential and Health read path worked for this
+account. The screenshot contains coverage statuses, not personal values. It
+does not establish numerical parity with Fit, behavior across travel or repeated
+clock hours, shared-person support, or a successful refresh after access-token
+expiry. The dashboard continues to use Fit.
+
+The isolated [Health read service](../../server/functions/src/services/googleHealthRead.ts)
+now loads the separate encrypted grant, uses the Health OAuth client to refresh
+access on demand, and stores a refreshed access token encrypted for reuse. It
+distinguishes a consistently rejected grant from per-metric temporary failures,
+and checks both the account authorization version and connection revision after
+the read before returning results or saving a refreshed token. The companion's
+owner-only, rate-limited test endpoint reports only seven-day coverage counts and
+availability, not health values. This path is deployed for testing and is not used by the TV.
+Tests use mocked network and
+Firestore operations, including a simulated expired grant and disconnect during a
+read; a live refresh and real transaction concurrency remain unverified. A
+future caller must supply the Health client secret and enforce its own rate,
+sharing, and final response authorization checks.
 
 ## Current contract and candidate mapping
 

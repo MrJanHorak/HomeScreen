@@ -27,6 +27,8 @@ import {deviceAppsHandler} from "./deviceApps";
 import {pollsHandler, pollFeedHandler, pollParticipantHandler, pollRetention} from "./polls";
 import {peopleHandler, peopleActivityHandler} from "./people";
 import {feedsHandler} from "./feeds";
+import {beginGoogleHealthHandler, googleHealthOAuthCallbackHandler} from "./googleHealthOAuth";
+import {googleHealthTestHandler} from "./googleHealthTest";
 
 
 // import {onRequest} from "firebase-functions/https";
@@ -77,3 +79,6 @@ export const people = peopleHandler;
 export const peopleActivity = peopleActivityHandler;
 export const beginGoogleActivity = beginGoogleActivityHandler;
 export const feeds = feedsHandler;
+export const beginGoogleHealth = beginGoogleHealthHandler;
+export const googleHealthOAuthCallback = googleHealthOAuthCallbackHandler;
+export const googleHealthTest = googleHealthTestHandler;

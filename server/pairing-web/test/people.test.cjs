@@ -10,15 +10,18 @@ after(async () => {await browser?.close();});
 const person = {id: 'a'.repeat(32), name: 'Alex'};
 async function setup(t, invite = false) {
   const page = await browser.newPage({viewport: {width: 390, height: 844}}); t.after(() => page.close());
-  const state = {people: [person], sharing: [{id: 'b'.repeat(32), name: 'Me', dashboardName: 'Sam’s dashboard'}], connection: {connected: true, stepGoal: 8000, distanceGoal: 6}};
+  const state = {people: [person], sharing: [{id: 'b'.repeat(32), name: 'Me', dashboardName: 'Sam’s dashboard'}], connection: {connected: true, stepGoal: 8000, distanceGoal: 6}, healthTest: {available: true, connected: true}};
   const writes = []; const errors = []; page.on('pageerror', (e) => errors.push(e.message)); t.after(() => assert.deepEqual(errors, []));
   await page.route('**/__fixture-api/**', async (route) => {
     const url = new URL(route.request().url()); const body = route.request().postDataJSON();
     if (url.pathname.endsWith('/beginGoogleActivity')) {writes.push(body); return route.fulfill({json: {authorizationUrl: 'https://untrusted.example/steal'}});}
+    if (url.pathname.endsWith('/beginGoogleHealth')) {writes.push(body); return route.fulfill({json: {authorizationUrl: 'https://untrusted.example/steal'}});}
+    if (url.pathname.endsWith('/googleHealthTest')) {writes.push(body); return route.fulfill({json: {status: 'ok', coverage: Object.fromEntries(['steps', 'distanceKm', 'calories', 'activeMinutesByLevel'].map((key) => [key, {available: 7, missing: 0, unavailable: 0, today: 'ok'}]))}});}
     if (body) {
       writes.push(body);
       if (body.action === 'invite') return route.fulfill({json: {id: 'c'.repeat(64), url: `${baseUrl}/people?invite=${'s'.repeat(43)}`, expiresAtMs: Date.now() + 1800000}});
       if (body.action === 'remove') {state.people = state.people.filter((p) => p.id !== body.id); state.sharing = state.sharing.filter((p) => p.id !== body.id);}
+      if (body.action === 'disconnectHealthTest') state.healthTest.connected = false;
       return route.fulfill({json: {success: true}});
     }
     return route.fulfill({json: url.searchParams.has('invite') ? {dashboardName: 'Jordan’s dashboard', expiresAtMs: Date.now() + 1800000} : state});
@@ -49,6 +52,23 @@ test('people management generates/cancels an invitation, revokes shares and refl
   await page.getByText('No other people are sharing activity yet.', {exact: true}).waitFor();
   await page.getByRole('button', {name: 'Stop sharing', exact: true}).click();
   await page.getByText('You are not sharing activity with another dashboard.', {exact: true}).waitFor();
+});
+test('Health test control requires consent and removes only its staged connection', async (t) => {
+  const {page, writes, state} = await setup(t);
+  assert.equal(await page.getByRole('button', {name: 'Reconnect Google Health test'}).isDisabled(), true);
+  await page.getByLabel('I agree to connect my Google Health activity data for testing.').check();
+  await page.getByRole('button', {name: 'Reconnect Google Health test'}).click();
+  await page.getByText('Could not start Google Health consent.', {exact: true}).waitFor();
+  assert.equal(writes.at(-1).consent, true);
+  await page.getByRole('button', {name: 'Check test data'}).click();
+  await page.getByText('Steps: 7 days with data, 0 missing, 0 unavailable. Today: ok.').waitFor();
+  assert.equal(typeof writes.at(-1).timeZone, 'string');
+  await page.getByRole('button', {name: 'Remove Google Health test connection'}).click();
+  assert.equal(writes.some((item) => item.action === 'disconnectHealthTest'), false);
+  await page.getByRole('button', {name: 'Confirm remove Google Health test'}).click();
+  await page.getByText('Google Health test connection removed.').waitFor();
+  assert.equal(state.connection.connected, true);
+  assert.equal(writes.at(-1).action, 'disconnectHealthTest');
 });
 test('joining requires explicit consent and only trusts Google authorization redirects', async (t) => {
   const {page, writes} = await setup(t, true);

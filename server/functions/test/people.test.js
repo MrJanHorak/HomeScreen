@@ -18,7 +18,8 @@ function fixture(t, initial = {}, uid = 'owner', owner = true) {
   function ref(path) {
     return {path, id: path.split('/').at(-1), collection: (name) => collection(`${path}/${name}`),
       get: async () => ({id: path.split('/').at(-1), ref: ref(path), exists: records.has(path), data: () => records.get(path)}),
-      create: async (data) => {assert.equal(records.has(path), false); records.set(path, data);}};
+      create: async (data) => {assert.equal(records.has(path), false); records.set(path, data);},
+      delete: async () => {records.delete(path);}};
   }
   function collection(path) {
     return {path, doc: (id) => ref(`${path}/${id}`), where: (field, _op, value) => ({
@@ -117,6 +118,18 @@ test('activity consent requests only activity scopes, requires explicit sharing 
   const denied = response(); await handleBeginGoogleActivity(request('POST', profile), denied); assert.equal(denied.code, 400);
   t.mock.method(requestAuth, 'authenticatedIdentity', async () => ({userId: 'owner', owner: false}));
   const tv = response(); await handleBeginGoogleActivity(request('POST', {...profile, consent: true}), tv); assert.equal(tv.code, 403);
+});
+test('Health test disconnect cancels pending consent and preserves the Fit connection', async (t) => {
+  const f = fixture(t, {'users/owner/activity/connection': {google: {refreshToken: 'fit'}},
+    'users/owner/activity/googleHealth': {google: {refreshToken: 'health'}}});
+  const res = response(); await handlePeople(request('POST', {action: 'disconnectHealthTest'}), res);
+  assert.equal(res.code, 200);
+  assert.equal(f.records.has('users/owner/activity/googleHealth'), false);
+  assert.equal(f.records.get('users/owner/activity/connection').google.refreshToken, 'fit');
+  assert.equal(f.records.get('account_security/owner').version, 1);
+  t.mock.method(requestAuth, 'authenticatedIdentity', async () => ({userId: 'owner', owner: false}));
+  const tv = response(); await handlePeople(request('POST', {action: 'disconnectHealthTest'}), tv);
+  assert.equal(tv.code, 400);
 });
 test('participants and dashboard owners can revoke a share, while other accounts and another TV cannot', async (t) => {
   const f = await join(t);

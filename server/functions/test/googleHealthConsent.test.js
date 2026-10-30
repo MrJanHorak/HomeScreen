@@ -52,3 +52,33 @@ test('propagates verification and cancelled transaction failures', async () => {
   const cancelled = setup(); cancelled.dependencies.save = async () => {throw new Error('Authorization was cancelled');};
   await assert.rejects(run(cancelled), /cancelled/);
 });
+
+test('real storage encrypts a separate grant and rejects a late consent after disconnect', async (t) => {
+  const db = require('../lib/utils/db');
+  const {decryptToken} = require('../lib/utils/crypto');
+  const previous = process.env.TOKEN_ENCRYPTION_KEY;
+  process.env.TOKEN_ENCRYPTION_KEY = 'fixture-key';
+  t.after(() => {if (previous === undefined) delete process.env.TOKEN_ENCRYPTION_KEY; else process.env.TOKEN_ENCRYPTION_KEY = previous;});
+  const records = new Map([['account_security/user', {version: 3}], ['users/user/activity/connection', {provider: 'google-fit'}]]);
+  const ref = (path) => ({path, collection: (name) => collection(`${path}/${name}`)});
+  const collection = (path) => ({doc: (id) => ref(`${path}/${id}`)});
+  t.mock.method(db.db, 'collection', collection);
+  t.mock.method(db.db, 'runTransaction', async (callback) => {
+    const pending = [];
+    const result = await callback({get: async (target) => ({data: () => records.get(target.path)}),
+      set: (target, value) => pending.push([target.path, value])});
+    pending.forEach(([path, value]) => records.set(path, value)); return result;
+  });
+  t.mock.method(db.auth, 'getUser', async () => ({disabled: false, providerData: [{providerId: 'google.com', uid: 'subject'}]}));
+  const s = setup();
+  s.tokens.refresh_token = 'fixture-private-refresh-value';
+  assert.equal(await completeGoogleHealthConsent(s.client, s.tokens, 'user', 'client-id', 3, 123), 'connected');
+  const saved = records.get('users/user/activity/googleHealth');
+  assert.equal(decryptToken(saved.google.refreshToken), s.tokens.refresh_token);
+  assert.equal(JSON.stringify(saved).includes(s.tokens.refresh_token), false);
+  assert.deepEqual(records.get('users/user/activity/connection'), {provider: 'google-fit'});
+  records.delete('users/user/activity/googleHealth');
+  records.set('account_security/user', {version: 4});
+  await assert.rejects(completeGoogleHealthConsent(s.client, s.tokens, 'user', 'client-id', 3, 123), /cancelled/);
+  assert.equal(records.has('users/user/activity/googleHealth'), false);
+});

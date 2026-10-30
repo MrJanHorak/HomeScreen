@@ -126,6 +126,9 @@ if (!config.apiKey || !config.authDomain || !config.projectId || !config.appId |
   if (result === 'activity_connected') showStatus('Activity connected. You can manage sharing below; the dashboard owner can add your widget in Dashboard Studio.', 'success');
   if (result === 'activity_denied') showStatus('Activity access was cancelled. Open the invitation again to retry.', 'error');
   if (result === 'activity_error') showStatus('Activity could not be connected. Check your account and open the invitation again, or reconnect below.', 'error');
+  if (result === 'health_test_connected') showStatus('Google Health test connection saved. Your dashboard still uses Google Fit.', 'success');
+  if (result === 'health_test_denied') showStatus('Google Health test access was cancelled.', 'error');
+  if (result === 'health_test_error') showStatus('Google Health could not be connected. Check your account and permissions, then try again.', 'error');
   if (result === 'connected') {
     showStatus('TV connected. You can return to your TV now.', 'success');
     requiredElement(app, '#connected-next').hidden = false;

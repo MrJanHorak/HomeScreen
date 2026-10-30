@@ -114,6 +114,7 @@ export async function handleAccountSecurity(req: Request, res: Response): Promis
       await db.recursiveDelete(userRef);
       await Promise.all([
         deleteUserRecords("oauth_states", userId),
+        deleteUserRecords("health_oauth_states", userId),
         deleteUserRecords("device_codes", userId),
         deleteUserRecords("user_request_limits", userId),
         deleteUserRecords("poll_links", userId),

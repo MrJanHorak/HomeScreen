@@ -10,6 +10,7 @@ export interface PeopleSettings {
   people: DashboardPerson[];
   sharing: ActivitySharing[];
   connection: {connected: boolean; name?: string; stepGoal: number; distanceGoal: number} | null;
+  healthTest?: {available: boolean; connected: boolean} | null;
 }
 export interface PeopleActivityFeed {
   people: (DashboardPerson & {health: Activity})[];

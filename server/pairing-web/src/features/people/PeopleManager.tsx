@@ -6,12 +6,16 @@ import type {PeopleSettings, PeopleInvitation} from '../../../../../shared/src/p
 import './people.css';
 
 type Request = ReturnType<typeof createApiClient>;
+type HealthTestResult = {status: 'ok'; coverage: Record<string, {available: number; missing: number; unavailable: number; today: string}>} |
+  {status: 'not_connected' | 'reconnect' | 'unavailable'};
 function PeopleManager({request, invite}: {request: Request; invite: string | null}) {
   const [data, setData] = useState<PeopleSettings | null>(null);
   const [target, setTarget] = useState<{dashboardName: string; expiresAtMs: number} | null>(null);
   const [invitation, setInvitation] = useState<PeopleInvitation | null>(null);
   const [name, setName] = useState(''); const [stepGoal, setStepGoal] = useState(10000); const [distanceGoal, setDistanceGoal] = useState(8);
   const [consent, setConsent] = useState(false); const [busy, setBusy] = useState(false); const [message, setMessage] = useState('');
+  const [healthConsent, setHealthConsent] = useState(false);
+  const [healthResult, setHealthResult] = useState<HealthTestResult | null>(null);
   const [confirm, setConfirm] = useState('');
   const mounted = useRef(true);
   async function load() {
@@ -72,6 +76,37 @@ function PeopleManager({request, invite}: {request: Request; invite: string | nu
       </div>}
     </ConnectionPanel>}
     {!invite && data && <>
+      {(data.healthTest?.available || data.healthTest?.connected) && <section className="people-panel">
+        <h2>Google Health test connection</h2>
+        <p>Connect your own Google Health account for testing. Your dashboard and shared activity will continue to use Google Fit.</p>
+        <p className="field-hint">{data.healthTest.connected ? 'A test connection is saved.' : 'No test connection is saved.'} Google Health must already be linked to your Google account.</p>
+        {data.healthTest.available && <form onSubmit={(e) => {e.preventDefault(); void run(async () => {
+          const result = await request('beginGoogleHealth', 'POST', {consent: healthConsent});
+          if (mounted.current) window.location.assign(googleAuthorizationUrl(result, 'Could not start Google Health consent.'));
+        });}}>
+          <label className="people-consent"><input type="checkbox" required checked={healthConsent} onChange={(e) => setHealthConsent(e.target.checked)}/>
+            I agree to connect my Google Health activity data for testing.</label>
+          <button className="button button-primary" type="submit" disabled={busy || !healthConsent}>{data.healthTest.connected ? 'Reconnect Google Health test' : 'Connect Google Health test'}</button>
+        </form>}
+        {data.healthTest.available && data.healthTest.connected && <button className="button button-secondary" disabled={busy} onClick={() => void run(async () => {
+          setHealthResult(null);
+          const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+          const result = await request<HealthTestResult>('googleHealthTest', 'POST', {timeZone});
+          if (mounted.current) setHealthResult(result);
+        })}>Check test data</button>}
+        {healthResult?.status === 'ok' && <div role="status"><p>Coverage for seven days, including today. No activity values are shown.</p>
+          {([['steps', 'Steps'], ['distanceKm', 'Distance'], ['calories', 'Calories'], ['activeMinutesByLevel', 'Activity levels']] as const).map(([key, label]) => {
+            const value = healthResult.coverage[key];
+            return <p key={key}>{label}: {value.available} days with data, {value.missing} missing, {value.unavailable} unavailable. Today: {value.today}.</p>;
+          })}</div>}
+        {healthResult?.status === 'reconnect' && <p role="status">Google Health access has expired or was revoked. Reconnect the test account.</p>}
+        {healthResult?.status === 'not_connected' && <p role="status">No Google Health test connection is saved. Connect it first.</p>}
+        {healthResult?.status === 'unavailable' && <p role="status">Google Health could not be checked right now. Try again later.</p>}
+        {data.healthTest.connected && <button className="button button-text" disabled={busy} onClick={() => {
+          if (confirm !== 'disconnect-health') {setConfirm('disconnect-health'); return;}
+          void run(async () => {await request('people', 'POST', {action: 'disconnectHealthTest'}); await load(); setConfirm(''); setHealthConsent(false); setHealthResult(null); setMessage('Google Health test connection removed.');});
+        }}>{confirm === 'disconnect-health' ? 'Confirm remove Google Health test' : 'Remove Google Health test connection'}</button>}
+      </section>}
       <section className="people-panel"><h2>People on your dashboard</h2><p>Add a roommate, partner, or family member. Each person connects their own account. Joining makes their activity widget available in Dashboard Studio.</p>
         <button className="button button-primary" disabled={busy} onClick={() => void run(async () => {
           if (invitation) await request('people', 'POST', {action: 'cancelInvitation', id: invitation.id});

@@ -2,6 +2,12 @@
   "indexes": [],
   "fieldOverrides": [
     {
+      "collectionGroup": "health_oauth_states",
+      "fieldPath": "deleteAt",
+      "ttl": true,
+      "indexes": []
+    },
+    {
       "collectionGroup": "activity_invitations",
       "fieldPath": "deleteAt",
       "ttl": true,

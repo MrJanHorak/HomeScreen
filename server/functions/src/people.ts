@@ -34,16 +34,19 @@ export async function handlePeople(req: Request, res: Response): Promise<void> {
         }
         res.status(200).json({dashboardName: invite.dashboardName, expiresAtMs: invite.expiresAtMs}); return;
       }
-      const [members, sharing, connection] = await Promise.all([
+      const [members, sharing, connection, healthTest] = await Promise.all([
         activityShares("dashboardId", uid),
         identity.owner ? activityShares("userId", uid) : Promise.resolve([]),
         identity.owner ? readActivityConnection(uid) : Promise.resolve(null),
+        identity.owner ? db.collection("users").doc(uid).collection("activity").doc("googleHealth").get() : Promise.resolve(null),
       ]);
       res.status(200).json({people: members.map((doc) => ({id: doc.id, name: doc.data().name})),
         sharing: sharing.map((doc) => ({id: doc.id, name: doc.data().name, dashboardName: doc.data().dashboardName})),
         connection: identity.owner ? {connected: !!connection?.google?.refreshToken,
           name: connection?.name || "",
-          stepGoal: connection?.stepGoal || 10000, distanceGoal: connection?.distanceGoal || 8} : null}); return;
+          stepGoal: connection?.stepGoal || 10000, distanceGoal: connection?.distanceGoal || 8} : null,
+        healthTest: identity.owner ? {available: process.env.GOOGLE_HEALTH_OAUTH_ENABLED === "true",
+          connected: !!healthTest?.data()?.google?.refreshToken} : null}); return;
     }
     if (req.method !== "POST") {
       res.status(405).json({error: "Method not allowed"}); return;
@@ -71,6 +74,12 @@ export async function handlePeople(req: Request, res: Response): Promise<void> {
       // Invalidate OAuth before deleting; a callback cannot restore disconnected data.
       await invalidatePendingAuthorizations(uid);
       await clearActivitySharing(uid);
+      res.status(200).json({success: true}); return;
+    }
+    if (action === "disconnectHealthTest" && identity.owner) {
+      // Cancel in-flight consent and reads before removing the separate test grant.
+      await invalidatePendingAuthorizations(uid);
+      await db.collection("users").doc(uid).collection("activity").doc("googleHealth").delete();
       res.status(200).json({success: true}); return;
     }
     if (action === "goals" && identity.owner) {
